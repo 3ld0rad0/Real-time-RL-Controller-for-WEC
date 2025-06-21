@@ -1,0 +1,42 @@
+1) creare ambiente simulazione da zero, utilizzando equazioni PIO (OK)
+
+2) una volta che l'ambiente è funzionante allora passa ad implementare un modo per far comunicare simulazione e agente (OK)
+
+    2.1) capire come richiamare classi da cartelle differenti in python (OK)
+
+    2.2) warm-up function (OK)
+
+3) sviluppo agente
+	
+    3.0) aggiungere K come valore di controllo (OK)
+    
+    3.1) normalizzazione observation e action space (OK)
+
+    3.2) aggiungere calcolo potenza alla simulazione (OK)
+
+    3.3) valutare d_t nel controllo (OK)
+
+    3.4) visualizzare valori di potenza, fpto e reward nella simulazione (OK)
+    
+    3.5) salvare i dati in file csv e visualizzarli direttamente leggendoli (OK)
+
+    3.6) ragionare sulla funzione di reward (magari calcolandolo sulla potenza media) (OK)
+
+4) aumentare il numero di step di PPO (OK)
+
+    4.1)  testare risultati (OK)
+
+    4.2) creare funzione warmup che precalcola i valori a priori per ogni coppia (periodo, altezza) (OK)
+
+    4.3) allenare il modello con valori differenti di massa, periodo, altezza dell'onda... (OK) DEPRECATED
+
+
+5) studio risultati (OK)
+
+6) passiamo al latching (OK)
+
+6.1) Variare C e K e studiare i risultati 
+
+7) Completa calcolo onde irregolari
+
+8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*)
