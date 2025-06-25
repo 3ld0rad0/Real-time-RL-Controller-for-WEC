@@ -3,11 +3,16 @@ import gym
 import numpy as np
 import json
 import time
+import warnings
+import os
+import matplotlib.pyplot as plt
+import pandas as pd
+warnings.filterwarnings("ignore")
 
 # Define the custom environment based on buoy simulation
 
 class WECEnv_Linear(gym.Env):
-    def __init__(self, t_final, warmup, socket):
+    def __init__(self, t_final, warmup, socket, config):
         super(WECEnv_Linear,self).__init__()
         
         self.socket = socket
@@ -29,20 +34,28 @@ class WECEnv_Linear(gym.Env):
         
 
         # Stato: [displacement, speed, PTO_damping_coeff, PTO_stifness_coeff]
-        self.observation_space = gym.spaces.Box(low= -1.0, high=1.0, shape=(4,), dtype=np.float32)
-        #self.observation_space = gym.spaces.Box(low= 0, high=1.0, shape=(4,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=np.array([-1.0, -1.0, 0.0,  -1.0], dtype=np.float32),
+            high=np.array([ 1.0,  1.0,  1.0,  1.0], dtype=np.float32),
+            dtype=np.float32
+        )
         
         # Azione: [-delta_max, +delta_max]
         self.action_space = gym.spaces.Box(low= -1.0, high=1.0, shape=(2,), dtype=np.float32)
-        #self.action_space = gym.spaces.Box(low= 0, high=1.0, shape=(2,), dtype=np.float32)
 
         # valutare se mantenere la possibilià di avg
         self.avg = False
         # valutare variabile var_values
         self.var_values = False
+        
         self.n_step = 0
         self.n_ep = 0
         self.reward_v = []
+
+        wave_mode = 'regular' if config['regular'] else 'irregular' 
+        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{config['init_wave_height']}_{config['init_period']}_{wave_mode}'
+        self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
+
 
         self.reset()
     
@@ -52,9 +65,10 @@ class WECEnv_Linear(gym.Env):
         return np.array([
             x / np.ceil(self.x_obs),
             v / np.ceil(self.v_obs),
-            C / self.C_opt,
+            C / self.C_opt, ## modifica tra 0 e 1
             K / self.K_opt
         ], dtype=np.float32)
+    
 
     
     def update_values(self, values, file_path = './warmup.json'):
@@ -150,7 +164,11 @@ class WECEnv_Linear(gym.Env):
         reward = power - penalty_x
 
         self.n_step += 1
-        self.reward_v.append((self.n_step, reward))
+
+        self.reward_v.append({
+            "step": self.n_step,
+            "reward": reward
+        })
         
         #normalized_state = self.normalize_state(self.state)
         #self.state = normalized_state
@@ -164,9 +182,17 @@ class WECEnv_Linear(gym.Env):
             
             self.n_ep += 1
             print(f'Episode {self.n_ep} completed...')
+
+        if self.current_time == self.t_final:
+            self.save_reward()
         
         return np.array(self.state, dtype=np.float32), reward, done, {}
 
+    
+    def save_reward(self):
+        df_reward = pd.DataFrame(self.reward_v)
+        header = not os.path.exists(self.reward_path)
+        df_reward.to_csv(self.reward_path, mode='a', header= header, index=False)
 
     
     def reset(self):
@@ -180,7 +206,7 @@ class WECEnv_Linear(gym.Env):
 
 class WECEnv_Latching(gym.Env):
 
-    def __init__(self, t_final, warmup, socket):
+    def __init__(self, t_final, warmup, socket, config):
         super(WECEnv_Latching,self).__init__()
         
         self.socket = socket
@@ -197,7 +223,11 @@ class WECEnv_Latching(gym.Env):
 
         
         # Stato: [speed, PTO_damping_coeff]
-        self.observation_space = gym.spaces.Box(low= -1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=np.array([-1.0, 0.0], dtype=np.float32),
+            high=np.array([ 1.0, 1.0], dtype=np.float32),
+            dtype=np.float32
+        )
         
         # Azione: [ 0, 1 ]
         self.action_space = gym.spaces.Discrete(2)
@@ -208,6 +238,11 @@ class WECEnv_Latching(gym.Env):
         self.n_step = 0
         self.n_ep = 0
         self.reward_v = []
+
+
+        wave_mode = 'regular' if config['regular'] else 'irregular' 
+        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{config['init_wave_height']}_{config['init_period']}_{wave_mode}'
+        self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
 
         self.reset()
 
@@ -295,13 +330,22 @@ class WECEnv_Latching(gym.Env):
 
         f_pto = -(C * v)
         #power = np.abs((v**2) * f_pto)  # Potenza inst. estratta
-        power = np.abs(v * f_pto)
+        power_term = np.abs(v * f_pto)
+        #power_term = f_pto * v
+
+        w_damp = 10e-5
+        damping_term = - (w_damp * (f_pto**2)) 
         #penalty_x = 0.01 * x**2  # Penalità per spostamenti eccessivi
         
-        reward = power
+        #reward = power_term - damping_term
+        reward = power_term
 
         self.n_step += 1
-        self.reward_v.append((self.n_step, reward))
+
+        self.reward_v.append({
+            "step": self.n_step,
+            "reward": reward
+        })
         
         #normalized_state = self.normalize_state(self.state)
         #self.state = normalized_state
@@ -315,9 +359,18 @@ class WECEnv_Latching(gym.Env):
             
             self.n_ep += 1
             print(f'Episode {self.n_ep} completed...')
+
+        
+        if self.current_time == self.t_final:
+            self.save_reward()
         
         return np.array(self.state, dtype=np.float32), reward, done, {}
 
+
+    def save_reward(self):
+        df_reward = pd.DataFrame(self.reward_v)
+        header = not os.path.exists(self.reward_path)
+        df_reward.to_csv(self.reward_path, mode='a', header= header, index=False)
 
     
     def reset(self):

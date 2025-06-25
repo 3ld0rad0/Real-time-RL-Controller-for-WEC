@@ -23,7 +23,8 @@ class Oscillator:
         
         ## Latching control ##
         if self.control_mode == 'latching':
-            self.C = self.C / ((self.area**(5/2)) * self.rho * (self.g** (1/2))) ## C*
+            #self.C = self.C / ((self.area**(5/2)) * self.rho * (self.g** (1/2))) ## C*
+            self.C = 0.3 * self.get_opt_damping_pto()
             self.K = 0
 
         self.G_star = G_star
@@ -79,7 +80,8 @@ class Oscillator:
         # Solve the differential equation using solve_ivp
         if t_eval is None:
             #t_eval = np.arange(t_span[0], t_span[1] + self.d_t, self.d_t)
-            t_eval = np.linspace(t_span[0], t_span[1], int(self.eval_window_len))  # Default time evaluation
+            step = int(self.eval_window_len)
+            t_eval = np.linspace(t_span[0], t_span[1], step)  # Default time evaluation
         
 
         sol = solve_ivp(self.system, t_span, initial_conditions, t_eval=t_eval, method=method)

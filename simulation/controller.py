@@ -28,12 +28,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print('Warmup done...')
         
         if control_mode == 'linear':
-            env = WECEnv_Linear(sim_time, warmup_values, s)
+            env = WECEnv_Linear(sim_time, warmup_values, s, config)
         
         elif control_mode == 'latching':
-            env = WECEnv_Latching(sim_time, warmup_values, s)
+            env = WECEnv_Latching(sim_time, warmup_values, s, config)
 
-        model = PPO("MlpPolicy", env, verbose=0)
+        model = PPO("MlpPolicy", env, verbose=1)
 
         if train:
             model.learn(total_timesteps= timesteps)
@@ -42,7 +42,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print("Decode error in the response by the server...")
         #break
     except Exception as e:
-        print(e)
+        #print(e)
         print("Connection close by the server...")
         #break
 

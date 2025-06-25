@@ -40,11 +40,14 @@ class Simulation:
 
         self.results_path       = f'./results/{self.wave_mode}/{base_name}.csv'
         self.energy_path        = f'./results/{self.wave_mode}/{base_name}_energy_absorbed.csv'
+        self.reward_path        = f'./results/{self.wave_mode}/{base_name}_reward.csv'
+        
         self.plot_path          = f'./plot/{self.wave_mode}/{base_name}.png'
         self.plot_energy_path   = f'./plot/{self.wave_mode}/{base_name}_energy_absorbed.png'
+        self.plot_reward_path   = f'./plot/{self.wave_mode}/{base_name}_reward.png'
         # Inizializza il file (rimuovi se esiste)
         
-        for path in [self.results_path, self.energy_path, self.plot_path, self.plot_energy_path]:
+        for path in [self.results_path, self.energy_path, self.reward_path, self.plot_path, self.plot_energy_path, self.plot_reward_path]:
             if os.path.exists(path):
                 os.remove(path)
 
@@ -158,6 +161,38 @@ class Simulation:
         plt.show()
 
 
+    def plot_reward(self):
+
+        if not os.path.exists(self.reward_path):
+            print("Nessun file di dati trovato per il plotting")
+            return
+        
+        df = pd.read_csv(self.reward_path)
+
+        step = df['step']
+        reward = df['reward']
+
+        # Crea il grafico
+        plt.figure(figsize=(10, 5))
+        plt.plot(step, reward, label='Reward', color='purple')
+
+        # Etichette e titolo
+        plt.xlabel('Step (s)')
+        plt.ylabel('Reward')
+        plt.title('Reward ottenuto per ogni step')
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+
+        # Mostra o salva il grafico
+
+        if self.save_mode:
+            plt.savefig(self.plot_reward_path, dpi = 300)
+        
+        plt.show()
+
+    
+    
     def plot(self):
         """Plot dei risultati leggendo dal file salvato"""
         if not os.path.exists(self.results_path):
@@ -174,7 +209,7 @@ class Simulation:
         
         # Subplot 1: Displacement (top-left)
         ax[0, 0].plot(df_plot_last['time'], df_plot_last['position'], label=r'Buoy displacement $\xi(t)$')
-        ax[0, 0].plot(df_plot_last['time'], df_plot_last['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf')
+        ax[0, 0].plot(df_plot_last['time'], df_plot_last['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
         ax[0, 0].set_xlabel(r'$t$ [s]')
         ax[0, 0].set_ylabel(r'Displacement [m]')
         ax[0, 0].legend(loc='lower right', fontsize='small')
@@ -182,7 +217,7 @@ class Simulation:
         
         # Subplot 2: Velocity and Excitation Force (top-right)
         ax[0, 1].plot(df_plot_last['time'], df_plot_last['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[0, 1].plot(df_plot_last['time'], df_plot_last['excitation_force'], label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77')
+        ax[0, 1].plot(df_plot_last['time'], df_plot_last['excitation_force'], label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
         ax[0, 1].set_xlabel(r'$t$ [s]')
         ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
         ax[0, 1].legend(loc='lower right', fontsize='small')
@@ -199,7 +234,7 @@ class Simulation:
 
         elif self.control_mode == 'latching':
             # Subplot 3: u-latching (bottom-left)
-            ax[1, 0].plot(df_plot_last['time'], df_plot_last['u_latching'], label=r'Fpto damping', color='green')
+            ax[1, 0].plot(df_plot_last['time'], df_plot_last['u_latching'], label=r'u control latching', color='green')
             ax[1, 0].set_xlabel(r'$t$ [s]')
             ax[1, 0].set_ylabel("Binary Control")
             ax[1, 0].legend(loc='lower right', fontsize='small')
@@ -218,6 +253,7 @@ class Simulation:
             plt.savefig(self.plot_path, dpi = 300)
         
         self.plot_energy()
+        self.plot_reward()
         
         plt.show()
 
@@ -409,3 +445,4 @@ class Simulation:
     def clear(self):
         os.remove(self.results_path)
         os.remove(self.energy_path)
+        os.remove(self.reward_path)

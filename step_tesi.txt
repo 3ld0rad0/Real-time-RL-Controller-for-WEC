@@ -35,7 +35,10 @@
 
 6) passiamo al latching (OK)
 
-6.1) Variare C e K e studiare i risultati 
+    6.1) Variare C e K e studiare i risultati (OK)
+
+    6.2) Normalizzare C tra 0 e 1 (OK)
+
 
 7) Completa calcolo onde irregolari
 

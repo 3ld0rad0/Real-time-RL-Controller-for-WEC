@@ -69,8 +69,8 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
     # Prepare data for this simulation
     simulation_data = {
-        'x_max': float(x_max),
-        'v_max': float(v_max),
+        'x_max': float(x_max) + 2.0, ## add 2 m to the max position available for stability 
+        'v_max': float(v_max) + 2.0, ## add 2 m/s to the max velocity available for stability
         'opt_damping' : opt_fpto_damp,
         'opt_stifness' : opt_fpto_stif
     }

@@ -46,12 +46,10 @@ print(f"Control mode : {control_mode}\n")
 
 
 
-# config["opt_damping"] = oscillator.get_opt_damping_pto()
-# config["opt_stifness"] = oscillator.get_opt_stifness_pto()
-
-# # Salva di nuovo il file
-# with open("./config.json", "w") as f:
-#     json.dump(config, f, indent=2)
+config["n_steps"] = int((1/d_t) * sim_time)
+# Salva di nuovo il file
+with open("./config.json", "w") as f:
+    json.dump(config, f, indent=2)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print('Waiting for controller connession...')

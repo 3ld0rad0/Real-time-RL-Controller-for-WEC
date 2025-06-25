@@ -1,12 +1,16 @@
 {
+  "control_mode": "latching",
+  "regular": 1,
+  "save_mode": 1,
+  "init_C": 0,
+  "init_K": 0,
+  "init_G_star": 5,
   "d_t": 0.5,
-  "sim_time": 100.0,
+  "sim_time": 15000,
   "warmup_time": 150.0,
-  "port": 5000,
-  "host": "127.0.0.1",
-  "results_path": "./results/",
-  "save_mode": 0,
-  "n_steps": 200000,
+  "n_steps": 30000,
+  "init_period": 8,
+  "init_wave_height": 2.0,
   "period_bound": [
     6,
     8
@@ -15,11 +19,7 @@
     1.0,
     2.0
   ],
-  "init_period": 8,
-  "init_wave_height": 2.0,
-  "init_C": 10,
-  "init_K": 0,
-  "init_G_star" : 5,
-  "regular": 1,
-  "control_mode" : "latching"
+  "port": 5000,
+  "host": "127.0.0.1",
+  "results_path": "./results/"
 }
