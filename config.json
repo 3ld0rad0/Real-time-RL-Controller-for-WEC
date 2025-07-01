@@ -1,23 +1,36 @@
 {
-  "control_mode": "latching",
+  "control_mode": "linear",
   "regular": 1,
   "save_mode": 1,
   "init_C": 0,
   "init_K": 0,
   "init_G_star": 5,
   "d_t": 0.5,
-  "sim_time": 15000,
+  "sim_time": 500,
   "warmup_time": 150.0,
-  "n_steps": 30000,
-  "init_period": 8,
-  "init_wave_height": 2.0,
-  "period_bound": [
-    6,
-    8
+  "n_steps": 1000,
+  "init_SS": 0,
+  "period_table": [
+    9.0,
+    9.5,
+    10.0,
+    10.5,
+    11.0,
+    11.5,
+    12.0,
+    12.5,
+    13.0
   ],
-  "wave_height_bound": [
-    1.0,
-    2.0
+  "wave_height_table": [
+    0.8,
+    1.2,
+    1.6,
+    2.0,
+    2.4,
+    2.9,
+    3.4,
+    4.0,
+    4.5
   ],
   "port": 5000,
   "host": "127.0.0.1",

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp, trapezoid
 
 class Oscillator:
-    def __init__(self, period, Hw, C, K, G_star, regular, t_final, control_mode, d_t):
+    def __init__(self, period, Hw, C, K, G_star, regular, t_final, control_mode, d_t, spectrum):
         self.area = 5
         self.S_cs = np.pi*self.area**2
         self.volume = 2/3*np.pi*self.area**3
@@ -18,6 +18,7 @@ class Oscillator:
         #self.K = self.omega**2*(self.m+self.m_add)-self.rho*self.g*self.S_cs
         self.Hw = Hw
         self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+        self.spectrum = spectrum
 
         self.control_mode = control_mode
         
@@ -28,6 +29,7 @@ class Oscillator:
             self.K = 0
 
         self.G_star = G_star
+        self.opt_G_star = 10
         self.G = self.G_star * (self.m_add + self.m)
         self.u = 0.0 ## control inactive
         ######################
@@ -37,21 +39,42 @@ class Oscillator:
         self.d_t = d_t
         self.eval_window_len = (self.d_t * 100) // 2
 
-        # Lambda deve variare con omega, usa il codice di pio per calcolare omega
-        # controlla con Pio 
         if not self.regular:
-            self.N_freq = 100  # numero componenti armoniche
-            self.freqs = np.linspace(0.5 * self.omega, 1.5 * self.omega, self.N_freq)
-            self.amps = np.random.rand(self.N_freq) * (self.Hw / self.N_freq)
-            self.phases = 2 * np.pi * np.random.rand(self.N_freq)
 
-    # controlla con Pio
+            if self.spectrum is not None:
+                # Usa lo spettro da PM_Spectrum
+                self.N_freq = len(self.spectrum[0])  
+                self.freqs = self.spectrum[1]        # ω
+                self.amps = self.spectrum[0]         # A_ω
+                self.phases = self.spectrum[2]       # φ
+            
+            else:
+                self.N_freq = 100  # numero componenti armoniche
+                self.freqs = np.linspace(0.5 * self.omega, 1.5 * self.omega, self.N_freq)
+                self.amps = np.random.rand(self.N_freq) * (self.Hw / self.N_freq)
+                self.phases = 2 * np.pi * np.random.rand(self.N_freq)
+
+
+
     def fe_t_irregular(self, t):
-        return self.Lmbd * np.sum([
+        """Calcola la forza di eccitazione per onde irregolari"""
+        # Calcola Lmbd per ogni frequenza
+        Lmbd_freqs = np.sqrt((2*self.rho*self.g**3*self.B)/(self.freqs**3))
+        
+        # Somma le componenti armoniche
+        force = np.sum([
+            Lmbd_freqs[i] * self.amps[i] * np.cos(self.freqs[i] * t + self.phases[i])
+            for i in range(self.N_freq)
+        ])
+        
+        return force
+
+    def wave_elevation_irregular(self, t):
+        """Calcola l'elevazione dell'onda per onde irregolari"""
+        return np.sum([
             self.amps[i] * np.cos(self.freqs[i] * t + self.phases[i])
             for i in range(self.N_freq)
         ])
-
 
     def system(self, t, X):
         # Define the differential equations
@@ -89,6 +112,16 @@ class Oscillator:
         self.x = sol.y[0]  # Position
         self.v = sol.y[1]  # Velocity
 
+
+        if self.regular:
+            self.fe_t = self.Lmbd * self.Hw * np.cos(self.omega * self.t)
+            self.wave_t = self.Hw * np.cos(self.omega * self.t)
+        
+        else:
+            self.fe_t = np.array([self.fe_t_irregular(ti) for ti in self.t])
+            self.wave_t = np.array([self.wave_elevation_irregular(ti) for ti in self.t])
+
+        
         self.pow_inst = []
 
         for ev in self.v:
@@ -97,18 +130,13 @@ class Oscillator:
 
         v_sq = self.v **2
         v_integral = trapezoid(v_sq, self.t)
-        self.energy = v_integral * self.C
-
-        if self.regular:
-            self.fe_t = self.Lmbd * self.Hw * np.cos(self.omega * self.t)
-            self.wave_t = self.Hw * np.cos(self.omega * self.t)
         
-        else: # controlla con Pio
-            self.fe_t = np.array([self.fe_t_irregular(ti) for ti in self.t])
-            self.wave_t = np.array([
-                np.sum([self.amps[i] * np.cos(self.freqs[i] * ti + self.phases[i]) for i in range(self.N_freq)])
-                for ti in self.t
-            ])
+        ## P_abs
+        self.energy = v_integral * self.C
+        ## P_wave
+        self.energy_wave = self.calculate_energy_wave()
+
+        self.eta = self.energy /self.energy_wave
     
 
     ## Nel caso in cui siano previsti valori variabili nella simulazione ##
@@ -119,6 +147,25 @@ class Oscillator:
         self.B = 2/3*np.pi*self.area**3*self.rho*self.omega
         self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
 
+
+    ## Calculate the effective energy of the wave
+    def calculate_energy_wave(self):
+        if not self.regular:
+            d_omega = self.freqs[1] - self.freqs[0]
+            S = self.amps**2 / (2 * d_omega)
+
+            c_g = self.g / (2 * self.freqs)
+            integrand = S * c_g
+            P_wave = self.rho * self.g * trapezoid(integrand, self.freqs)
+        
+        else:
+            A = self.Hw / 2
+            c_g = self.g / (2 * self.omega)
+            P_wave = 0.5 * self.rho * self.g * A**2 * c_g
+            
+        return P_wave
+
+    
     def set_fpto(self, C, K):
         self.C = C
         self.K = K
@@ -162,6 +209,9 @@ class Oscillator:
     
     def get_opt_damping_pto(self):
         return 2/3*np.pi*self.area**3*self.rho*self.omega
+    
+    def get_B(self):
+        return self.B
 
     def get_period(self):
         return self.T
@@ -183,6 +233,12 @@ class Oscillator:
     
     def get_energy(self):
         return self.energy
+    
+    def get_wave_energy(self):
+        return self.energy_wave
+    
+    def get_eta(self):
+        return self.eta
     
     def get_control_mode(self):
         return self.control_mode

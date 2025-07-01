@@ -52,8 +52,13 @@ class WECEnv_Linear(gym.Env):
         self.n_ep = 0
         self.reward_v = []
 
-        wave_mode = 'regular' if config['regular'] else 'irregular' 
-        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{config['init_wave_height']}_{config['init_period']}_{wave_mode}'
+        wave_mode = 'regular' if config['regular'] else 'irregular'
+        nSS = config['init_SS']
+        period_table = config['period_table']
+        init_period = period_table[nSS]
+        hw_table = config['wave_height_table']
+        init_hw = hw_table[nSS]
+        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{init_hw}_{init_period}_{wave_mode}'
         self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
 
 
@@ -240,8 +245,13 @@ class WECEnv_Latching(gym.Env):
         self.reward_v = []
 
 
-        wave_mode = 'regular' if config['regular'] else 'irregular' 
-        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{config['init_wave_height']}_{config['init_period']}_{wave_mode}'
+        wave_mode = 'regular' if config['regular'] else 'irregular'
+        nSS = config['init_SS']
+        period_table = config['period_table']
+        init_period = period_table[nSS]
+        hw_table = config['wave_height_table']
+        init_hw = hw_table[nSS]
+        base_name = f'simulation_{config['control_mode']}_{int(config['sim_time'])}_{f"{config['d_t']}".replace('.','')}_{init_hw}_{init_period}_{wave_mode}'
         self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
 
         self.reset()

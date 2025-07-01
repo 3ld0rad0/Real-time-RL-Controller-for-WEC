@@ -99,13 +99,21 @@ class Simulation:
                 })
         
         mean_energy = []
+        
+        # CONTROL ENERGY WAVE AND ETA
+        #########################################
+        energy_abs = [x[1] for x in self.energy_buff]
+        energy_wave = [x[2] for x in self.energy_buff]
+        eta = [x[3] for x in self.energy_buff]
 
         mean_energy.append({
             "time": self.current_t,
-            # controlla
-            "energy_abs": np.sum(self.energy_buff) / (self.period * self.attention_win)
+            # controlla 
+            "energy_abs": np.sum(energy_abs) / (self.period * self.attention_win),
+            "energy_wave": np.sum(energy_wave) / (self.period * self.attention_win),
+            "eta" : np.sum(eta) / self.buff_len
         })
-
+        ##########################################
         self.energy_buff.clear()
         
         # Scrivi su file
@@ -379,8 +387,10 @@ class Simulation:
         
         pow_inst = self.oscillator.get_pow_inst()
         energy = self.oscillator.get_energy()
+        energy_wave = self.oscillator.get_wave_energy()
+        eta = self.oscillator.get_eta()
         
-        self.energy_buff.append((t[-1], energy))
+        self.energy_buff.append((t[-1], energy, energy_wave, eta))
         
         if self.control_mode == 'linear':
             # valore di default quando non viene utilizzato il latching control
@@ -443,6 +453,6 @@ class Simulation:
 
     # pulisce i file csv se save_mode = 0
     def clear(self):
-        os.remove(self.results_path)
-        os.remove(self.energy_path)
-        os.remove(self.reward_path)
+        for path in [self.results_path, self.energy_path, self.reward_path]:
+            if os.path.exists(path):
+                os.remove(path)

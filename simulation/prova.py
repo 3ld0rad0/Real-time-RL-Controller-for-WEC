@@ -4,13 +4,13 @@ import numpy as np
 
 
 # Dati di esempio
-data = np.array([0, 20, 30, 40, 50])
+data = []
 
-# Min e Max
-x_min = data.min()
-x_max = data.max()
+for i in range(5):
+    data.append((i, i+1, i+2))
 
-# Normalizzazione in [-1, 1]
-data_normalized = 2 * (data - x_min) / (x_max - x_min) - 1
 
-print(data_normalized)
+#res = [x[1] for x in data]
+
+s = np.sum(data)
+print(s)

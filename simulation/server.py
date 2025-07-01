@@ -5,6 +5,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
 from simulation.Simulation import Simulation
+from simulation.PM_Spectrum import PM_Spectrum
 import time
 import numpy as np
 import random
@@ -20,15 +21,26 @@ K = config['init_K']
 G_STAR = config['init_G_star']
 d_t = config['d_t']
 sim_time = config['sim_time']
-period = config['init_period']
-period_bound = config['period_bound']
-Hw = config['init_wave_height']
-Hw_bound = config['wave_height_bound']
+nSS = config['init_SS']
+period_bound = config['period_table']
+period = period_bound[nSS]
+Hw_bound = config['wave_height_table']
+Hw = Hw_bound[nSS]
 regular = config['regular']
 control_mode = config['control_mode']
 save_mode = config['save_mode']
 
-oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t)
+spectral_input = None
+
+if not regular:
+    pm = PM_Spectrum()
+    nω = 100
+    ω_min = 2.0*np.pi/18.0
+    ω_max = 2.0*np.pi/4.0
+    Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
+    spectral_input = (A_ω, ω, φ)
+
+oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t, spectral_input)
 sim = Simulation(oscillator, sim_time, d_t, save_mode = save_mode)
 
 print("Wait for warmup simulation...\n")
@@ -123,8 +135,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                 elif cmd == 'done':
                     # alla fine di ogni episodio aggiorna i valori di altezza d'onda e periodo
-                    period = random.randint(period_bound[0], period_bound[1])
-                    hw_arr = np.arange(Hw_bound[0], Hw_bound[1]+ 0.1, 0.5)
+                    period = random.randint(period_bound[0], period_bound[len(period_bound) - 1])
+                    hw_arr = np.arange(Hw_bound[0], Hw_bound[len(period_bound) - 1]+ 0.1, 0.5)
                     Hw = random.choice(hw_arr)
                     sim.update_values(period, Hw)
 
