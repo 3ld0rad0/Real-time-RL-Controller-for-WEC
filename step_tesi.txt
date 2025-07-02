@@ -44,16 +44,27 @@
 
 7) Completa calcolo onde irregolari (OK)
     
-    7.1) controlla calcolo Potenza dell'onda ed eta 
+    7.1) controlla calcolo Potenza dell'onda ed eta (DA RIVEDERE)
 
 8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*)
 
-## CONSIGLI PROF ##################################
+9) Idea di reward per latching control:
+
+    - Termine relativo potenza istantanea.
+    - Termine relativo alla potenza assorbita rispetto a quella disponibile
+    - Termine relativo alla differenza di fase tra velocità della boa e forza di eccitazione
+    - Termine relativo all'utilizzo del latching control (u)----> penalizzazione se viene utilizzato troppo spesso
+
+
+
+
+
+#################################### CONSIGLI PROF ##################################
 Misura per valutare la qualità dei risultati
 
 Valutare misure target
 
-Competitor matematici
+Competitor matematici ( algoritmi utilizzati per il controllo )
 
 Richiedere valori reali a Pio
-##################################
+####################################################################

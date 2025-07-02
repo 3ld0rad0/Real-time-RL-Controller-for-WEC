@@ -39,7 +39,7 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
             random_ptos_v = np.random.uniform(opt_fpto_stif, -opt_fpto_stif, size=n_sim)
     else:
         # Fisso per onde irregolari
-        random_ptod_v = [oscillator.get_B() * 0.2,oscillator.get_B() * 0.3, oscillator.get_B() * 0.4, oscillator.get_B() * 0.5]
+        random_ptod_v = [oscillator.get_opt_damping_pto() * 0.2,oscillator.get_opt_damping_pto() * 0.3, oscillator.get_opt_damping_pto() * 0.4, oscillator.get_opt_damping_pto() * 0.5]
         random_ptos_v = [0.0, 0.0, 0.0, 0.0]
 
     v_arr = []
@@ -64,16 +64,16 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
     if regular:
 
         simulation_data = {
-            'x_max': float(x_max) + 2.0,
-            'v_max': float(v_max) + 2.0,
+            'x_max': float(x_max) + 1.0,
+            'v_max': float(v_max) + 1.0,
             'opt_damping': opt_fpto_damp,
             'opt_stifness': opt_fpto_stif
         }
 
     else:
         simulation_data = {
-            'x_max': float(x_max) + 2.0,
-            'v_max': float(v_max) + 2.0
+            'x_max': float(x_max) + 1.0,
+            'v_max': float(v_max) + 1.0
         }
 
 
@@ -103,6 +103,7 @@ if __name__ == "__main__":
     G_STAR = config['init_G_star']
     sim_time = config['sim_time']
     regular = config['regular']
+    reg_lbl = 'regular' if regular else 'irregular'
     warmup_time = config['warmup_time']
     period_b = config['period_table']
     hw_b = config['wave_height_table']
@@ -143,13 +144,13 @@ if __name__ == "__main__":
         if not regular:
             pm = PM_Spectrum()
             nSS = counter
-            nω = 100
-            ω_min = 0.3
-            ω_max = 2.5
+            nω = 512
+            ω_min = 2.0*np.pi/18.0
+            ω_max = 2.0*np.pi/4.0
             Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
             spectral_input = (A_ω, ω, φ)
 
         warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, sim_time, control_mode, d_t_oscillator, spectral_input))
-        print(f'Load warmup values for period : {p} and wave height : {hw}')
+        print(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')
 
         counter += 1

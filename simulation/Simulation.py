@@ -1,4 +1,9 @@
 import matplotlib.pyplot as plt
+import simulation.mpl_utils as mut
+from  simulation.mpl_utils import linecolors
+mut.config_plots()
+from matplotlib_inline.backend_inline import set_matplotlib_formats
+set_matplotlib_formats('svg')
 import numpy as np
 from collections import deque
 import pandas as pd
@@ -166,7 +171,7 @@ class Simulation:
         if self.save_mode:
             plt.savefig(self.plot_energy_path, dpi = 300)
         
-        plt.show()
+        #plt.show()
 
 
     def plot_reward(self):
@@ -197,7 +202,7 @@ class Simulation:
         if self.save_mode:
             plt.savefig(self.plot_reward_path, dpi = 300)
         
-        plt.show()
+        #plt.show()
 
     
     
@@ -209,7 +214,7 @@ class Simulation:
             
         df = pd.read_csv(self.results_path)
         
-        # Prendi gli ultimi 2500 punti per il plotting
+        # Prendi gli ultimi 2500 punti per il plotting di posizione e velocità
         df_plot_last = df.tail(2500)
         
         fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(15, 8))
