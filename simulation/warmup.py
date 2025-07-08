@@ -44,6 +44,7 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
     v_arr = []
     x_arr = []
+    fe_t_arr = []
 
     for re_d, re_s in zip(random_ptod_v, random_ptos_v):
         oscillator.set_fpto(re_d, re_s)
@@ -54,12 +55,15 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
         x = np.abs(oscillator.get_position())
         v = np.abs(oscillator.get_speed())
+        fe_t = np.abs(oscillator.get_fet())
 
         x_arr.append(np.max(x))
         v_arr.append(np.max(v))
+        fe_t_arr.append(np.max(fe_t))
 
     x_max = np.max(x_arr)
     v_max = np.max(v_arr)
+    fe_t_max = np.max(fe_t_arr)
 
     if regular:
 
@@ -67,13 +71,15 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
             'x_max': float(x_max) + 1.0,
             'v_max': float(v_max) + 1.0,
             'opt_damping': opt_fpto_damp,
-            'opt_stifness': opt_fpto_stif
+            'opt_stifness': opt_fpto_stif,
+            'fet_max': float(fe_t_max) + 1.0
         }
 
     else:
         simulation_data = {
             'x_max': float(x_max) + 1.0,
-            'v_max': float(v_max) + 1.0
+            'v_max': float(v_max) + 1.0,
+            'fet_max': float(fe_t_max) + 1.0
         }
 
 

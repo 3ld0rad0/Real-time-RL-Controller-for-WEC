@@ -44,9 +44,9 @@
 
 7) Completa calcolo onde irregolari (OK)
     
-    7.1) controlla calcolo Potenza dell'onda ed eta (DA RIVEDERE)
+    7.1) controlla calcolo Potenza dell'onda ed eta (OK CONTROLLARE)
 
-8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*)
+8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*) ## G* varia da 1 a 10 per il momento
 
 9) Idea di reward per latching control:
 

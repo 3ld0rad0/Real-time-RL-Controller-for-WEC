@@ -67,7 +67,8 @@ class Oscillator:
         self.B_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 2], kind='linear', fill_value="extrapolate")
         self.A_star = self.ka_table[-1, 1]
         self.B_star = self.B_star_interp(self.ka)
-        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
+        #self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
+        self.m_add = 2/3*np.pi*self.r**3*self.rho
 
         ########################################################################
         
@@ -80,7 +81,8 @@ class Oscillator:
                 self.amps = self.spectrum[0]         # A_ω
                 self.omega = self.spectrum[1]        # ω
                 self.phases = self.spectrum[2]       # φ
-                B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+                #B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+                B_array = (2/3*np.pi*self.r**3*self.rho*self.omega)
                 # Usa la media pesata per le ampiezze
                 weights = self.amps**2
                 self.B = np.average(B_array, weights=weights)
@@ -90,7 +92,8 @@ class Oscillator:
             ######################## REGULAR CASE ######################
             
             self.omega = 2*np.pi/self.T
-            self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+            #self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+            self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
             self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
         
         ########################################################################
@@ -106,7 +109,7 @@ class Oscillator:
             self.C = 0.3 * self.get_opt_damping_pto()
             self.K = 0
 
-        self.opt_G_star = 10
+        #self.opt_G_star = 10.0
         self.G_star = G_star
         self.G = self.G_star * (self.m_add + self.m)
         self.u = 0.0 ## control inactive
@@ -222,6 +225,16 @@ class Oscillator:
         self.C = C
         self.K = K
 
+    def set_G_star(self, g_star):
+        self.G_star = g_star
+        self.G = self.G_star * (self.m_add + self.m)
+
+    def get_G_star(self):
+        return self.G_star
+    
+    def get_G(self):
+        return self.G_star * (self.m_add + self.m)
+
     def get_latching(self):
         return self.u
     
@@ -266,11 +279,13 @@ class Oscillator:
     
     def get_opt_damping_pto(self):
         if self.regular:
-            return self.B_star * 2/3*np.pi*self.r**3*self.rho*self.omega
+            return 2/3*np.pi*self.r**3*self.rho*self.omega
+            #return self.B_star * 2/3*np.pi*self.r**3*self.rho*self.omega
         else:
             # Per onde irregolari, calcola il damping ottimale come media pesata
             weights = self.amps**2
-            return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
+            return np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
+            #return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
     
     # def get_B(self):
     #     return self.B

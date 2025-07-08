@@ -4,6 +4,7 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from agent.WEC_env import WECEnv_Linear, WECEnv_Latching
 from stable_baselines3 import PPO
+import numpy as np
 
 
 with open("config.json", "r") as f:
@@ -12,10 +13,16 @@ with open("config.json", "r") as f:
 HOST = config['host']
 PORT = config['port']
 
-sim_time = config['sim_time']
+sim_time = config['sim_time'] * 3600
 train = True
 timesteps = config['n_steps']
+episodes = np.ceil(np.max((4, timesteps/2500)))
 control_mode = config['control_mode']
+
+config['n_episodes'] = episodes
+
+with open("./config.json", "w") as f:
+    json.dump(config, f, indent=2)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
@@ -33,7 +40,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         elif control_mode == 'latching':
             env = WECEnv_Latching(sim_time, warmup_values, s, config)
 
-        model = PPO("MlpPolicy", env, verbose=1)
+        model = PPO("MlpPolicy", env, verbose=0)
 
         if train:
             model.learn(total_timesteps= timesteps)

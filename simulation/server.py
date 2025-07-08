@@ -20,7 +20,7 @@ C = config['init_C']
 K = config['init_K']
 G_STAR = config['init_G_star']
 d_t = config['d_t']
-sim_time = config['sim_time']
+sim_time = config['sim_time'] * 3600  # Convert hours to seconds
 nSS = config['init_SS']
 period_bound = config['period_table']
 period = period_bound[nSS]
@@ -130,7 +130,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     
                     else:
                         new_u = np.float64(params.get("u"))
-                        sim.send_control_latching(new_u)
+                        new_G_star = np.float64(params.get("G_star"))
+                        sim.send_control_latching((new_u, new_G_star))
 
 
                 elif cmd == 'done':
