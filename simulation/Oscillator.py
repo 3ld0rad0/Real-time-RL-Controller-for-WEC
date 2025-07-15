@@ -67,8 +67,8 @@ class Oscillator:
         self.B_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 2], kind='linear', fill_value="extrapolate")
         self.A_star = self.ka_table[-1, 1]
         self.B_star = self.B_star_interp(self.ka)
-        #self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
-        self.m_add = 2/3*np.pi*self.r**3*self.rho
+        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
+        #self.m_add = 2/3*np.pi*self.r**3*self.rho
 
         ########################################################################
         
@@ -81,20 +81,24 @@ class Oscillator:
                 self.amps = self.spectrum[0]         # A_ω
                 self.omega = self.spectrum[1]        # ω
                 self.phases = self.spectrum[2]       # φ
-                #B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
-                B_array = (2/3*np.pi*self.r**3*self.rho*self.omega)
+                B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+                #B_array = (2/3*np.pi*self.r**3*self.rho*self.omega)
                 # Usa la media pesata per le ampiezze
                 weights = self.amps**2
                 self.B = np.average(B_array, weights=weights)
                 self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+                coeff = (self.rho * self.g**2) / (64 * np.pi) * (10**-3)
+                self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
         
         else:
             ######################## REGULAR CASE ######################
             
             self.omega = 2*np.pi/self.T
-            #self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
-            self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
+            self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+            #self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
             self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+            coeff = (self.rho * self.g**2) / (8 * np.pi) * (10**-3)
+            self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
         
         ########################################################################
         
@@ -131,6 +135,7 @@ class Oscillator:
         ])
         
         return force
+    
 
     def wave_elevation_irregular(self, t):
         """Calcola l'elevazione dell'onda per onde irregolari"""
@@ -139,6 +144,22 @@ class Oscillator:
             for i in range(self.N_freq)
         ])
 
+
+    
+    def calculate_energy_absorbed(self):
+        
+        self.pow_inst = []
+        for ev in self.v:
+            power = (ev**2) * self.C
+            self.pow_inst.append(power)
+
+        v_sq = self.v **2
+        v_integral = trapezoid(v_sq, self.t)
+        
+        ## P_abs
+        self.energy_abs = v_integral * self.C
+    
+    
     def system(self, t, X):
         # Define the differential equations
         x1, x2 = X  # X[0] = position (x1), X[1] = velocity (x2)
@@ -185,21 +206,7 @@ class Oscillator:
             self.wave_t = np.array([self.wave_elevation_irregular(ti) for ti in self.t])
 
         
-        self.pow_inst = []
-
-        for ev in self.v:
-            power = (ev**2) * self.C
-            self.pow_inst.append(power)
-
-        v_sq = self.v **2
-        v_integral = trapezoid(v_sq, self.t)
-        
-        ## P_abs
-        self.energy = v_integral * self.C
-        ## P_wave
-        self.energy_wave = self.calculate_energy_wave()
-
-        self.eta = self.energy /self.energy_wave
+        self.calculate_energy_absorbed()
     
 
     ## Nel caso in cui siano previsti valori variabili nella simulazione ##
@@ -209,17 +216,6 @@ class Oscillator:
         self.omega = 2*np.pi/self.T
         self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
         self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
-
-
-    ## Calculate the effective energy of the wave
-    ## CONTROLLA CON PIO
-    def calculate_energy_wave(self):
-        #coeff = (self.rho * self.g**2)/ (64*np.pi)
-        coeff = 0.490
-        P_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
-            
-        return P_wave
-
     
     def set_fpto(self, C, K):
         self.C = C
@@ -247,10 +243,6 @@ class Oscillator:
     def get_fpto_stifness(self):
         return self.K
     
-    # def set_control(self, control_C, control_K):
-    #     self.C += control_C
-    #     self.K += control_K
-    
     def get_speed(self):
         return self.v
     
@@ -266,9 +258,6 @@ class Oscillator:
     def get_wavet(self):
         return self.wave_t
     
-    def get_pow_inst(self):
-        return self.pow_inst
-    
     def get_opt_stifness_pto(self):
         if self.regular:
             return self.omega**2*(self.m+self.m_add)-self.rho*self.g*self.S_cs
@@ -279,13 +268,13 @@ class Oscillator:
     
     def get_opt_damping_pto(self):
         if self.regular:
-            return 2/3*np.pi*self.r**3*self.rho*self.omega
-            #return self.B_star * 2/3*np.pi*self.r**3*self.rho*self.omega
+            #return 2/3*np.pi*self.r**3*self.rho*self.omega
+            return self.B_star * 2/3*np.pi*self.r**3*self.rho*self.omega
         else:
             # Per onde irregolari, calcola il damping ottimale come media pesata
             weights = self.amps**2
-            return np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
-            #return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
+            #return np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
+            return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
     
     # def get_B(self):
     #     return self.B
@@ -308,14 +297,17 @@ class Oscillator:
     def get_wmode(self):
         return self.regular
     
+    def get_pow_inst(self):
+        return self.pow_inst
+    
     def get_energy(self):
-        return self.energy
+        return self.energy_abs
     
     def get_wave_energy(self):
         return self.energy_wave
     
-    def get_eta(self):
-        return self.eta
+    # def get_eta(self):
+    #     return self.delta_eta
     
     def get_control_mode(self):
         return self.control_mode
@@ -364,12 +356,15 @@ if __name__ == '__main__':
     C = 0
     K = 0
     G_STAR = 5
-    regular = 0
+    regular = 1
     sim_time = 60
-    control_mode = 'linear'
+    control_mode = 'latching'
     d_t = 0.5
 
     oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t, spectral_input)
+    # C = oscillator.get_opt_damping_pto()
+    # K = oscillator.get_opt_stifness_pto()
+    # oscillator.set_fpto(C, K)
     oscillator.solve(t_eval= np.linspace(0, sim_time, 1000))
     oscillator.plot()
     plt.show()

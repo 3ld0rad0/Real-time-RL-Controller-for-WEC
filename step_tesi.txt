@@ -39,14 +39,14 @@
 
     6.2) Normalizzare C tra 0 e 1 (OK)
 
-    6.3) Provare a scalare il numero di episodi in base agli step
+    6.3) Provare a scalare il numero di episodi in base agli step (OK)
 
 
 7) Completa calcolo onde irregolari (OK)
     
     7.1) controlla calcolo Potenza dell'onda ed eta (OK CONTROLLARE)
 
-8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*) ## G* varia da 1 a 10 per il momento
+8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*) ## G* varia da 1 a 10 per il momento (OK)
 
 9) Idea di reward per latching control:
 
@@ -56,7 +56,13 @@
     - Termine relativo all'utilizzo del latching control (u)----> penalizzazione se viene utilizzato troppo spesso
 
 
+10) Programma per plottare grafici dai risultati, a simulazione effettuata
 
+    
+11) reward per episodio
+
+
+12) Ambienti paralleli per velocizzare e stabilizzare training (?)
 
 
 #################################### CONSIGLI PROF ##################################

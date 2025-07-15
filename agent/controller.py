@@ -13,7 +13,7 @@ with open("config.json", "r") as f:
 HOST = config['host']
 PORT = config['port']
 
-sim_time = config['sim_time'] * 3600
+sim_time = config['sim_time'] * 3600 # Convert hours to seconds
 train = True
 timesteps = config['n_steps']
 episodes = np.ceil(np.max((4, timesteps/2500)))
@@ -38,7 +38,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             env = WECEnv_Linear(sim_time, warmup_values, s, config)
         
         elif control_mode == 'latching':
-            env = WECEnv_Latching(sim_time, warmup_values, s, config)
+            env = WECEnv_Latching(sim_time, warmup_values, s, config, fixed_G_star = config['fixed_G_star'])
 
         model = PPO("MlpPolicy", env, verbose=0)
 

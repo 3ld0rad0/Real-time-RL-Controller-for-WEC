@@ -34,7 +34,7 @@ spectral_input = None
 
 if not regular:
     pm = PM_Spectrum()
-    nω = 100
+    nω = 512
     ω_min = 2.0*np.pi/18.0
     ω_max = 2.0*np.pi/4.0
     Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)

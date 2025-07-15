@@ -59,8 +59,10 @@ class WECEnv_Linear(gym.Env):
         hw_table = config['wave_height_table']
         init_hw = hw_table[nSS]
         sim_time_str = str(config['sim_time'])
-        base_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
+        
+        file_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        base_name = f'./results/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
+        self.reward_path  = f'{base_name}/{file_name}_reward.csv'
 
         self.episodes = config['n_episodes']
         self.reset()
@@ -167,6 +169,7 @@ class WECEnv_Linear(gym.Env):
         #power = np.abs((v**2) * f_pto)  # Potenza inst. estratta
         power = np.abs(v * f_pto)
         penalty_x = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        #penalty_x = 0.0
         reward = power - penalty_x
 
         self.n_step += 1
@@ -176,8 +179,6 @@ class WECEnv_Linear(gym.Env):
             "reward": reward
         })
         
-        #normalized_state = self.normalize_state(self.state)
-        #self.state = normalized_state
         done = (self.current_time % (self.t_final//self.episodes)) == 0
 
         if done:
@@ -212,12 +213,13 @@ class WECEnv_Linear(gym.Env):
 
 class WECEnv_Latching(gym.Env):
 
-    def __init__(self, t_final, warmup, socket, config):
+    def __init__(self, t_final, warmup, socket, config, fixed_G_star):
         super(WECEnv_Latching,self).__init__()
         
         self.socket = socket
         self.t_final = t_final
         self.current_time = 0.0
+        self.fixed_G_star = fixed_G_star
 
         # warmup values
         self.x_obs = np.ceil(warmup[0])
@@ -230,17 +232,21 @@ class WECEnv_Latching(gym.Env):
         #self.G_star_opt = 10.0  # Valore di G* ottimale, da definire in base alla simulazione
 
         
-        # Stato: [speed, PTO_damping_coeff, fet, G]
+        # Stato: [position, speed, PTO_damping_coeff, fet, G]
         self.observation_space = gym.spaces.Box(
-            low=np.array([-1.0, 0.0, -1.0, 0.0], dtype=np.float32),
-            high=np.array([ 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
+            low=np.array([-1.0, -1.0, 0.0, -1.0, 0.0], dtype=np.float32),
+            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
             dtype=np.float32
         )
-        
-        # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
-        # Azione : [ 0, 1, 2 ] --> 0 = nessuna azione, 1 = aumenta G*, 2 = diminuisci G*
-        self.action_space = gym.spaces.MultiDiscrete([2,3])
 
+        if not self.fixed_G_star:
+            # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
+            # Azione : [ 0, 1, 2 ] --> 0 = nessuna azione, 1 = aumenta G*, 2 = diminuisci G*
+            self.action_space = gym.spaces.MultiDiscrete([2,3])
+
+        else:
+            # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
+            self.action_space = gym.spaces.Discrete(2)
 
         # valutare variabile var_values
         self.var_values = False
@@ -256,8 +262,10 @@ class WECEnv_Latching(gym.Env):
         hw_table = config['wave_height_table']
         init_hw = hw_table[nSS]
         sim_time_str = str(config['sim_time'])
-        base_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        self.reward_path  = f'./results/{wave_mode}/{base_name}_reward.csv'
+        
+        file_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        base_name = f'./results/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
+        self.reward_path  = f'{base_name}/{file_name}_reward.csv'
 
         self.init_G_star = config['init_G_star']
         self.G_star_opt = config['opt_G_star']
@@ -271,8 +279,9 @@ class WECEnv_Latching(gym.Env):
 
     
     def normalize_state(self, state):
-        v, C, fe_t, G_star = state
+        x, v, C, fe_t, G_star = state
         return np.array([
+            x / self.x_obs,
             v / self.v_obs,
             C / self.C_opt,
             fe_t / self.fet_obs,
@@ -314,7 +323,7 @@ class WECEnv_Latching(gym.Env):
             self.update_values((curr_period, curr_hw, w_mode))
         
         
-        self.state = (state_raw['velocity'], state_raw['f_pto_damp'], state_raw['excitation_force'], state_raw['G_star'])
+        self.state = (state_raw['position'], state_raw['velocity'], state_raw['f_pto_damp'], state_raw['excitation_force'], state_raw['G_star'])
         
         self.current_time = state_raw['time']
         #print(f"Current State: {self.state}")
@@ -352,15 +361,23 @@ class WECEnv_Latching(gym.Env):
             action = 1.0
         
         d_G = (self.state[3] * self.G_star_opt) + action
-        new_G = np.clip(d_G, 1, self.G_star_opt)
+        new_G = np.clip(d_G, 1.0, self.G_star_opt)
         
         return new_G
     
     def step(self, action):
         
         # Send the action to Oscillator Simulation and at the same time we have the information of the new state
-        new_u = self.control_action_u(action[0])
-        new_G_star = self.control_action_G_star(action[1])
+        
+        if not self.fixed_G_star:
+            new_u = self.control_action_u(action[0])
+            new_G_star = self.control_action_G_star(action[1])
+        
+        else:
+            # se G* è fissato, l'azione è solo il latching
+            new_u = self.control_action_u(action)
+            new_G_star = self.init_G_star
+        
         self.send_action((new_u, new_G_star))
         time.sleep(0.01)
         self.get_observation()
@@ -368,38 +385,36 @@ class WECEnv_Latching(gym.Env):
         normalized_state = self.normalize_state(self.state)
         self.state = normalized_state
 
-        
-        v = self.state[0]
-        C = self.state[1]
-        fe = self.state[2]
-        G_star = self.state[3]
+        x = self.state[0]
+        v = self.state[1]
+        C = self.state[2]
+        fe = self.state[3]
+        G_star = self.state[4]
 
         f_pto = -(C * v)
-        power_term = np.abs(v * f_pto)
-        phase_term = np.abs (fe * v)
-        #latching_term = new_u * G_star * v **2
-        latching_term = 0
-
-        #power_term = f_pto * v
-
-        #w_damp = 10e-5
-        #damping_term = - (w_damp * (f_pto**2)) 
-        #penalty_x = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        power_term =  self.alpha * np.abs(v * f_pto)
         
-        #reward = power_term - damping_term
-        reward = (self.alpha * power_term) - (self.beta * latching_term) + (self.gamma * phase_term)
+        position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
+        
+        m = 402517.0
+    
+        latching_term = self.beta * (new_u * G_star* v **2)
 
+        phase_term = self.gamma * np.abs (fe * v)
+
+        reward = power_term - latching_term + phase_term
+
+        
         self.n_step += 1
-
+        
         self.reward_v.append({
             "step": self.n_step,
             "reward": reward
         })
         
-        #normalized_state = self.normalize_state(self.state)
-        #self.state = normalized_state
         done = (self.current_time % (self.t_final//self.episodes)) == 0
-
+        
         if done:
             # se la simulazione prevede valori variabili di periodo e altezza d'onda
             # if self.var_values:
@@ -413,7 +428,7 @@ class WECEnv_Latching(gym.Env):
         if self.current_time == self.t_final:
             self.save_reward()
         
-        return np.array(self.state, dtype=np.float32), reward, done, {}
+        return np.array(self.state, dtype=np.float64), reward, done, {}
 
 
     def save_reward(self):
@@ -423,6 +438,6 @@ class WECEnv_Latching(gym.Env):
 
     
     def reset(self):
-        self.state = (0.0, 0.0, 0.0, self.init_G_star)
+        self.state = (0.0 ,0.0, 0.0, 0.0, self.init_G_star)
         self.state = self.normalize_state(self.state)
-        return np.array(self.state, dtype= np.float32)
+        return np.array(self.state, dtype= np.float64)

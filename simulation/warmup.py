@@ -77,9 +77,9 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
     else:
         simulation_data = {
-            'x_max': float(x_max) + 1.0,
-            'v_max': float(v_max) + 1.0,
-            'fet_max': float(fe_t_max) + 1.0
+            'x_max': float(x_max) + 0.5,
+            'v_max': float(v_max) + 0.5,
+            'fet_max': float(fe_t_max) + 0.5
         }
 
 

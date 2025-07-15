@@ -41,22 +41,28 @@ class Simulation:
         # buffer che mantiene solo gli elementi più recenti
         self.buff_hist = deque(maxlen= self.attention_len)
         
-        base_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
-
-        self.results_path       = f'./results/{self.wave_mode}/{base_name}.csv'
-        self.energy_path        = f'./results/{self.wave_mode}/{base_name}_energy_absorbed.csv'
-        self.reward_path        = f'./results/{self.wave_mode}/{base_name}_reward.csv'
+        self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+        self.base_data_name = f'./results/data/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
+        self.base_plot_name = f'./results/plot/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
         
-        self.plot_path          = f'./plot/{self.wave_mode}/{base_name}.png'
-        self.plot_energy_path   = f'./plot/{self.wave_mode}/{base_name}_energy_absorbed.png'
-        self.plot_reward_path   = f'./plot/{self.wave_mode}/{base_name}_reward.png'
+        self.results_path       = f'{self.base_data_name}/{self.file_name}.csv'
+        self.energy_path        = f'{self.base_data_name}/{self.file_name}_energy_absorbed.csv'
+        self.reward_path        = f'{self.base_data_name}/{self.file_name}_reward.csv'
+        
+        self.plot_path          = f'{self.base_plot_name}/{self.file_name}.png'
+        self.plot_energy_path   = f'{self.base_plot_name}/{self.file_name}_energy_absorbed.png'
+        self.plot_reward_path   = f'{self.base_plot_name}/{self.file_name}_reward.png'
         # Inizializza il file (rimuovi se esiste)
         
         for path in [self.results_path, self.energy_path, self.reward_path, self.plot_path, self.plot_energy_path, self.plot_reward_path]:
+            
             if os.path.exists(path):
                 os.remove(path)
 
-        
+        for dir in [self.base_data_name, self.base_plot_name]:
+
+            if not os.path.exists(dir):
+                os.makedirs(dir)
 
         # Contatore che tiene traccia di quanti salvataggi sono stati effettuati
         self.cycle_counter = 0
@@ -95,7 +101,7 @@ class Simulation:
                     "time": t,
                     "position": x,
                     "velocity": v,
-                    "excitation_force": fet * 10e-6,
+                    "excitation_force": fet,
                     "wave_t": wave_t,
                     "damping_fpto": damp,
                     "stifness_fpto": stif,
@@ -109,15 +115,16 @@ class Simulation:
         # CONTROL ENERGY WAVE AND ETA
         #########################################
         energy_abs = [x[1] for x in self.energy_buff]
-        energy_wave = [x[2] for x in self.energy_buff]
-        eta = [x[3] for x in self.energy_buff]
+        energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione
+        energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
+        eta = energy_abs / (energy_wave * self.attention_win)
+        #energy_wave = [x[2] for x in self.energy_buff]
+        #eta = [x[3] for x in self.energy_buff]
 
         mean_energy.append({
             "time": self.current_t,
-            # controlla 
-            "energy_abs": np.sum(energy_abs) / (self.period * self.attention_win),
-            "energy_wave": np.sum(energy_wave) / (self.period * self.attention_win),
-            "eta" : np.sum(eta) / self.buff_len
+            "energy_abs":energy_abs,## Energy absorbed
+            "eta" : eta ## Capture Width Ratio
         })
         ##########################################
         self.energy_buff.clear()
@@ -158,11 +165,11 @@ class Simulation:
 
         # Crea il grafico
         plt.figure(figsize=(10, 5))
-        plt.plot(t, power, label='Potenza media', color='royalblue')
+        plt.plot(t / 3600, power * 10 **-3, label=r'Potenza media $10^{-3}$', color='royalblue')
 
         # Etichette e titolo
-        plt.xlabel('Tempo (s)')
-        plt.ylabel('Potenza media (W)')
+        plt.xlabel('Tempo (h)')
+        plt.ylabel('Potenza media (KW)')
         plt.title('Potenza media nel tempo')
         plt.grid(True)
         plt.legend()
@@ -192,7 +199,7 @@ class Simulation:
         plt.plot(step, reward, label='Reward', color='purple')
 
         # Etichette e titolo
-        plt.xlabel('Step (s)')
+        plt.xlabel('Step')
         plt.ylabel('Reward')
         plt.title('Reward ottenuto per ogni step')
         plt.grid(True)
@@ -220,31 +227,31 @@ class Simulation:
         ax[0, 0].grid()
         
         # Subplot 2: Velocity and Excitation Force (top-right)
-        ax[0, 1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[0, 1].plot(last_data['time'], last_data['excitation_force'], label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
+        ax[0, 1].plot(last_data['time'] , last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
+        ax[0, 1].plot(last_data['time'] , last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
         ax[0, 1].set_xlabel(r'$t$ [s]')
         ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
         ax[0, 1].legend(loc='lower right', fontsize='small')
         ax[0, 1].grid()
 
         # Subplot 3: PTO Forces (bottom-left)
-        ax[1, 0].plot(data['time'], data['damping_fpto'], label=r'Fpto damping', color='orange')
-        ax[1, 0].plot(data['time'], data['stifness_fpto'], label=r'Fpto stifness', color='purple')
+        ax[1, 0].plot(data['time'], data['damping_fpto'] * 10**-5, label=r'Fpto damping $10^{-5}$', color='orange')
+        ax[1, 0].plot(data['time'], data['stifness_fpto'] * 10**-5, label=r'Fpto stifness $10^{-5}$', color='purple')
         ax[1, 0].set_xlabel(r'$t$ [s]')
         ax[1, 0].set_ylabel("Force [MN]")
         ax[1, 0].legend(loc='lower right', fontsize='small')
         ax[1, 0].grid()
 
         # Subplot 4: Instantaneous Power (bottom-right)
-        ax[1, 1].plot(data['time'], data['power_inst'], label=r'Inst. Power', color='orange')
-        ax[1, 1].set_xlabel(r'$t$ [s]')
-        ax[1, 1].set_ylabel("Inst. Power [W]")
+        ax[1, 1].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[1, 1].set_xlabel(r'$t$ [h]')
+        ax[1, 1].set_ylabel("Inst. Power [KW]")
         ax[1, 1].legend(loc='lower right', fontsize='small')
         ax[1, 1].grid()
 
         # Subplot 5: Capture Width Ratio(bottom-left)
-        ax[2,0].plot(energy_data['time'], energy_data['eta'], label=r'Capture Width Ratio', color='green')
-        ax[2,0].set_xlabel(r'$t$ [s]')
+        ax[2,0].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
+        ax[2,0].set_xlabel(r'$t$ [h]')
         ax[2,0].set_ylabel("CWR")
         ax[2,0].legend(loc='lower right', fontsize='small')
         ax[2,0].grid()
@@ -268,7 +275,7 @@ class Simulation:
         
         # Subplot 2: Velocity and Excitation Force (top-right)
         ax[0, 1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[0, 1].plot(last_data['time'], last_data['excitation_force'], label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
+        ax[0, 1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
         ax[0, 1].set_xlabel(r'$t$ [s]')
         ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
         ax[0, 1].legend(loc='lower right', fontsize='small')
@@ -291,15 +298,15 @@ class Simulation:
         ax[1, 1].grid()
 
         # Subplot 5: Instantaneous Power (bottom-right)
-        ax[2, 0].plot(data['time'], data['power_inst'], label=r'Inst. Power', color='orange')
-        ax[2, 0].set_xlabel(r'$t$ [s]')
-        ax[2, 0].set_ylabel("Inst. Power [W]")
+        ax[2, 0].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[2, 0].set_xlabel(r'$t$ [h]')
+        ax[2, 0].set_ylabel("Inst. Power [KW]")
         ax[2, 0].legend(loc='lower right', fontsize='small')
         ax[2, 0].grid()
 
         # Subplot 6: Capture Width Ratio(bottom-left)
-        ax[2, 1].plot(energy_data['time'], energy_data['eta'], label=r'Capture Width Ratio', color='green')
-        ax[2, 1].set_xlabel(r'$t$ [s]')
+        ax[2, 1].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
+        ax[2, 1].set_xlabel(r'$t$ [h]')
         ax[2, 1].set_ylabel("CWR")
         ax[2, 1].legend(loc='lower right', fontsize='small')
         ax[2, 1].grid()
@@ -380,11 +387,7 @@ class Simulation:
 
         self.x_max = np.float64(w_v["x_max"])
         self.v_max = np.float64(w_v["v_max"])
-
-        if w_mode == 'irregular':
-            self.fet_max = np.float64(w_v["fet_max"])
-        else:
-            self.fet_max = -1.0
+        self.fet_max = np.float64(w_v["fet_max"])
 
         self.reset()
 
@@ -461,10 +464,11 @@ class Simulation:
         
         pow_inst = self.oscillator.get_pow_inst()
         energy = self.oscillator.get_energy()
-        energy_wave = self.oscillator.get_wave_energy()
-        eta = self.oscillator.get_eta()
+        #energy_wave = self.oscillator.get_wave_energy()
+        #eta = self.oscillator.get_eta()
         
-        self.energy_buff.append((t[-1], energy, energy_wave, eta))
+        #self.energy_buff.append((t[-1], energy, energy_wave, eta))
+        self.energy_buff.append((t[-1], energy))
         
         if self.control_mode == 'linear':
             # valore di default quando non viene utilizzato il latching control
