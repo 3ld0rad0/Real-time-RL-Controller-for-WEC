@@ -11,8 +11,8 @@ import numpy as np
 import json
 
 def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adaptive_sampling=True):
-    period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t, spectral_input = init_values
-    oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t, spectral_input)
+    period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input = init_values
+    oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input)
 
     opt_fpto_damp = oscillator.get_opt_damping_pto()
     opt_fpto_stif = oscillator.get_opt_stifness_pto()
@@ -107,10 +107,9 @@ if __name__ == "__main__":
     C = config['init_C']
     K = config['init_K']
     G_STAR = config['init_G_star']
-    sim_time = config['sim_time']
     regular = config['regular']
     reg_lbl = 'regular' if regular else 'irregular'
-    warmup_time = config['warmup_time']
+    warmup_time = config['warmup_time'] * 3600  # Convert hours to seconds
     period_b = config['period_table']
     hw_b = config['wave_height_table']
     #control_mode = config['control_mode']
@@ -156,7 +155,7 @@ if __name__ == "__main__":
             Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
             spectral_input = (A_ω, ω, φ)
 
-        warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, sim_time, control_mode, d_t_oscillator, spectral_input))
+        warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, spectral_input))
         print(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')
 
         counter += 1

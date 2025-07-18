@@ -11,11 +11,11 @@ import os
 import json
 
 class Simulation:
-    def __init__(self, oscillator,sim_time, d_t, save_mode):
+    def __init__(self, oscillator, save_mode):
         
         self.oscillator = oscillator
-        self.sim_time = sim_time
-        self.d_t = d_t
+        self.sim_time = self.oscillator.get_t_final()
+        self.d_t = self.oscillator.get_d_t()
         self.save_mode = save_mode
         self.control_mode = self.oscillator.get_control_mode()
 
@@ -71,7 +71,10 @@ class Simulation:
 
         self.supp_buff = []
         self.energy_buff = []
-        
+    
+
+    def get_save_mode(self):
+        return self.save_mode
 
     def get_state(self):
         return self.current_state
@@ -79,11 +82,31 @@ class Simulation:
     def get_warmup_values(self):
         return (self.x_max, self.v_max, self.oscillator.get_opt_damping_pto(), self.oscillator.get_opt_stifness_pto(), self.oscillator.get_period(), self.oscillator.get_wave_height(), self.fet_max)
     
+    def load_warmup_values(self, init_values, file_path = './warmup.json'):
+        period, Hw = init_values
+
+        with open(file_path, "r") as f:
+            warmup_values = json.load(f)
+
+        mode = self.oscillator.get_wmode()
+        w_mode = 'regular' if mode else 'irregular'
+        w_params = f"T_{period}_Hw_{Hw}"
+        w_v = warmup_values[w_mode][w_params]
+
+        self.x_max = np.float64(w_v["x_max"])
+        self.v_max = np.float64(w_v["v_max"])
+        self.fet_max = np.float64(w_v["fet_max"])
+
+        self.reset()
+    
     def get_sim_time(self):
         return self.sim_time
     
     def get_current_time(self):
         return self.current_t
+    
+    def get_control_mode(self):
+        return self.control_mode
     
     def write_buffer_to_file(self, buff):
         """Scrive il contenuto del buffer su file"""
@@ -354,42 +377,25 @@ class Simulation:
             if os.path.exists(path):
                 os.remove(path)
 
-    def get_history(self):
-        """Legge la storia dal file invece che dalla memoria"""
-        if os.path.exists(self.results_path):
-            df = pd.read_csv(self.results_path)
-            return {
-                "time": df['time'].values,
-                "position": df['position'].values,
-                "velocity": df['velocity'].values,
-                "excitation_force": df['excitation_force'].values,
-                "wave_t": df['wave_t'].values,
-                "damping_fpto": df['damping_fpto'].values,
-                "stifness_fpto": df['stifness_fpto'].values,
-                "power_inst": df['power_inst'].values
-            }
-        else:
-            return {}
+    # def get_history(self):
+    #     """Legge la storia dal file invece che dalla memoria"""
+    #     if os.path.exists(self.results_path):
+    #         df = pd.read_csv(self.results_path)
+    #         return {
+    #             "time": df['time'].values,
+    #             "position": df['position'].values,
+    #             "velocity": df['velocity'].values,
+    #             "excitation_force": df['excitation_force'].values,
+    #             "wave_t": df['wave_t'].values,
+    #             "damping_fpto": df['damping_fpto'].values,
+    #             "stifness_fpto": df['stifness_fpto'].values,
+    #             "power_inst": df['power_inst'].values
+    #         }
+    #     else:
+    #         return {}
         
-    def update_values(self, period, Hw):
-        self.oscillator.update_values(period, Hw)
-
-    def load_warmup_values(self, init_values, file_path = './warmup.json'):
-        period, Hw = init_values
-
-        with open(file_path, "r") as f:
-            warmup_values = json.load(f)
-
-        mode = self.oscillator.get_wmode()
-        w_mode = 'regular' if mode else 'irregular'
-        w_params = f"T_{period}_Hw_{Hw}"
-        w_v = warmup_values[w_mode][w_params]
-
-        self.x_max = np.float64(w_v["x_max"])
-        self.v_max = np.float64(w_v["v_max"])
-        self.fet_max = np.float64(w_v["fet_max"])
-
-        self.reset()
+    # def update_values(self, period, Hw):
+    #     self.oscillator.update_values(period, Hw)
 
     # def warmup(self, warmup_time):
     #     #n_sim = 100 if self.mode == 'regular' else 50

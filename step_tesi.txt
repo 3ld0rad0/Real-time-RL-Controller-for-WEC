@@ -44,33 +44,38 @@
 
 7) Completa calcolo onde irregolari (OK)
     
-    7.1) controlla calcolo Potenza dell'onda ed eta (OK CONTROLLARE)
+    7.1) controlla calcolo Potenza dell'onda ed eta (OK)
 
 8) Aggiungi G* come parametro da predire oltre ad u ---> (u, G*) ## G* varia da 1 a 10 per il momento (OK)
 
-9) Idea di reward per latching control:
+9) Idea di reward per latching control: (OK)
 
     - Termine relativo potenza istantanea.
     - Termine relativo alla potenza assorbita rispetto a quella disponibile
     - Termine relativo alla differenza di fase tra velocità della boa e forza di eccitazione
     - Termine relativo all'utilizzo del latching control (u)----> penalizzazione se viene utilizzato troppo spesso
 
+10) integrare controllo ottimo nel codice e aggiungere onde irregolari al codice del controllo ottimo
 
-10) Programma per plottare grafici dai risultati, a simulazione effettuata
+    10.1) aggiungere misure di energia totale
+
+    10.2) confrontare misure tra algoritmi
+
+11) Programma per plottare grafici dai risultati, a simulazione effettuata
 
     
-11) reward per episodio
+12) reward per episodio
 
 
-12) Ambienti paralleli per velocizzare e stabilizzare training (?)
+13) Ambienti paralleli per velocizzare e stabilizzare training (?)
 
 
 #################################### CONSIGLI PROF ##################################
-Misura per valutare la qualità dei risultati
+Misura per valutare la qualità dei risultati (OK CWR)
 
-Valutare misure target
+Valutare misure target (OK il CWR dovrebbe andare bene)
 
-Competitor matematici ( algoritmi utilizzati per il controllo )
+Competitor matematici ( algoritmi utilizzati per il controllo ) (OK)
 
 Richiedere valori reali a Pio
 ####################################################################

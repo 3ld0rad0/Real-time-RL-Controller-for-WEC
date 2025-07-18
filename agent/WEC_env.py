@@ -12,10 +12,12 @@ warnings.filterwarnings("ignore")
 # Define the custom environment based on buoy simulation
 
 class WECEnv_Linear(gym.Env):
-    def __init__(self, t_final, warmup, socket, config):
+    def __init__(self, t_final, warmup, socket, init_data, reward_file_path):
         super(WECEnv_Linear,self).__init__()
         
         self.socket = socket
+        self.init_data = init_data
+        self.reward_file_path = reward_file_path
         self.t_final = t_final
         self.current_time = 0.0
 
@@ -52,21 +54,19 @@ class WECEnv_Linear(gym.Env):
         self.n_ep = 0
         self.reward_v = []
 
-        wave_mode = 'regular' if config['regular'] else 'irregular'
-        nSS = config['init_SS']
-        period_table = config['period_table']
-        init_period = period_table[nSS]
-        hw_table = config['wave_height_table']
-        init_hw = hw_table[nSS]
-        sim_time_str = str(config['sim_time'])
-        
-        file_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        base_name = f'./results/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
-        self.reward_path  = f'{base_name}/{file_name}_reward.csv'
 
-        self.episodes = config['n_episodes']
+        self.episodes = self.init_data['n_episodes']
+        self.max_steps_per_episode = self.init_data['max_steps_per_episode']
+        self.current_ep_step = 0
         self.reset()
     
+
+
+    def get_current_time(self):
+        return self.current_time
+    
+    def get_t_final(self):
+        return self.t_final
 
     def normalize_state(self, state):
         x, v, C, K = state
@@ -173,19 +173,21 @@ class WECEnv_Linear(gym.Env):
         reward = power - penalty_x
 
         self.n_step += 1
+        self.current_ep_step += 1
 
         self.reward_v.append({
             "step": self.n_step,
             "reward": reward
         })
         
-        done = (self.current_time % (self.t_final//self.episodes)) == 0
+        #done = (self.current_time % (self.t_final//self.episodes)) == 0
+        done = self.current_ep_step >= self.max_steps_per_episode
 
         if done:
             # se la simulazione prevede valori variabili di periodo e altezza d'onda
-            if self.var_values:
-                payload_done = {'cmd' : 'done'}
-                self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+            # if self.var_values:
+            #     payload_done = {'cmd' : 'done'}
+            #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
             
             self.n_ep += 1
             print(f'Episode {self.n_ep} completed...')
@@ -198,12 +200,13 @@ class WECEnv_Linear(gym.Env):
     
     def save_reward(self):
         df_reward = pd.DataFrame(self.reward_v)
-        header = not os.path.exists(self.reward_path)
-        df_reward.to_csv(self.reward_path, mode='a', header= header, index=False)
+        header = not os.path.exists(self.reward_file_path)
+        df_reward.to_csv(self.reward_file_path, mode='a', header= header, index=False)
 
     
     def reset(self):
         self.state = (0.0, 0.0, 0.0, 0.0)
+        self.current_ep_step = 0
         return np.array(self.state, dtype= np.float32)
     
 
@@ -213,13 +216,15 @@ class WECEnv_Linear(gym.Env):
 
 class WECEnv_Latching(gym.Env):
 
-    def __init__(self, t_final, warmup, socket, config, fixed_G_star):
+    def __init__(self, t_final, warmup, socket, init_data, reward_file_path):
         super(WECEnv_Latching,self).__init__()
         
         self.socket = socket
         self.t_final = t_final
         self.current_time = 0.0
-        self.fixed_G_star = fixed_G_star
+        self.init_data = init_data
+        self.reward_file_path = reward_file_path
+        self.fixed_G_star = self.init_data['fixed_G_star']
 
         # warmup values
         self.x_obs = np.ceil(warmup[0])
@@ -255,28 +260,26 @@ class WECEnv_Latching(gym.Env):
         self.reward_v = []
 
 
-        wave_mode = 'regular' if config['regular'] else 'irregular'
-        nSS = config['init_SS']
-        period_table = config['period_table']
-        init_period = period_table[nSS]
-        hw_table = config['wave_height_table']
-        init_hw = hw_table[nSS]
-        sim_time_str = str(config['sim_time'])
-        
-        file_name = f'simulation_{config['control_mode']}_{sim_time_str}h_{f"{config['d_t']}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        base_name = f'./results/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
-        self.reward_path  = f'{base_name}/{file_name}_reward.csv'
+        self.init_G_star = self.init_data['init_G_star']
+        self.G_star_opt = self.init_data['opt_G_star']
 
-        self.init_G_star = config['init_G_star']
-        self.G_star_opt = config['opt_G_star']
+        self.alpha = self.init_data['alpha']
+        self.beta = self.init_data['beta']
+        self.gamma = self.init_data['gamma']
 
-        self.alpha = config['alpha_latching']
-        self.beta = config['beta_latching']
-        self.gamma = config['gamma_latching']
-
-        self.episodes = config['n_episodes']
+        self.episodes = self.init_data['n_episodes']
+        self.max_steps_per_episode = self.init_data['max_steps_per_episode']
+        self.current_ep_step = 0 
         self.reset()
 
+    
+    
+    def get_current_time(self):
+        return self.current_time
+
+    def get_t_final(self):
+        return self.t_final
+    
     
     def normalize_state(self, state):
         x, v, C, fe_t, G_star = state
@@ -394,10 +397,10 @@ class WECEnv_Latching(gym.Env):
         f_pto = -(C * v)
         power_term =  self.alpha * np.abs(v * f_pto)
         
-        position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
-        velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
+        # position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        # velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
         
-        m = 402517.0
+        # m = 402517.0
     
         latching_term = self.beta * (new_u * G_star* v **2)
 
@@ -407,13 +410,15 @@ class WECEnv_Latching(gym.Env):
 
         
         self.n_step += 1
+        self.current_ep_step += 1
         
         self.reward_v.append({
             "step": self.n_step,
             "reward": reward
         })
         
-        done = (self.current_time % (self.t_final//self.episodes)) == 0
+        #done = (self.current_time % (self.t_final//self.episodes)) == 0
+        done = self.current_ep_step >= self.max_steps_per_episode
         
         if done:
             # se la simulazione prevede valori variabili di periodo e altezza d'onda
@@ -433,11 +438,12 @@ class WECEnv_Latching(gym.Env):
 
     def save_reward(self):
         df_reward = pd.DataFrame(self.reward_v)
-        header = not os.path.exists(self.reward_path)
-        df_reward.to_csv(self.reward_path, mode='a', header= header, index=False)
+        header = not os.path.exists(self.reward_file_path)
+        df_reward.to_csv(self.reward_file_path, mode='a', header= header, index=False)
 
     
     def reset(self):
         self.state = (0.0 ,0.0, 0.0, 0.0, self.init_G_star)
         self.state = self.normalize_state(self.state)
+        self.current_ep_step = 0
         return np.array(self.state, dtype= np.float64)

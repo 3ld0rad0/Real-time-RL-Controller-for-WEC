@@ -82,7 +82,6 @@ class Oscillator:
                 self.omega = self.spectrum[1]        # ω
                 self.phases = self.spectrum[2]       # φ
                 B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
-                #B_array = (2/3*np.pi*self.r**3*self.rho*self.omega)
                 # Usa la media pesata per le ampiezze
                 weights = self.amps**2
                 self.B = np.average(B_array, weights=weights)
@@ -95,7 +94,6 @@ class Oscillator:
             
             self.omega = 2*np.pi/self.T
             self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
-            #self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
             self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
             coeff = (self.rho * self.g**2) / (8 * np.pi) * (10**-3)
             self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
@@ -217,6 +215,12 @@ class Oscillator:
         self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
         self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
     
+    def get_t_final(self):
+        return self.t_final
+    
+    def get_d_t(self):
+        return self.d_t
+
     def set_fpto(self, C, K):
         self.C = C
         self.K = K
@@ -268,12 +272,10 @@ class Oscillator:
     
     def get_opt_damping_pto(self):
         if self.regular:
-            #return 2/3*np.pi*self.r**3*self.rho*self.omega
             return self.B_star * 2/3*np.pi*self.r**3*self.rho*self.omega
         else:
             # Per onde irregolari, calcola il damping ottimale come media pesata
             weights = self.amps**2
-            #return np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
             return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
     
     # def get_B(self):
