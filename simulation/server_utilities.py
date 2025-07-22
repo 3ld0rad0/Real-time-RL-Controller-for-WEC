@@ -10,6 +10,23 @@ from simulation.PM_Spectrum import PM_Spectrum
 from simulation.Simulation import Simulation
 
 
+def init_irregular_parameters(nSS):
+    pm = PM_Spectrum()
+    nω = 50  # Number of frequency components
+    ω_min = 2.0 * np.pi / 18.0
+    ω_max = 2.0 * np.pi / 4.0
+    Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
+    spectral_input = (A_ω, ω, φ)
+    return spectral_input
+
+def init_SS(config):
+    nSS = config['init_SS']
+    period_bound = config['period_table']
+    period = period_bound[nSS]
+    Hw_bound = config['wave_height_table']
+    Hw = Hw_bound[nSS]
+
+    return period, Hw
 
 def init_simulation(config):
 
@@ -26,22 +43,17 @@ def init_simulation(config):
     Hw = Hw_bound[nSS]
     regular = config['regular']
     control_mode = config['control_mode']
-    spectral_input = None
     save_mode = config['save_mode']
     
+    spectral_input = None
     if not regular:
-        pm = PM_Spectrum()
-        nω = 50  # Number of frequency components
-        ω_min = 2.0 * np.pi / 18.0
-        ω_max = 2.0 * np.pi / 4.0
-        Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-        spectral_input = (A_ω, ω, φ)
+        spectral_input = init_irregular_parameters(nSS)
 
     oscillator_train = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input)
     oscillator_test = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input)
 
-    sim_train = Simulation(oscillator_train, save_mode = save_mode)
-    sim_test = Simulation(oscillator_test, save_mode = save_mode)
+    sim_train = Simulation(oscillator_train, save_mode, 'train')
+    sim_test = Simulation(oscillator_test, save_mode, 'test')
 
 
     init_values = (period, Hw)
@@ -55,54 +67,60 @@ def init_simulation(config):
     
     return sim_train, sim_test
 
-def init_SS(config):
-    nSS = config['init_SS']
-    period_bound = config['period_table']
-    period = period_bound[nSS]
-    Hw_bound = config['wave_height_table']
-    Hw = Hw_bound[nSS]
+def simulation_handler(conn, sim, warmup = True, show_results = True):
+    start_t = time.time()
+    start_simulation(conn, sim, warmup)
+    end_t = time.time()
+    elapsed_time = np.round(end_t -start_t, 2)
+    close_simulation(conn, sim, elapsed_time, show_results)
 
-    return period, Hw
+def start_simulation(conn, sim, warmup = True):
+    
+    if warmup:
+        warmup_values = sim.get_warmup_values()
+        # print(f'Max heave :{warmup_values[0]} m')
+        # print(f'Max velocity :{warmup_values[1]} m/s')
+        conn.sendall((json.dumps(warmup_values) + "\n").encode())
+        print('Send warmup values to controller...\n')
+    
+    t_final = sim.get_sim_time()
+        
+    while sim.get_current_time() < t_final:
+        try:
+            simulation_step(conn, sim)
 
-def wait_close_message(conn):
-    try:
-        data = conn.recv(1024)
-        if not data:
-            print("Nessun messaggio ricevuto per la chiusura.")
-            return False
+        except socket.timeout:
+            print("Timeout: nessun comando ricevuto dal client.")
+            exit(1)
 
-        request = json.loads(data.decode().strip())
-        cmd = request.get("cmd")
+        except Exception as e:
+            exit(1)
 
-        if cmd == "close":
-            print("Close message receive by the client...")
-            print("Send close ack to client...")
-            time.sleep(1)  # Attendi un attimo prima di rispondere
-            conn.sendall(b"Server close.\n")
-            return True
-        else:
-            print(f"Comando sconosciuto ricevuto: {cmd}")
-            return False
+    # print()
+    # print(
+    #     f"End simulation...\n"
+    #     f"Elapsed real time : {elapsed_time} s\n"
+    #     f"Save results and plots...\n"
+    # )
 
-    except json.JSONDecodeError:
-        print("Errore nel parsing del JSON ricevuto.")
-        return False
-    except Exception as e:
-        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
-        return False
+    # if show_results:
+    #     sim.plot()
 
+    # if not sim.get_save_mode():
+    #     sim.clear()
 
 def simulation_step(conn, sim):
     data = conn.recv(1024)
     if not data:
-        print('No data received...')
-        return
+        print('No data received... close connection')
+        raise Exception
           # Decodifica JSON ricevuto
     try:
         request = json.loads(data.decode().strip())
                 
     except json.JSONDecodeError:
         print("Errore nel JSON ricevuto")
+        print(data)
 
     cmd = request.get("cmd")
 
@@ -145,49 +163,68 @@ def simulation_step(conn, sim):
 
     else:
         response = {"error": "Comando non riconosciuto"}
+        print(cmd)
         conn.sendall((json.dumps(response) + "\n").encode())
 
+def close_simulation(conn, sim, elapsed_time, show_results):
 
-def start_simulation(conn, sim, show_results = True):
-
-    warmup_values = sim.get_warmup_values()
-    # print(f'Max heave :{warmup_values[0]} m')
-    # print(f'Max velocity :{warmup_values[1]} m/s')
-    conn.sendall((json.dumps(warmup_values) + "\n").encode())
-    print('Send warmup values to controller...\n')
-    print('Start simulation...')
-    start_t = time.time()
-    t_final = sim.get_sim_time()
-        
-    while sim.get_current_time() < t_final:
-        try:
-            simulation_step(conn, sim)
-
-        except socket.timeout:
-            print("Timeout: nessun comando ricevuto dal client.")
-            exit(1)
-
-        except Exception as e:
-            exit(1)
-        
-    end_t = time.time()
-
-    elapsed_time = np.round(end_t -start_t, 2)
-
-    print()
-    print(
-        f"End simulation...\n"
-        f"Elapsed real time : {elapsed_time} s\n"
-        f"Save results and plots...\n"
-    )
-
+    # Show the results and save them
     if show_results:
         sim.plot()
+        print("Save results and plots...\n")
 
+    # Clear all the files if save_mode is False
     if not sim.get_save_mode():
         sim.clear()
 
-    
+    print(
+        f"\nClose simulation...\n"
+        f"Elapsed real time : {elapsed_time} s\n"
+    )
 
+    connection_handler(conn)
 
-    
+def connection_handler(conn):
+    send_close_message(conn)
+    time.sleep(2)
+    wait_closeack_message(conn)
+
+def send_close_message(conn):
+    try:
+        close_message = json.dumps({"cmd": "close"}).encode()
+        conn.sendall(close_message)
+        print("Close simulation message send to client....")
+                
+        #response = socket.recv(1024).decode().strip()
+        #print("Server close-ack:", response)
+        return True
+            
+    except Exception as e:
+        print("Errore durante l'invio del messaggio di chiusura:", e)
+        return False
+
+def wait_closeack_message(conn):
+    try:
+        data = conn.recv(1024)
+        if not data:
+            print("Nessun ack di chiusura ricevuto.")
+            return False
+
+        request = json.loads(data.decode().strip())
+        cmd = request.get("cmd")
+
+        if cmd == "ack-close":
+            print("Close ack receive by the client...")
+            time.sleep(1)  # Attendi un attimo prima di rispondere
+            #conn.sendall(b"Server close.\n")
+            return True
+        else:
+            print(f"Comando sconosciuto ricevuto: {cmd}")
+            return False
+
+    except json.JSONDecodeError:
+        print("Errore nel parsing del JSON ricevuto.")
+        return False
+    except Exception as e:
+        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        return False

@@ -11,13 +11,14 @@ import os
 import json
 
 class Simulation:
-    def __init__(self, oscillator, save_mode):
+    def __init__(self, oscillator, save_mode, sim_mode):
         
         self.oscillator = oscillator
         self.sim_time = self.oscillator.get_t_final()
         self.d_t = self.oscillator.get_d_t()
         self.save_mode = save_mode
         self.control_mode = self.oscillator.get_control_mode()
+        self.sim_mode = sim_mode
 
         # position - speed - f_pto_damp - f_pto_stif - u_latching - g_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -42,8 +43,8 @@ class Simulation:
         self.buff_hist = deque(maxlen= self.attention_len)
         
         self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
-        self.base_data_name = f'./results/data/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
-        self.base_plot_name = f'./results/plot/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
+        self.base_data_name = f'./results/{self.sim_mode}/data/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
+        self.base_plot_name = f'./results/{self.sim_mode}/plot/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
         
         self.results_path       = f'{self.base_data_name}/{self.file_name}.csv'
         self.energy_path        = f'{self.base_data_name}/{self.file_name}_energy_absorbed.csv'
@@ -108,7 +109,7 @@ class Simulation:
     def get_control_mode(self):
         return self.control_mode
     
-    def write_buffer_to_file(self, buff):
+    def write_buffer_to_file(self, buff, r):
         """Scrive il contenuto del buffer su file"""
         if not buff:
             return
@@ -137,10 +138,17 @@ class Simulation:
         
         # CONTROL ENERGY WAVE AND ETA
         #########################################
-        energy_abs = [x[1] for x in self.energy_buff]
-        energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione
-        energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
-        eta = energy_abs / (energy_wave * self.attention_win)
+        if r > 0:
+            energy_abs = [x[1] for x in self.energy_buff]
+            energy_abs = np.sum(energy_abs) / (r) ## energia catturata in una finestra di osservazione
+            energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
+            eta = energy_abs / (energy_wave * (self.period / r))
+
+        else:
+            energy_abs = [x[1] for x in self.energy_buff]
+            energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione
+            energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
+            eta = energy_abs / (energy_wave * self.attention_win)
         #energy_wave = [x[2] for x in self.energy_buff]
         #eta = [x[3] for x in self.energy_buff]
 
@@ -336,7 +344,31 @@ class Simulation:
 
         if self.save_mode:
             plt.savefig(self.plot_path, dpi = 300)
+    
+    def plot_test(self, last_data):
+
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(15, 8))
+        fig.tight_layout(pad=3.0)
+
+        # Subplot 1: Displacement (top-left)
+        ax[0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
+        ax[0].plot(last_data['time'], last_data['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
+        ax[0].set_xlabel(r'$t$ [s]')
+        ax[0].set_ylabel(r'Displacement [m]')
+        ax[0].legend(loc='lower right', fontsize='small')
+        ax[0].grid()
         
+        # Subplot 2: Velocity and Excitation Force (top-right)
+        ax[1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
+        ax[1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
+        ax[1].set_xlabel(r'$t$ [s]')
+        ax[1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
+        ax[1].legend(loc='lower right', fontsize='small')
+        ax[1].grid()
+
+        if self.save_mode:
+            plt.savefig(self.plot_path, dpi = 300)
+
     
     def plot(self):
         """Plot dei risultati leggendo dal file salvato"""
@@ -347,20 +379,32 @@ class Simulation:
         if not os.path.exists(self.energy_path):
             print("Nessun file di dati trovato per il plotting")
             return
-            
+        
         df = pd.read_csv(self.results_path)
         df_energy = pd.read_csv(self.energy_path)
         df_plot_last = df.tail(2500)
+        
+        if self.sim_mode == 'train':
 
-        if self.control_mode == 'linear':
-            self.plot_linear(df, df_energy, df_plot_last)
+            if self.control_mode == 'linear':
+                self.plot_linear(df, df_energy, df_plot_last)
+            
+            else:
+                self.plot_latching(df, df_energy, df_plot_last)
         
-        else:
-            self.plot_latching(df, df_energy, df_plot_last)
-     
+            
+            self.plot_energy()
+            self.plot_reward()
         
-        self.plot_energy()
-        self.plot_reward()
+        elif self.sim_mode == 'test':
+
+            # if self.control_mode == 'linear':
+            #     self.plot_linear(df, df_energy, df_plot_last)
+            
+            # else:
+            #     self.plot_latching(df, df_energy, df_plot_last)
+            self.plot_test(df_plot_last)
+
         
         plt.show()
 
@@ -441,7 +485,15 @@ class Simulation:
         
     #     self.reset()
 
-    
+    def average_values(self):
+        bh = np.array(self.buff_hist)
+        self.h_avg_p = np.mean(bh[:,1])
+        self.h_avg_v = np.mean(bh[:,2])
+        self.h_max_p = np.max(np.abs(bh[:,1]))
+        self.h_max_v = np.max(np.abs(bh[:,2]))
+        self.h_avg_damp = np.mean(bh[:,5])
+        self.h_avg_stif = np.mean(bh[:,6])
+        self.h_pow_avg = (self.h_avg_v**2) * self.h_avg_damp
     
     def step(self):
         if self.current_t > 0.0:
@@ -495,31 +547,25 @@ class Simulation:
             g_star_array = np.full(shape=self.eval_len, fill_value= g_star)
 
 
-        
-        self.buff_hist.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array))
         self.current_state = (x[-1], v[-1], d_fpto, s_fpto, u_latching, g_star)
         self.current_t = round(t[-1], 2)
 
-        bh = np.array(self.buff_hist)
-        h_avg_p = np.mean(bh[:,1])
-        h_avg_v = np.mean(bh[:,2])
-        h_max_p = np.max(np.abs(bh[:,1]))
-        h_max_v = np.max(np.abs(bh[:,2]))
-        h_avg_damp = np.mean(bh[:,5])
-        h_avg_stif = np.mean(bh[:,6])
-        h_pow_avg = (h_avg_v**2) * h_avg_damp
+        self.buff_hist.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array))
         
         if self.cycle_counter >= self.max_cycle:
             self.supp_buff.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array))
             
             if self.current_t >= self.sim_time:
-                self.write_buffer_to_file(self.supp_buff)
+                r = self.sim_time % (self.period * self.attention_win)
+                self.write_buffer_to_file(self.supp_buff, r)
 
         
-        if (self.current_t  % (self.period * self.attention_win)) == 0:
-            self.write_buffer_to_file(self.buff_hist)
+        elif (self.current_t  % (self.period * self.attention_win)) == 0:
+            r = 0
+            self.write_buffer_to_file(self.buff_hist, r)
             self.cycle_counter += 1
 
+        self.average_values()
 
         state = {
             'time': round(t[-1], 1),
@@ -533,13 +579,13 @@ class Simulation:
             'period': period,
             'wave_height': Hw,
             'w_mode': w_mode,
-            'H_avg_position': h_avg_p,
-            'H_max_position': h_max_p,
-            'H_avg_velocity': h_avg_v,
-            'H_max_velocity': h_max_v,
-            'H_avg_fpto_damp': h_avg_damp,
-            'H_avg_fpto_stif': h_avg_stif,
-            'H_avg_pow_avg' : h_pow_avg
+            'H_avg_position': self.h_avg_p,
+            'H_max_position': self.h_max_p,
+            'H_avg_velocity': self.h_avg_v,
+            'H_max_velocity': self.h_max_v,
+            'H_avg_fpto_damp': self.h_avg_damp,
+            'H_avg_fpto_stif': self.h_avg_stif,
+            'H_avg_pow_avg' : self.h_pow_avg
         }
         
         return state

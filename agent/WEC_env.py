@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 # Define the custom environment based on buoy simulation
 
 class WECEnv_Linear(gym.Env):
-    def __init__(self, t_final, warmup, socket, init_data, reward_file_path):
+    def __init__(self, t_final, warmup, socket, init_data, sim_mode, reward_file_path):
         super(WECEnv_Linear,self).__init__()
         
         self.socket = socket
@@ -58,6 +58,7 @@ class WECEnv_Linear(gym.Env):
         self.episodes = self.init_data['n_episodes']
         self.max_steps_per_episode = self.init_data['max_steps_per_episode']
         self.current_ep_step = 0
+        self.sim_mode = sim_mode
         self.reset()
     
 
@@ -179,21 +180,25 @@ class WECEnv_Linear(gym.Env):
             "step": self.n_step,
             "reward": reward
         })
+
+        done = False
         
         #done = (self.current_time % (self.t_final//self.episodes)) == 0
-        done = self.current_ep_step >= self.max_steps_per_episode
+        if self.sim_mode == 'train':
+            done = self.current_ep_step >= self.max_steps_per_episode
 
-        if done:
-            # se la simulazione prevede valori variabili di periodo e altezza d'onda
-            # if self.var_values:
-            #     payload_done = {'cmd' : 'done'}
-            #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
-            
-            self.n_ep += 1
-            print(f'Episode {self.n_ep} completed...')
+            if done:
+                # se la simulazione prevede valori variabili di periodo e altezza d'onda
+                # if self.var_values:
+                #     payload_done = {'cmd' : 'done'}
+                #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                
+                self.n_ep += 1
+                print(f'Episode {self.n_ep} completed...')
 
         if self.current_time == self.t_final:
             self.save_reward()
+            done = True
         
         return np.array(self.state, dtype=np.float32), reward, done, {}
 
@@ -216,7 +221,7 @@ class WECEnv_Linear(gym.Env):
 
 class WECEnv_Latching(gym.Env):
 
-    def __init__(self, t_final, warmup, socket, init_data, reward_file_path):
+    def __init__(self, t_final, warmup, socket, init_data, sim_mode, reward_file_path):
         super(WECEnv_Latching,self).__init__()
         
         self.socket = socket
@@ -270,6 +275,7 @@ class WECEnv_Latching(gym.Env):
         self.episodes = self.init_data['n_episodes']
         self.max_steps_per_episode = self.init_data['max_steps_per_episode']
         self.current_ep_step = 0 
+        self.sim_mode = sim_mode
         self.reset()
 
     
@@ -416,22 +422,28 @@ class WECEnv_Latching(gym.Env):
             "step": self.n_step,
             "reward": reward
         })
+
+        done = False
         
-        #done = (self.current_time % (self.t_final//self.episodes)) == 0
-        done = self.current_ep_step >= self.max_steps_per_episode
-        
-        if done:
-            # se la simulazione prevede valori variabili di periodo e altezza d'onda
-            # if self.var_values:
-            #     payload_done = {'cmd' : 'done'}
-            #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+        if self.sim_mode == 'train':
+            #done = (self.current_time % (self.t_final//self.episodes)) == 0
+            done = self.current_ep_step >= self.max_steps_per_episode
             
-            self.n_ep += 1
-            print(f'Episode {self.n_ep} completed...')
+            if done:
+                # se la simulazione prevede valori variabili di periodo e altezza d'onda
+                # if self.var_values:
+                #     payload_done = {'cmd' : 'done'}
+                #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                
+                self.n_ep += 1
+                print(f'Episode {self.n_ep} completed...')
+
 
         
         if self.current_time == self.t_final:
+            print('OK ENTER')
             self.save_reward()
+            done = True
         
         return np.array(self.state, dtype=np.float64), reward, done, {}
 

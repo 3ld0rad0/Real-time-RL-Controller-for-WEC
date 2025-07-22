@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
 from simulation.Simulation import Simulation
 from simulation.PM_Spectrum import PM_Spectrum
-from simulation.server_utilities import init_simulation, start_simulation, init_SS, wait_close_message
+from simulation.server_utilities import init_simulation, init_SS, simulation_handler
 import time
 import numpy as np
 import random
@@ -34,7 +34,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print('Waiting for controller connession...')
     s.bind((HOST, PORT))
     s.listen(1)
-    s.settimeout(10)
+    s.settimeout(15)
     
     try:
         conn, addr = s.accept()
@@ -43,20 +43,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         exit(1)
     
     #conn.settimeout(10)
-    
+    warmup_test = True
     with conn:
         print(f"Connected by {addr}\n")
         
         if TRAIN :
             print("Starting training simulation...")
-            start_simulation(conn, sim_train, show_results = False)
+            simulation_handler(conn, sim_train, warmup=True, show_results = True)
+            warmup_test = False
+            print("Training finished...")
 
-        
+
         print("Starting test simulation...")
-        start_simulation(conn, sim_test, show_results= True)
-        
-        wait_close_message(conn)
-        # start_simulation(conn, sim_test)
+        simulation_handler(conn, sim_test, warmup= warmup_test, show_results= True)
+        print("Testing finished...")
 
 print('Close Server.')
     
