@@ -1,13 +1,10 @@
-#import gymnasium as gym
-import gym
+import gymnasium as gym
 import numpy as np
 import json
 import time
-import warnings
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
-warnings.filterwarnings("ignore")
 
 # Define the custom environment based on buoy simulation
 
@@ -53,6 +50,8 @@ class WECEnv_Linear(gym.Env):
         self.n_step = 0
         self.n_ep = 0
         self.reward_v = []
+        self.cum_reward = []
+        self.checkpoint_reward = 600
 
 
         self.episodes = self.init_data['n_episodes']
@@ -171,23 +170,24 @@ class WECEnv_Linear(gym.Env):
         power = np.abs(v * f_pto)
         penalty_x = 0.01 * x**2  # Penalità per spostamenti eccessivi
         #penalty_x = 0.0
-        reward = power - penalty_x
+        self.reward = power - penalty_x
 
         self.n_step += 1
         self.current_ep_step += 1
+        self.cum_reward.append(self.reward)
 
-        self.reward_v.append({
-            "step": self.n_step,
-            "reward": reward
-        })
-
-        done = False
+        if self.n_step % self.checkpoint_reward == 0:
+            
+            self.reward_v.append({
+                "step": self.n_step,
+                "reward": np.mean(self.cum_reward)
+            })
         
-        #done = (self.current_time % (self.t_final//self.episodes)) == 0
-        if self.sim_mode == 'train':
-            done = self.current_ep_step >= self.max_steps_per_episode
 
-            if done:
+        if self.sim_mode == 'train':
+            # self.done = self.current_ep_step >= self.max_steps_per_episode
+            self.terminated = self.current_ep_step >= self.max_steps_per_episode
+            if self.terminated:
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
                 # if self.var_values:
                 #     payload_done = {'cmd' : 'done'}
@@ -198,9 +198,13 @@ class WECEnv_Linear(gym.Env):
 
         if self.current_time == self.t_final:
             self.save_reward()
-            done = True
+            # self.done = True
+            self.truncated = True
+
+        self.observation = np.array(self.state, dtype=np.float32)
+        info = {}
         
-        return np.array(self.state, dtype=np.float32), reward, done, {}
+        return self.observation, self.reward.item(), bool(self.terminated), bool(self.truncated), info
 
     
     def save_reward(self):
@@ -210,9 +214,14 @@ class WECEnv_Linear(gym.Env):
 
     
     def reset(self):
+        self.terminated = False
+        self.truncated = False
+        #self.done = False
         self.state = (0.0, 0.0, 0.0, 0.0)
         self.current_ep_step = 0
-        return np.array(self.state, dtype= np.float32)
+        self.observation = np.array(self.state, dtype= np.float32)
+        info = {}
+        return self.observation, info
     
 
 
@@ -263,6 +272,8 @@ class WECEnv_Latching(gym.Env):
         self.n_step = 0
         self.n_ep = 0
         self.reward_v = []
+        self.cum_reward = []
+        self.checkpoint_reward = 600
 
 
         self.init_G_star = self.init_data['init_G_star']
@@ -403,7 +414,7 @@ class WECEnv_Latching(gym.Env):
         f_pto = -(C * v)
         power_term =  self.alpha * np.abs(v * f_pto)
         
-        # position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
         # velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
         
         # m = 402517.0
@@ -412,24 +423,26 @@ class WECEnv_Latching(gym.Env):
 
         phase_term = self.gamma * np.abs (fe * v)
 
-        reward = power_term - latching_term + phase_term
+        self.reward = power_term + latching_term + phase_term
 
-        
         self.n_step += 1
         self.current_ep_step += 1
-        
-        self.reward_v.append({
-            "step": self.n_step,
-            "reward": reward
-        })
+        self.cum_reward.append(self.reward)
 
-        done = False
-        
+        if self.n_step % self.checkpoint_reward == 0:
+            
+            self.reward_v.append({
+                "step": self.n_step,
+                "reward": np.mean(self.cum_reward)
+            })
+            self.cum_reward.clear()
+
         if self.sim_mode == 'train':
             #done = (self.current_time % (self.t_final//self.episodes)) == 0
-            done = self.current_ep_step >= self.max_steps_per_episode
-            
-            if done:
+            #self.done = self.current_ep_step >= self.max_steps_per_episode
+            self.terminated = self.current_ep_step >= self.max_steps_per_episode
+
+            if self.terminated:
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
                 # if self.var_values:
                 #     payload_done = {'cmd' : 'done'}
@@ -441,11 +454,14 @@ class WECEnv_Latching(gym.Env):
 
         
         if self.current_time == self.t_final:
-            print('OK ENTER')
             self.save_reward()
-            done = True
+            #self.done = True
+            self.truncated = True
+
+        self.observation = np.array(self.state, dtype=np.float32)
+        info = {}
         
-        return np.array(self.state, dtype=np.float64), reward, done, {}
+        return self.observation, self.reward.item(), bool(self.terminated), bool(self.truncated), info
 
 
     def save_reward(self):
@@ -454,8 +470,14 @@ class WECEnv_Latching(gym.Env):
         df_reward.to_csv(self.reward_file_path, mode='a', header= header, index=False)
 
     
-    def reset(self):
+    def reset(self, seed = None):
+        #self.done = False
+        self.terminated = False
+        self.truncated = False
         self.state = (0.0 ,0.0, 0.0, 0.0, self.init_G_star)
         self.state = self.normalize_state(self.state)
         self.current_ep_step = 0
-        return np.array(self.state, dtype= np.float64)
+        self.observation = np.array(self.state, dtype= np.float32)
+        info = {}
+        
+        return self.observation, info

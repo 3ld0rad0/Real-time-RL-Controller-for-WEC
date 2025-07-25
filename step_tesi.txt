@@ -55,6 +55,10 @@
     - Termine relativo alla differenza di fase tra velocità della boa e forza di eccitazione
     - Termine relativo all'utilizzo del latching control (u)----> penalizzazione se viene utilizzato troppo spesso
 
+9b) Confrontare training con state normalizzato e non
+
+9c) Confrontare vari reward e utilizzare il più consono
+
 10) integrare controllo ottimo nel codice e aggiungere onde irregolari al codice del controllo ottimo
 
     10.1) aggiungere misure di energia totale

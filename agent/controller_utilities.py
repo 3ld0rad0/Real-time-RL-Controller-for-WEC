@@ -26,7 +26,7 @@ def get_save_path(config):
     control_mode = config['control_mode']
     str_train = str(config['sim_time_train'])
     d_t = config['d_t']
-    nSS = config['init_SS']
+    nSS = config['init_SS_train'] # il path del modello si riferisce al training
     period_table = config['period_table']
     init_period = period_table[nSS]
     hw_table = config['wave_height_table']
@@ -44,15 +44,14 @@ def get_save_path(config):
 
     return model_path
 
-def init_env(config, warmup_values, socket):
+def init_env(config, socket, mode):
     
-    sim_time_train = config['sim_time_train'] * 3600 # Convert hours to seconds
-    sim_time_test = config['sim_time_test'] * 3600  # Convert hours to seconds
+    sim_time = config['sim_time_train'] * 3600 if mode == 'train' else config['sim_time_test'] * 3600
     timesteps = config['n_steps']
     episodes = np.ceil(np.max((4, timesteps/1800)))
     control_mode = config['control_mode']
     wave_mode = 'regular' if config['regular'] else 'irregular'
-    nSS = config['init_SS']
+    nSS = config['init_SS_train'] if mode == 'train' else config['init_SS_test']
     period_table = config['period_table']
     init_period = period_table[nSS]
     hw_table = config['wave_height_table']
@@ -64,24 +63,20 @@ def init_env(config, warmup_values, socket):
     alpha = config['alpha_latching']
     beta = config['beta_latching']
     gamma = config['gamma_latching']
-    str_train = str(config['sim_time_train'])
-    str_test = str(config['sim_time_test'])
+    str_sim = str(config['sim_time_train']) if mode == 'train' else str(config['sim_time_test'])
             
-    file_name_train = f'simulation_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-    file_name_test = f'simulation_{control_mode}_{str_test}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+    file_name = f'simulation_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
     
-    base_name_train = f'./results/train/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
-    base_name_test = f'./results/test/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
+    base_name = f'./results/{mode}/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
     
-    reward_path_train  = f'{base_name_train}/{file_name_train}_reward.csv'
-    reward_path_test  = f'{base_name_test}/{file_name_test}_reward.csv'
+    reward_path  = f'{base_name}/{file_name}_reward.csv'
 
     config['n_episodes'] = episodes
 
     with open("./config.json", "w") as f:
         json.dump(config, f, indent=2)
 
-
+    warmup_values = receive_warmup_values(socket)
     
     if control_mode == 'linear':
         
@@ -90,8 +85,8 @@ def init_env(config, warmup_values, socket):
             "n_episodes": episodes,
             "max_steps_per_episode": timesteps//episodes
         }
-        env_train = WECEnv_Linear(sim_time_train, warmup_values, socket, init_data, sim_mode = 'train', reward_file_path=reward_path_train)
-        env_test = WECEnv_Linear(sim_time_test, warmup_values, socket, init_data, sim_mode = 'test', reward_file_path=reward_path_test)
+        sim_mode = mode
+        env = WECEnv_Linear(sim_time, warmup_values, socket, init_data, sim_mode, reward_file_path=reward_path)
 
     elif control_mode == 'latching':
         
@@ -106,11 +101,11 @@ def init_env(config, warmup_values, socket):
             "beta": beta,
             "gamma": gamma
         }
-        env_train = WECEnv_Latching(sim_time_train, warmup_values, socket, init_data, sim_mode = 'train', reward_file_path=reward_path_train)
-        env_test = WECEnv_Latching(sim_time_test, warmup_values, socket, init_data, sim_mode = 'test', reward_file_path=reward_path_test)
 
-    
-    return env_train, env_test
+        sim_mode = mode
+        env = WECEnv_Latching(sim_time, warmup_values, socket, init_data, sim_mode, reward_file_path=reward_path)
+
+    return env
 
 def wait_close_message(socket):
     try:
@@ -123,7 +118,7 @@ def wait_close_message(socket):
         cmd = request.get("cmd")
 
         if cmd == "close":
-            print("Close message receive by the client...")
+            #print("Close message receive by the client...")
             time.sleep(1)
             return True
         else:
@@ -141,7 +136,7 @@ def send_closeack_message(socket):
     try:
         ack_message = json.dumps({"cmd": "ack-close"}).encode()
         socket.sendall(ack_message)
-        print("Close ack send to server....")
+        #print("Close ack send to server....")
         return True
             
     except Exception as e:
@@ -154,7 +149,8 @@ def connection_handler(socket):
     send_closeack_message(socket)
 
 def training_handler(model, socket, timesteps, episodes, save_mode, save_path):
-    model.learn(total_timesteps= timesteps, callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
+    print(f'Starting train simulation...')
+    model.learn(total_timesteps= timesteps, tb_log_name = "PPO_log" ,callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
     if save_mode:
         model.save(save_path)
         print(f"Model saved after {timesteps} timesteps.")
@@ -162,14 +158,32 @@ def training_handler(model, socket, timesteps, episodes, save_mode, save_path):
     connection_handler(socket)
 
 def testing_handler(env_test, model, socket):
-    obs = env_test.reset()
+    obs, info = env_test.reset()
+    truncated = False
 
     print(f'Starting test simulation...')
+    #env_test.get_current_time() < env_test.get_t_final()
         
-    while env_test.get_current_time() < env_test.get_t_final():
+    while not truncated:
         action, _states = model.predict(obs)
-        obs, rewards, dones, info = env_test.step(action)
+        obs, rewards, terminated, truncated, info = env_test.step(action)
 
     print(f"Test simulation completed...")
 
     connection_handler(socket)
+
+
+def receive_warmup_values(socket):
+    try:
+        response = socket.recv(1024).decode().strip()
+        warmup_values = json.loads(response)
+    
+        #print('Warmup values received...')
+        return warmup_values
+    
+    except json.JSONDecodeError:
+        print("Errore nel parsing del JSON ricevuto.")
+        return False
+    except Exception as e:
+        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        return False

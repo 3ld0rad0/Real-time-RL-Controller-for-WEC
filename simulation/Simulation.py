@@ -441,49 +441,6 @@ class Simulation:
     # def update_values(self, period, Hw):
     #     self.oscillator.update_values(period, Hw)
 
-    # def warmup(self, warmup_time):
-    #     #n_sim = 100 if self.mode == 'regular' else 50
-    #     n_sim = 100
-    #     opt_fpto_damp = self.oscillator.get_opt_damping_pto()
-    #     opt_fpto_stif = self.oscillator.get_opt_stifness_pto()
-    #     initial_fpto_damp = self.oscillator.get_fpto_damping()
-    #     initial_fpto_stif = self.oscillator.get_fpto_stifness()
-
-    #     #initial_period = self.oscillator.get_period()
-    #     #initial_Hw = self.oscillator.get_wave_height()
-
-    #     #init_period_v, init_Hw_v = init_values
-
-    #     random_ptod_v = np.random.uniform(low = initial_fpto_damp, high = opt_fpto_damp, size=(n_sim,))
-    #     random_ptos_v = np.random.uniform(low=initial_fpto_stif, high= opt_fpto_stif, size= (n_sim,))
-        
-    #     #random_period_v = np.random.randint(low= init_period_v[0], high= init_period_v[1], size= (n_sim,))
-    #     #random_Hw_v = np.random.uniform(low= init_Hw_v[0], high= init_Hw_v[1], size= (n_sim))
-
-    #     v_arr = []
-    #     x_arr = []
-    #     for re_d, re_s in zip(random_ptod_v, random_ptos_v):
-    #         self.oscillator.set_fpto(re_d, re_s)
-    #         #self.oscillator.update_values(re_p, re_hw)
-            
-    #         t_span = (0, warmup_time) if 'regular' else (0, warmup_time*2)
-    #         t_eval = np.linspace(t_span[0], t_span[1], 1000)
-    #         self.oscillator.solve(t_span = t_span, t_eval = t_eval)
-    #         x = np.absolute(self.oscillator.get_position())
-    #         v = np.absolute(self.oscillator.get_speed())
-    #         x_arr.append(np.max(x))
-    #         v_arr.append(np.max(v))
-        
-    #     self.x_max = np.max(x_arr)
-    #     self.v_max = np.max(v_arr)
-
-    #     print(type(self.x_max))
-
-    #     # riconfigura i parametri iniziali reali
-    #     self.oscillator.set_fpto(initial_fpto_damp, initial_fpto_stif)
-    #     #self.oscillator.update_values(initial_period, initial_Hw)
-        
-    #     self.reset()
 
     def average_values(self):
         bh = np.array(self.buff_hist)
@@ -522,10 +479,6 @@ class Simulation:
         
         pow_inst = self.oscillator.get_pow_inst()
         energy = self.oscillator.get_energy()
-        #energy_wave = self.oscillator.get_wave_energy()
-        #eta = self.oscillator.get_eta()
-        
-        #self.energy_buff.append((t[-1], energy, energy_wave, eta))
         self.energy_buff.append((t[-1], energy))
         
         if self.control_mode == 'linear':

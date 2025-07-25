@@ -3,8 +3,9 @@ import json
 import os, sys, time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
 import numpy as np
-from agent.controller_utilities import init_env, training_handler, testing_handler, get_save_path
+from agent.controller_utilities import init_env, training_handler, testing_handler, get_save_path, receive_warmup_values
 
 
 with open("config.json", "r") as f:
@@ -23,17 +24,16 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         
     
         model_path = get_save_path(config)
-        response = s.recv(1024).decode().strip()
-        warmup_values = json.loads(response)
-        print('Warmup done...')
-            
-        env_train, env_test = init_env(config, warmup_values, s)
 
         if TRAIN:
+            env_train = init_env(config, s, mode = 'train')
+            check_env(env_train)
+
             EPISODES = config['n_episodes']
             TIMESTEPS = config['n_steps']
-            model = PPO("MlpPolicy", env_train, verbose=0)
+            model = PPO("MlpPolicy", env_train, tensorboard_log = "./board/", verbose=0)
             training_handler(model, s, TIMESTEPS, EPISODES, save_mode = True, save_path = model_path)
+            env_train.close()
         
         try:
             model = PPO.load(model_path)
@@ -44,7 +44,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             exit(1)
 
         time.sleep(1)
+        env_test = init_env(config, s, mode = 'test')
+        check_env(env_test)
         testing_handler(env_test, model, s)
+        env_test.close()
 
     except json.JSONDecodeError:
         print("Decode error in the response by the server...")

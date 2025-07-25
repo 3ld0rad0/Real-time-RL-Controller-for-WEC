@@ -20,13 +20,18 @@ def init_irregular_parameters(nSS):
     return spectral_input
 
 def init_SS(config):
-    nSS = config['init_SS']
+    nSS_train = config['init_SS_train']
+    nSS_test = config['init_SS_test']
+    
     period_bound = config['period_table']
-    period = period_bound[nSS]
+    period_train = period_bound[nSS_train]
+    period_test = period_bound[nSS_test]
+    
     Hw_bound = config['wave_height_table']
-    Hw = Hw_bound[nSS]
-
-    return period, Hw
+    Hw_train = Hw_bound[nSS_train]
+    Hw_test = Hw_bound[nSS_test]
+    
+    return period_train, Hw_train, period_test, Hw_test
 
 def init_simulation(config):
 
@@ -36,29 +41,36 @@ def init_simulation(config):
     d_t = config['d_t']
     sim_time_train = config['sim_time_train'] * 3600  # Convert hours to seconds
     sim_time_test = config['sim_time_test'] * 3600  # Convert hours to seconds
-    nSS = config['init_SS']
+    nSS_train = config['init_SS_train']
+    nSS_test = config['init_SS_test']
     period_bound = config['period_table']
-    period = period_bound[nSS]
+    period_train = period_bound[nSS_train]
+    period_test = period_bound[nSS_test]
     Hw_bound = config['wave_height_table']
-    Hw = Hw_bound[nSS]
+    Hw_train = Hw_bound[nSS_train]
+    Hw_test = Hw_bound[nSS_test]
     regular = config['regular']
     control_mode = config['control_mode']
     save_mode = config['save_mode']
     
-    spectral_input = None
+    spectral_input_train = None
+    spectral_input_test = None
+    
     if not regular:
-        spectral_input = init_irregular_parameters(nSS)
+        spectral_input_train = init_irregular_parameters(nSS_train)
+        spectral_input_test = init_irregular_parameters(nSS_test)
 
-    oscillator_train = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input)
-    oscillator_test = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input)
+    oscillator_train = Oscillator(period_train, Hw_train, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input_train)
+    oscillator_test = Oscillator(period_test, Hw_test, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input_test)
 
     sim_train = Simulation(oscillator_train, save_mode, 'train')
     sim_test = Simulation(oscillator_test, save_mode, 'test')
 
 
-    init_values = (period, Hw)
-    sim_train.load_warmup_values(init_values)
-    sim_test.load_warmup_values(init_values)
+    init_values_train = (period_train, Hw_train)
+    init_values_test = (period_test, Hw_test)
+    sim_train.load_warmup_values(init_values_train)
+    sim_test.load_warmup_values(init_values_test)
 
     config["n_steps"] = int((1/d_t) * sim_time_train)  # Update n_steps based on simulation time and time step
     # Salva di nuovo il file
@@ -67,21 +79,17 @@ def init_simulation(config):
     
     return sim_train, sim_test
 
-def simulation_handler(conn, sim, warmup = True, show_results = True):
+
+def simulation_handler(conn, sim, show_results = True):
     start_t = time.time()
-    start_simulation(conn, sim, warmup)
+    start_simulation(conn, sim)
     end_t = time.time()
     elapsed_time = np.round(end_t -start_t, 2)
     close_simulation(conn, sim, elapsed_time, show_results)
 
-def start_simulation(conn, sim, warmup = True):
+def start_simulation(conn, sim):
     
-    if warmup:
-        warmup_values = sim.get_warmup_values()
-        # print(f'Max heave :{warmup_values[0]} m')
-        # print(f'Max velocity :{warmup_values[1]} m/s')
-        conn.sendall((json.dumps(warmup_values) + "\n").encode())
-        print('Send warmup values to controller...\n')
+    send_warmup_values(sim,conn)
     
     t_final = sim.get_sim_time()
         
@@ -96,18 +104,6 @@ def start_simulation(conn, sim, warmup = True):
         except Exception as e:
             exit(1)
 
-    # print()
-    # print(
-    #     f"End simulation...\n"
-    #     f"Elapsed real time : {elapsed_time} s\n"
-    #     f"Save results and plots...\n"
-    # )
-
-    # if show_results:
-    #     sim.plot()
-
-    # if not sim.get_save_mode():
-    #     sim.clear()
 
 def simulation_step(conn, sim):
     data = conn.recv(1024)
@@ -171,7 +167,7 @@ def close_simulation(conn, sim, elapsed_time, show_results):
     # Show the results and save them
     if show_results:
         sim.plot()
-        print("Save results and plots...\n")
+        print("\nSave results and plots...\n")
 
     # Clear all the files if save_mode is False
     if not sim.get_save_mode():
@@ -193,7 +189,7 @@ def send_close_message(conn):
     try:
         close_message = json.dumps({"cmd": "close"}).encode()
         conn.sendall(close_message)
-        print("Close simulation message send to client....")
+        #print("Close simulation message send to client....")
                 
         #response = socket.recv(1024).decode().strip()
         #print("Server close-ack:", response)
@@ -214,7 +210,7 @@ def wait_closeack_message(conn):
         cmd = request.get("cmd")
 
         if cmd == "ack-close":
-            print("Close ack receive by the client...")
+            #print("Close ack receive by the client...")
             time.sleep(1)  # Attendi un attimo prima di rispondere
             #conn.sendall(b"Server close.\n")
             return True
@@ -227,4 +223,19 @@ def wait_closeack_message(conn):
         return False
     except Exception as e:
         print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        return False
+    
+
+def send_warmup_values(sim, conn):
+    try:
+        warmup_values = sim.get_warmup_values()
+        # print(f'Max heave :{warmup_values[0]} m')
+        # print(f'Max velocity :{warmup_values[1]} m/s')
+        conn.sendall((json.dumps(warmup_values) + "\n").encode())
+        
+        #print('Send warmup values to controller...\n')
+        return True
+
+    except Exception as e:
+        print("Errore durante l'invio del messaggio di chiusura:", e)
         return False

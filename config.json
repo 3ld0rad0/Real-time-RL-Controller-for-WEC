@@ -1,7 +1,7 @@
 {
   "control_mode": "latching",
-  "regular": true,
-  "save_mode": true,
+  "regular": false,
+  "save_mode": false,
   "train_model": true,
   "init_C": 0,
   "init_K": 0,
@@ -9,11 +9,12 @@
   "opt_G_star": 10.0,
   "fixed_G_star": true,
   "d_t": 0.5,
-  "sim_time_train": 10.0,
+  "sim_time_train": 0.1,
   "sim_time_test": 0.1,
   "warmup_time": 0.1,
-  "n_steps": 72000,
-  "init_SS": 0,
+  "n_steps": 720,
+  "init_SS_train": 0,
+  "init_SS_test": 1,
   "alpha_latching": 1.0,
   "beta_latching": 0.5,
   "gamma_latching": 0.1,
@@ -42,5 +43,5 @@
   "port": 5000,
   "host": "127.0.0.1",
   "results_path": "./results/",
-  "n_episodes": 40.0
+  "n_episodes": 4.0
 }
