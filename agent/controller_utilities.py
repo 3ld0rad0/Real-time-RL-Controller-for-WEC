@@ -46,7 +46,7 @@ def get_save_path(config):
 
 def init_env(config, socket, mode):
     
-    sim_time = config['sim_time_train'] * 3600 if mode == 'train' else config['sim_time_test'] * 3600
+    sim_time = config['sim_time_train'] * 3600 if mode == 'train' else config['sim_time_test']
     timesteps = config['n_steps']
     episodes = np.ceil(np.max((4, timesteps/1800)))
     control_mode = config['control_mode']
@@ -64,9 +64,13 @@ def init_env(config, socket, mode):
     beta = config['beta_latching']
     gamma = config['gamma_latching']
     str_sim = str(config['sim_time_train']) if mode == 'train' else str(config['sim_time_test'])
-            
-    file_name = f'simulation_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+
+    if mode == 'train':
+        file_name = f'simulation_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
     
+    else:
+        file_name = f'simulation_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+
     base_name = f'./results/{mode}/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
     
     reward_path  = f'{base_name}/{file_name}_reward.csv'

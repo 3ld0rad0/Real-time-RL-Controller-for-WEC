@@ -60,8 +60,6 @@ class WECEnv_Linear(gym.Env):
         self.sim_mode = sim_mode
         self.reset()
     
-
-
     def get_current_time(self):
         return self.current_time
     
@@ -77,7 +75,6 @@ class WECEnv_Linear(gym.Env):
             K / self.K_opt
         ], dtype=np.float32)
     
-
     
     # def update_values(self, values, file_path = './warmup.json'):
     #     with open(file_path, "r") as f:
@@ -120,6 +117,7 @@ class WECEnv_Linear(gym.Env):
         self.current_time = state_raw['time']
         #print(f"Current State: {self.state}")
 
+
     def send_action(self, control):
         #print('Send Action')
         control_C = str(control[0])
@@ -141,6 +139,7 @@ class WECEnv_Linear(gym.Env):
         new_K = np.clip(d_K, -self.K_opt, self.K_opt)
 
         return new_C, new_K 
+
 
     def step(self, action):
         
@@ -224,10 +223,6 @@ class WECEnv_Linear(gym.Env):
         return self.observation, info
     
 
-
-
-
-
 class WECEnv_Latching(gym.Env):
 
     def __init__(self, t_final, warmup, socket, init_data, sim_mode, reward_file_path):
@@ -289,15 +284,15 @@ class WECEnv_Latching(gym.Env):
         self.sim_mode = sim_mode
         self.reset()
 
-    
-    
+
     def get_current_time(self):
         return self.current_time
 
+
     def get_t_final(self):
         return self.t_final
-    
-    
+
+
     def normalize_state(self, state):
         x, v, C, fe_t, G_star = state
         return np.array([
@@ -307,24 +302,24 @@ class WECEnv_Latching(gym.Env):
             fe_t / self.fet_obs,
             G_star / self.G_star_opt
         ], dtype=np.float32)
-    
 
-    def update_values(self, values, file_path = './warmup.json'):
-        with open(file_path, "r") as f:
-            warmup_values = json.load(f)
 
-        period, Hw, mode = values
-        w_mode = 'regular' if mode else 'irregular'
-        w_params = f"T_{period}_Hw_{Hw}"
-        w_v = warmup_values[w_mode][w_params]
+    # def update_values(self, values, file_path = './warmup.json'):
+    #     with open(file_path, "r") as f:
+    #         warmup_values = json.load(f)
 
-        self.x_obs = np.float64(w_v["x_max"])
-        self.v_obs = np.float64(w_v["v_max"])
-        self.C_opt = np.float64(w_v['opt_damping'])
-        self.K_opt = np.float64(w_v['opt_stifness'])
+    #     period, Hw, mode = values
+    #     w_mode = 'regular' if mode else 'irregular'
+    #     w_params = f"T_{period}_Hw_{Hw}"
+    #     w_v = warmup_values[w_mode][w_params]
 
-        self.curr_period = period
-        self.curr_Hw = Hw
+    #     self.x_obs = np.float64(w_v["x_max"])
+    #     self.v_obs = np.float64(w_v["v_max"])
+    #     self.C_opt = np.float64(w_v['opt_damping'])
+    #     self.K_opt = np.float64(w_v['opt_stifness'])
+
+    #     self.curr_period = period
+    #     self.curr_Hw = Hw
 
     
     def get_observation(self):
@@ -368,7 +363,8 @@ class WECEnv_Latching(gym.Env):
     def control_action_u(self, action):
         a = 1.0 if action else 0.0
         return a
-    
+
+
     def control_action_G_star(self, action):
         
         if action == 0:
@@ -384,7 +380,8 @@ class WECEnv_Latching(gym.Env):
         new_G = np.clip(d_G, 1.0, self.G_star_opt)
         
         return new_G
-    
+
+
     def step(self, action):
         
         # Send the action to Oscillator Simulation and at the same time we have the information of the new state

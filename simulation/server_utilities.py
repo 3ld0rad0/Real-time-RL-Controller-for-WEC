@@ -40,7 +40,7 @@ def init_simulation(config):
     G_STAR = config['init_G_star']
     d_t = config['d_t']
     sim_time_train = config['sim_time_train'] * 3600  # Convert hours to seconds
-    sim_time_test = config['sim_time_test'] * 3600  # Convert hours to seconds
+    sim_time_test = config['sim_time_test'] # Already in seconds
     nSS_train = config['init_SS_train']
     nSS_test = config['init_SS_test']
     period_bound = config['period_table']
@@ -163,7 +163,7 @@ def simulation_step(conn, sim):
         conn.sendall((json.dumps(response) + "\n").encode())
 
 def close_simulation(conn, sim, elapsed_time, show_results):
-
+    
     # Show the results and save them
     if show_results:
         sim.plot()

@@ -46,6 +46,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         time.sleep(1)
         env_test = init_env(config, s, mode = 'test')
         check_env(env_test)
+        
         testing_handler(env_test, model, s)
         env_test.close()
 

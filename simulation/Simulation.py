@@ -4,10 +4,13 @@ from  simulation.mpl_utils import linecolors
 mut.config_plots()
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 set_matplotlib_formats('svg')
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from simulation.plot import *
 import numpy as np
 from collections import deque
 import pandas as pd
-import os
 import json
 
 class Simulation:
@@ -20,7 +23,7 @@ class Simulation:
         self.control_mode = self.oscillator.get_control_mode()
         self.sim_mode = sim_mode
 
-        # position - speed - f_pto_damp - f_pto_stif - u_latching - g_star
+        # position - speed - f_pto_damp - f_pto_stif - u_latching - G_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 
@@ -42,7 +45,11 @@ class Simulation:
         # buffer che mantiene solo gli elementi più recenti
         self.buff_hist = deque(maxlen= self.attention_len)
         
-        self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+        if self.sim_mode == 'train':
+            self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+        else:
+            self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+        
         self.base_data_name = f'./results/{self.sim_mode}/data/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
         self.base_plot_name = f'./results/{self.sim_mode}/plot/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
         
@@ -77,12 +84,15 @@ class Simulation:
     def get_save_mode(self):
         return self.save_mode
 
+
     def get_state(self):
         return self.current_state
-    
+
+
     def get_warmup_values(self):
         return (self.x_max, self.v_max, self.oscillator.get_opt_damping_pto(), self.oscillator.get_opt_stifness_pto(), self.oscillator.get_period(), self.oscillator.get_wave_height(), self.fet_max)
-    
+
+
     def load_warmup_values(self, init_values, file_path = './warmup.json'):
         period, Hw = init_values
 
@@ -99,16 +109,20 @@ class Simulation:
         self.fet_max = np.float64(w_v["fet_max"])
 
         self.reset()
-    
+
+
     def get_sim_time(self):
         return self.sim_time
-    
+
+
     def get_current_time(self):
         return self.current_t
-    
+
+
     def get_control_mode(self):
         return self.control_mode
-    
+
+
     def write_buffer_to_file(self, buff, r):
         """Scrive il contenuto del buffer su file"""
         if not buff:
@@ -140,18 +154,18 @@ class Simulation:
         #########################################
         if r > 0:
             energy_abs = [x[1] for x in self.energy_buff]
-            energy_abs = np.sum(energy_abs) / (r) ## energia catturata in una finestra di osservazione
+            #energy_abs = np.sum(energy_abs) / (r) ## energia catturata in una finestra di osservazione [W]
+            energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
-            eta = energy_abs / (energy_wave * (self.period / r))
+            eta = energy_abs / (energy_wave * (r / self.period))
 
         else:
             energy_abs = [x[1] for x in self.energy_buff]
-            energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione
+            #energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione [W]
+            energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
             eta = energy_abs / (energy_wave * self.attention_win)
-        #energy_wave = [x[2] for x in self.energy_buff]
-        #eta = [x[3] for x in self.energy_buff]
-
+        
         mean_energy.append({
             "time": self.current_t,
             "energy_abs":energy_abs,## Energy absorbed
@@ -178,207 +192,27 @@ class Simulation:
             self.oscillator.set_fpto(new_C, new_K)
             #print(f"Set nuovo valore di C: {new_C}")
 
+
     def send_control_latching(self, control):
         new_u, new_G_star = control
         if new_u is not None:
             self.oscillator.set_latching(new_u)
             self.oscillator.set_G_star(new_G_star)
 
-    def plot_energy(self):
-        if not os.path.exists(self.energy_path):
-            print("Nessun file di dati trovato per il plotting")
-            return
-        
+    
+    def calculate_total_energy_absorbed(self):
         df = pd.read_csv(self.energy_path)
-
-        t = df['time']
-        power = df['energy_abs']
-
-        # Crea il grafico
-        plt.figure(figsize=(10, 5))
-        plt.plot(t / 3600, power * 10 **-3, label=r'Potenza media $10^{-3}$', color='royalblue')
-
-        # Etichette e titolo
-        plt.xlabel('Tempo (h)')
-        plt.ylabel('Potenza media (KW)')
-        plt.title('Potenza media nel tempo')
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
-
-        # Mostra o salva il grafico
-
-        if self.save_mode:
-            plt.savefig(self.plot_energy_path, dpi = 300)
-        
-        #plt.show()
-
-
-    def plot_reward(self):
-
-        if not os.path.exists(self.reward_path):
-            print("Nessun file di dati trovato per il plotting")
-            return
-        
-        df = pd.read_csv(self.reward_path)
-
-        step = df['step']
-        reward = df['reward']
-
-        # Crea il grafico
-        plt.figure(figsize=(10, 5))
-        plt.plot(step, reward, label='Reward', color='purple')
-
-        # Etichette e titolo
-        plt.xlabel('Step')
-        plt.ylabel('Reward')
-        plt.title('Reward ottenuto per ogni step')
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
-
-        # Mostra o salva il grafico
-
-        if self.save_mode:
-            plt.savefig(self.plot_reward_path, dpi = 300)
-        
-        #plt.show()
-
-    
-    def plot_linear(self, data, energy_data, last_data):
-        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(15, 8))
-        fig.tight_layout(pad=3.0)
-
-        # Subplot 1: Displacement (top-left)
-        ax[0, 0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
-        ax[0, 0].plot(last_data['time'], last_data['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
-        ax[0, 0].set_xlabel(r'$t$ [s]')
-        ax[0, 0].set_ylabel(r'Displacement [m]')
-        ax[0, 0].legend(loc='lower right', fontsize='small')
-        ax[0, 0].grid()
-        
-        # Subplot 2: Velocity and Excitation Force (top-right)
-        ax[0, 1].plot(last_data['time'] , last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[0, 1].plot(last_data['time'] , last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
-        ax[0, 1].set_xlabel(r'$t$ [s]')
-        ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
-        ax[0, 1].legend(loc='lower right', fontsize='small')
-        ax[0, 1].grid()
-
-        # Subplot 3: PTO Forces (bottom-left)
-        ax[1, 0].plot(data['time'], data['damping_fpto'] * 10**-5, label=r'Fpto damping $10^{-5}$', color='orange')
-        ax[1, 0].plot(data['time'], data['stifness_fpto'] * 10**-5, label=r'Fpto stifness $10^{-5}$', color='purple')
-        ax[1, 0].set_xlabel(r'$t$ [s]')
-        ax[1, 0].set_ylabel("Force [MN]")
-        ax[1, 0].legend(loc='lower right', fontsize='small')
-        ax[1, 0].grid()
-
-        # Subplot 4: Instantaneous Power (bottom-right)
-        ax[1, 1].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
-        ax[1, 1].set_xlabel(r'$t$ [h]')
-        ax[1, 1].set_ylabel("Inst. Power [KW]")
-        ax[1, 1].legend(loc='lower right', fontsize='small')
-        ax[1, 1].grid()
-
-        # Subplot 5: Capture Width Ratio(bottom-left)
-        ax[2,0].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
-        ax[2,0].set_xlabel(r'$t$ [h]')
-        ax[2,0].set_ylabel("CWR")
-        ax[2,0].legend(loc='lower right', fontsize='small')
-        ax[2,0].grid()
-
-        if self.save_mode:
-            plt.savefig(self.plot_path, dpi = 300)
-        
-
-    def plot_latching(self, data, energy_data, last_data):
-        
-        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(15, 8))
-        fig.tight_layout(pad=3.0)
-
-        # Subplot 1: Displacement (top-left)
-        ax[0, 0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
-        ax[0, 0].plot(last_data['time'], last_data['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
-        ax[0, 0].set_xlabel(r'$t$ [s]')
-        ax[0, 0].set_ylabel(r'Displacement [m]')
-        ax[0, 0].legend(loc='lower right', fontsize='small')
-        ax[0, 0].grid()
-        
-        # Subplot 2: Velocity and Excitation Force (top-right)
-        ax[0, 1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[0, 1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
-        ax[0, 1].set_xlabel(r'$t$ [s]')
-        ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
-        ax[0, 1].legend(loc='lower right', fontsize='small')
-        ax[0, 1].grid()
-
-        # Subplot 3: Latching control u (bottom-left)
-        ax[1, 0].plot(last_data['time'], last_data['u_latching'], label=r'u control latching', color='green')
-        ax[1, 0].set_xlabel(r'$t$ [s]')
-        ax[1, 0].set_ylabel("Binary Control")
-        ax[1, 0].legend(loc='lower right', fontsize='small')
-        ax[1, 0].set_ylim([0, 1.1])
-        ax[1, 0].grid()
-
-        # Subplot 4: G_star(bottom-right)
-        ax[1, 1].plot(last_data['time'], last_data['G_star'], label=r'G_star', color='purple')
-        ax[1, 1].set_xlabel(r'$t$ [s]')
-        ax[1, 1].set_ylabel("G_star[]")
-        ax[1, 1].legend(loc='lower right', fontsize='small')
-        ax[1, 1].set_ylim([0, 11])
-        ax[1, 1].grid()
-
-        # Subplot 5: Instantaneous Power (bottom-right)
-        ax[2, 0].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
-        ax[2, 0].set_xlabel(r'$t$ [h]')
-        ax[2, 0].set_ylabel("Inst. Power [KW]")
-        ax[2, 0].legend(loc='lower right', fontsize='small')
-        ax[2, 0].grid()
-
-        # Subplot 6: Capture Width Ratio(bottom-left)
-        ax[2, 1].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
-        ax[2, 1].set_xlabel(r'$t$ [h]')
-        ax[2, 1].set_ylabel("CWR")
-        ax[2, 1].legend(loc='lower right', fontsize='small')
-        ax[2, 1].grid()
-
-        if self.save_mode:
-            plt.savefig(self.plot_path, dpi = 300)
-    
-    def plot_test(self, last_data):
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(15, 8))
-        fig.tight_layout(pad=3.0)
-
-        # Subplot 1: Displacement (top-left)
-        ax[0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
-        ax[0].plot(last_data['time'], last_data['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
-        ax[0].set_xlabel(r'$t$ [s]')
-        ax[0].set_ylabel(r'Displacement [m]')
-        ax[0].legend(loc='lower right', fontsize='small')
-        ax[0].grid()
-        
-        # Subplot 2: Velocity and Excitation Force (top-right)
-        ax[1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
-        ax[1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
-        ax[1].set_xlabel(r'$t$ [s]')
-        ax[1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
-        ax[1].legend(loc='lower right', fontsize='small')
-        ax[1].grid()
-
-        if self.save_mode:
-            plt.savefig(self.plot_path, dpi = 300)
+        energy = df['energy_abs']
+        tot_energy = np.sum(energy) * 10 **-6
+        return tot_energy
 
     
     def plot(self):
-        """Plot dei risultati leggendo dal file salvato"""
-        if not os.path.exists(self.results_path):
-            print("Nessun file di dati trovato per il plotting")
-            return
-        
-        if not os.path.exists(self.energy_path):
-            print("Nessun file di dati trovato per il plotting")
-            return
+
+        for f in [self.results_path, self.energy_path]:
+            if not os.path.exists(f):
+                print(f"Nessun file {f} trovato...")
+                return
         
         df = pd.read_csv(self.results_path)
         df_energy = pd.read_csv(self.energy_path)
@@ -387,14 +221,14 @@ class Simulation:
         if self.sim_mode == 'train':
 
             if self.control_mode == 'linear':
-                self.plot_linear(df, df_energy, df_plot_last)
+                plot_linear(df, df_energy, df_plot_last, self.save_mode, self.plot_path)
             
             else:
-                self.plot_latching(df, df_energy, df_plot_last)
+                plot_latching(df, df_energy, df_plot_last, self.save_mode, self.plot_path)
         
             
-            self.plot_energy()
-            self.plot_reward()
+            plot_energy(self.save_mode, self.energy_path, self.plot_energy_path)
+            plot_reward(self.save_mode, self.reward_path, self.plot_reward_path)
         
         elif self.sim_mode == 'test':
 
@@ -403,15 +237,23 @@ class Simulation:
             
             # else:
             #     self.plot_latching(df, df_energy, df_plot_last)
-            self.plot_test(df_plot_last)
+            plot_test(df_plot_last, self.save_mode, self.plot_path)
+            
+            tot_energy_absorbed = self.calculate_total_energy_absorbed()
+            print(f'\nTotal energy absorbed: {round(tot_energy_absorbed,2)} MJ\n')
 
         
         plt.show()
 
+    # pulisce i file csv se save_mode = 0
+    def clear(self):
+        for path in [self.results_path, self.energy_path, self.reward_path]:
+            if os.path.exists(path):
+                os.remove(path)
 
 
     def reset(self):
-        # position - speed - f_pto_damp - f_pto_stif - u_latching - g_star
+        # position - speed - f_pto_damp - f_pto_stif - u_latching - G_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         self.current_t = 0.0
         self.buff_hist.clear()
@@ -421,22 +263,6 @@ class Simulation:
             if os.path.exists(path):
                 os.remove(path)
 
-    # def get_history(self):
-    #     """Legge la storia dal file invece che dalla memoria"""
-    #     if os.path.exists(self.results_path):
-    #         df = pd.read_csv(self.results_path)
-    #         return {
-    #             "time": df['time'].values,
-    #             "position": df['position'].values,
-    #             "velocity": df['velocity'].values,
-    #             "excitation_force": df['excitation_force'].values,
-    #             "wave_t": df['wave_t'].values,
-    #             "damping_fpto": df['damping_fpto'].values,
-    #             "stifness_fpto": df['stifness_fpto'].values,
-    #             "power_inst": df['power_inst'].values
-    #         }
-    #     else:
-    #         return {}
         
     # def update_values(self, period, Hw):
     #     self.oscillator.update_values(period, Hw)
@@ -451,6 +277,7 @@ class Simulation:
         self.h_avg_damp = np.mean(bh[:,5])
         self.h_avg_stif = np.mean(bh[:,6])
         self.h_pow_avg = (self.h_avg_v**2) * self.h_avg_damp
+
     
     def step(self):
         if self.current_t > 0.0:
@@ -542,9 +369,3 @@ class Simulation:
         }
         
         return state
-
-    # pulisce i file csv se save_mode = 0
-    def clear(self):
-        for path in [self.results_path, self.energy_path, self.reward_path]:
-            if os.path.exists(path):
-                os.remove(path)

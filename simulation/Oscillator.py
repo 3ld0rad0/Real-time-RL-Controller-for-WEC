@@ -19,7 +19,7 @@ class Oscillator:
         self.spectrum = spectrum
         self.control_mode = control_mode
 
-        self.r = 5 # ---> non area ma raggio
+        self.r = 5
         self.S_cs = np.pi*self.r**2
         self.volume = 2/3*np.pi*self.r**3
         self.rho = 1025
@@ -68,7 +68,6 @@ class Oscillator:
         self.A_star = self.ka_table[-1, 1]
         self.B_star = self.B_star_interp(self.ka)
         self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
-        #self.m_add = 2/3*np.pi*self.r**3*self.rho
 
         ########################################################################
         
@@ -123,7 +122,6 @@ class Oscillator:
         self.eval_window_len = (self.d_t * 100) // 2
 
 
-
     def fe_t_irregular(self, t):
         """Calcola la forza di eccitazione per onde irregolari"""
         # Somma le componenti armoniche
@@ -143,7 +141,6 @@ class Oscillator:
         ])
 
 
-    
     def calculate_energy_absorbed(self):
         
         self.pow_inst = []
@@ -151,7 +148,7 @@ class Oscillator:
             power = (ev**2) * self.C
             self.pow_inst.append(power)
 
-        v_sq = self.v **2
+        v_sq = np.square(self.v)
         v_integral = trapezoid(v_sq, self.t)
         
         ## P_abs
@@ -205,6 +202,8 @@ class Oscillator:
 
         
         self.calculate_energy_absorbed()
+
+        return self.t, self.x, self.v, self.fe_t
     
 
     ## Nel caso in cui siano previsti valori variabili nella simulazione ##
@@ -234,6 +233,12 @@ class Oscillator:
     
     def get_G(self):
         return self.G_star * (self.m_add + self.m)
+    
+    def get_C(self):
+        return self.C
+    
+    def get_K(self):
+        return self.K
 
     def get_latching(self):
         return self.u
@@ -262,6 +267,18 @@ class Oscillator:
     def get_wavet(self):
         return self.wave_t
     
+    def get_Lambda(self):
+        return self.Lmbd
+    
+    def get_omega(self):
+        return self.omega
+    
+    def get_added_mass(self):
+        return self.m_add
+    
+    def get_ktot(self):
+        return self.rho * self.S_cs * self.g * self.K
+    
     def get_opt_stifness_pto(self):
         if self.regular:
             return self.omega**2*(self.m+self.m_add)-self.rho*self.g*self.S_cs
@@ -277,9 +294,6 @@ class Oscillator:
             # Per onde irregolari, calcola il damping ottimale come media pesata
             weights = self.amps**2
             return self.B_star * np.average(2/3*np.pi*self.r**3*self.rho*self.omega, weights=weights)
-    
-    # def get_B(self):
-    #     return self.B
 
     def get_period(self):
         return self.T
@@ -307,9 +321,6 @@ class Oscillator:
     
     def get_wave_energy(self):
         return self.energy_wave
-    
-    # def get_eta(self):
-    #     return self.delta_eta
     
     def get_control_mode(self):
         return self.control_mode
