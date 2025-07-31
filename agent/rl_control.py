@@ -5,10 +5,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 import numpy as np
-from agent.controller_utilities import init_env, training_handler, testing_handler, get_save_path, receive_warmup_values
+from utils.controller_utilities import init_env, training_handler, testing_handler, get_save_path, receive_warmup_values
 
 
-with open("config.json", "r") as f:
+with open("./utils/config.json", "r") as f:
     config = json.load(f)
 
 HOST = config['host']

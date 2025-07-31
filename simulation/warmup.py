@@ -5,7 +5,6 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
 from simulation.PM_Spectrum import PM_Spectrum
-import random
 
 import numpy as np
 import json
@@ -100,7 +99,7 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
 if __name__ == "__main__":
     
-    with open('./config.json', 'r') as f:
+    with open('./utils/config.json', 'r') as f:
         config = json.load(f)
     
 

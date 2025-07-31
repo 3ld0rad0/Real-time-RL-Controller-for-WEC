@@ -6,8 +6,8 @@ import numpy as np
 from scipy.integrate import solve_ivp, trapezoid
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-import simulation.mpl_utils as mut
-from  simulation.mpl_utils import linecolors
+import utils.mpl_utils as mut
+from  utils.mpl_utils import linecolors
 mut.config_plots()
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 set_matplotlib_formats('svg')

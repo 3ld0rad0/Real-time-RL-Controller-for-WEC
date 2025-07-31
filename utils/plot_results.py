@@ -63,7 +63,7 @@ def plot_inst_power(t, pow_inst):
 
 if __name__ == "__main__":
 
-    with open("./config.json", "r") as f:
+    with open("config.json", "r") as f:
         config = json.load(f)
     file_path = config['results_path']
 

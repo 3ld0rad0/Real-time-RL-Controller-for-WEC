@@ -1,13 +1,14 @@
-import matplotlib.pyplot as plt
-import simulation.mpl_utils as mut
-from  simulation.mpl_utils import linecolors
-mut.config_plots()
-from matplotlib_inline.backend_inline import set_matplotlib_formats
-set_matplotlib_formats('svg')
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.plot import *
+import matplotlib.pyplot as plt
+import utils.mpl_utils as mut
+from  utils.mpl_utils import linecolors
+mut.config_plots()
+from matplotlib_inline.backend_inline import set_matplotlib_formats
+set_matplotlib_formats('svg')
+
+from utils.plot import *
 import numpy as np
 from collections import deque
 import pandas as pd

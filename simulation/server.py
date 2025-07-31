@@ -6,12 +6,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
 from simulation.Simulation import Simulation
 from simulation.PM_Spectrum import PM_Spectrum
-from simulation.server_utilities import init_simulation, init_SS, simulation_handler, send_warmup_values
+from utils.server_utilities import init_simulation, init_SS, simulation_handler, send_warmup_values
 import time
 import numpy as np
 import random
 
-with open("./config.json", "r") as f:
+with open("./utils/config.json", "r") as f:
     config = json.load(f)
 
 HOST = config['host']  # Standard loopback interface address (localhost)

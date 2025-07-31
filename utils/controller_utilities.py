@@ -77,7 +77,7 @@ def init_env(config, socket, mode):
 
     config['n_episodes'] = episodes
 
-    with open("./config.json", "w") as f:
+    with open("config.json", "w") as f:
         json.dump(config, f, indent=2)
 
     warmup_values = receive_warmup_values(socket)

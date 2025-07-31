@@ -19,11 +19,11 @@ def cmdcall( cmd ):
     output = subprocess.getoutput( cmd )
     # print(output)
 
-if not pathlib.Path("mpl_utils.py").exists():
-  cmdcall( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
+# if not pathlib.Path("mpl_utils.py").exists():
+#   cmdcall( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
 
-import mpl_utils as mut
-from  mpl_utils import linecolors
+import utils.mpl_utils as mut
+from  utils.mpl_utils import linecolors
 mut.config_plots()
 
 from matplotlib_inline.backend_inline import set_matplotlib_formats
@@ -41,7 +41,7 @@ def shellcmd( cmd, verbose=False ): #Esegue un comando di shell, catturando outp
 # %%
 if not pathlib.Path("mpl_utils.py").exists():
     shellcmd( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
-import mpl_utils as mut
+import utils.mpl_utils as mut
 
 # %%
 try:

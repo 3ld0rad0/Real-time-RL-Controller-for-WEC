@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 
-with open("./config.json", "r") as f:
+with open("./utils/config.json", "r") as f:
     config = json.load(f)
 
 

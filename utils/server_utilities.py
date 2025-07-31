@@ -74,7 +74,7 @@ def init_simulation(config):
 
     config["n_steps"] = int((1/d_t) * sim_time_train)  # Update n_steps based on simulation time and time step
     # Salva di nuovo il file
-    with open("./config.json", "w") as f:
+    with open("config.json", "w") as f:
         json.dump(config, f, indent=2)
     
     return sim_train, sim_test
