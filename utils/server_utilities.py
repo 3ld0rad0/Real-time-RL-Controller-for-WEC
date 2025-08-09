@@ -8,6 +8,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
 from simulation.PM_Spectrum import PM_Spectrum
 from simulation.Simulation import Simulation
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def init_irregular_parameters(nSS):
@@ -40,6 +43,7 @@ def init_simulation(config):
     G_STAR = config['init_G_star']
     d_t = config['d_t']
     sim_time_train = config['sim_time_train'] * 3600  # Convert hours to seconds
+    sim_name = config['sim_name'] 
     sim_time_test = config['sim_time_test'] # Already in seconds
     nSS_train = config['init_SS_train']
     nSS_test = config['init_SS_test']
@@ -63,8 +67,8 @@ def init_simulation(config):
     oscillator_train = Oscillator(period_train, Hw_train, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input_train)
     oscillator_test = Oscillator(period_test, Hw_test, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input_test)
 
-    sim_train = Simulation(oscillator_train, save_mode, 'train')
-    sim_test = Simulation(oscillator_test, save_mode, 'test')
+    sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name)
+    sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name)
 
 
     init_values_train = (period_train, Hw_train)
@@ -73,8 +77,10 @@ def init_simulation(config):
     sim_test.load_warmup_values(init_values_test)
 
     config["n_steps"] = int((1/d_t) * sim_time_train)  # Update n_steps based on simulation time and time step
+    config["sim_name"] = sim_name
+    
     # Salva di nuovo il file
-    with open("config.json", "w") as f:
+    with open("./utils/config.json", "w") as f:
         json.dump(config, f, indent=2)
     
     return sim_train, sim_test
@@ -98,7 +104,7 @@ def start_simulation(conn, sim):
             simulation_step(conn, sim)
 
         except socket.timeout:
-            print("Timeout: nessun comando ricevuto dal client.")
+            logger.error("Timeout: nessun comando ricevuto dal client.")
             exit(1)
 
         except Exception as e:
@@ -108,15 +114,15 @@ def start_simulation(conn, sim):
 def simulation_step(conn, sim):
     data = conn.recv(1024)
     if not data:
-        print('No data received... close connection')
+        logger.error('No data received... close connection')
         raise Exception
           # Decodifica JSON ricevuto
     try:
         request = json.loads(data.decode().strip())
                 
     except json.JSONDecodeError:
-        print("Errore nel JSON ricevuto")
-        print(data)
+        logger.error("Errore nel JSON ricevuto")
+        logger.error(data)
 
     cmd = request.get("cmd")
 
@@ -159,7 +165,7 @@ def simulation_step(conn, sim):
 
     else:
         response = {"error": "Comando non riconosciuto"}
-        print(cmd)
+        logger.warning(cmd)
         conn.sendall((json.dumps(response) + "\n").encode())
 
 def close_simulation(conn, sim, elapsed_time, show_results):
@@ -167,22 +173,21 @@ def close_simulation(conn, sim, elapsed_time, show_results):
     # Show the results and save them
     if show_results:
         sim.plot()
-        print("\nSave results and plots...\n")
+        logger.info("\nSave results and plots...\n")
 
-    # Clear all the files if save_mode is False
-    if not sim.get_save_mode():
-        sim.clear()
-
-    print(
+    logger.info(
         f"\nClose simulation...\n"
         f"Elapsed real time : {elapsed_time} s\n"
     )
 
-    connection_handler(conn)
+    connection_handler(conn, sim)
 
-def connection_handler(conn):
+def connection_handler(conn, sim):
     send_close_message(conn)
-    time.sleep(2)
+    time.sleep(1)
+    # Clear all the files if save_mode is False
+    if not sim.get_save_mode():
+        sim.clear()
     wait_closeack_message(conn)
 
 def send_close_message(conn):
@@ -196,14 +201,14 @@ def send_close_message(conn):
         return True
             
     except Exception as e:
-        print("Errore durante l'invio del messaggio di chiusura:", e)
+        logger.error("Errore durante l'invio del messaggio di chiusura:", e)
         return False
 
 def wait_closeack_message(conn):
     try:
         data = conn.recv(1024)
         if not data:
-            print("Nessun ack di chiusura ricevuto.")
+            logger.error("Nessun ack di chiusura ricevuto.")
             return False
 
         request = json.loads(data.decode().strip())
@@ -215,14 +220,14 @@ def wait_closeack_message(conn):
             #conn.sendall(b"Server close.\n")
             return True
         else:
-            print(f"Comando sconosciuto ricevuto: {cmd}")
+            logger.error(f"Comando sconosciuto ricevuto: {cmd}")
             return False
 
     except json.JSONDecodeError:
-        print("Errore nel parsing del JSON ricevuto.")
+        logger.error("Errore nel parsing del JSON ricevuto.")
         return False
     except Exception as e:
-        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
     
 
@@ -237,5 +242,59 @@ def send_warmup_values(sim, conn):
         return True
 
     except Exception as e:
-        print("Errore durante l'invio del messaggio di chiusura:", e)
+        logger.error("Errore durante l'invio del messaggio di chiusura:", e)
         return False
+    
+
+def read_config_file(file = "./utils/config.json"):
+    config = None
+    with open(file, "r") as f:
+        config = json.load(f)
+
+    return config
+
+def write_config_file(data, file = "./utils/config.json"):
+    with open(file, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def start_batch_simulation(conn, n_batch, train_mode, show_results):
+
+        if n_batch > 1:
+            logger.critical(f"Starting {n_batch} simulations in background mode...")
+
+        for i in range (n_batch):
+            config = read_config_file()
+            
+            sim_train, sim_test = init_simulation(config)
+            period_train, Hw_train, period_test, Hw_test = init_SS(config)
+            sim_name = config['sim_name']
+        
+            if train_mode :
+                logger.info(
+                    f"Training Simulation{sim_name} started with these parameters:\n"
+                    f"Period       : {period_train} s\n"
+                    f"Wave height  : {Hw_train} m\n"
+                    f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+                    f"Control mode : {config['control_mode']}\n"
+                    f"Control d_t  : {config['d_t']}\n"
+                )               
+                simulation_handler(conn, sim_train, show_results)
+                logger.info("Training Simulation finished...\n")
+
+            logger.info(
+                f"Testing Simulation{sim_name} started with these parameters:\n"
+                f"Period       : {period_test} s\n"
+                f"Wave height  : {Hw_test} m\n"
+                f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+                f"Control mode : {config['control_mode']}\n"
+                f"Control d_t  : {config['d_t']}\n"
+            )     
+            simulation_handler(conn, sim_test, show_results)
+            logger.info("Testing Simulation finished...\n")
+            logger.critical(f"\nTerminated Simulation{sim_name}...\n")
+
+            if n_batch > 1:
+                config["sim_name"] = str(int(sim_name) + 1)
+                # Salva di nuovo il file
+                write_config_file(config)

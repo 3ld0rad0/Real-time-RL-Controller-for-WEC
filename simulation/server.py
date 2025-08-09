@@ -1,30 +1,37 @@
 import socket
-import json
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.Oscillator import Oscillator
-from simulation.Simulation import Simulation
-from simulation.PM_Spectrum import PM_Spectrum
-from utils.server_utilities import init_simulation, init_SS, simulation_handler, send_warmup_values
-import time
-import numpy as np
-import random
+from utils.server_utilities import start_batch_simulation, read_config_file, write_config_file
+import logging
 
-with open("./utils/config.json", "r") as f:
-    config = json.load(f)
+# Logger setup
+logging.basicConfig(
+    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
+    #format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+config = read_config_file()
 
 HOST = config['host']  # Standard loopback interface address (localhost)
 PORT = config['port']  # Port to listen on (non-privileged ports are > 1023)
 TRAIN = config['train_model']
+N_BATCH = config['batch_size']
 
-sim_train, sim_test = init_simulation(config)
-period_train, Hw_train, period_test, Hw_test = init_SS(config)
+sim_name = "1" if N_BATCH > 1 else ""
+config["sim_name"] = sim_name
+
+write_config_file(config)
 
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    print('Waiting for controller connession...')
+    logger.info('Waiting for controller connession...')
     s.bind((HOST, PORT))
     s.listen(1)
     s.settimeout(15)
@@ -32,33 +39,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         conn, addr = s.accept()
     except socket.timeout:
-        print('Timeout reached... closing the server')
+        logger.error('Timeout reached... closing the server')
         exit(1)
     
     #conn.settimeout(10)
     with conn:
-        print(f"Connected by {addr}\n")
-        
-        if TRAIN :
-            print(
-                f"Training Simulation started with these parameters:\n"
-                f"Period       : {period_train} s\n"
-                f"Wave height  : {Hw_train} m\n"
-                f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
-                f"Control mode : {config['control_mode']}\n"
-            )               
-            simulation_handler(conn, sim_train, show_results = True)
-            print("Training Simulation finished...\n")
+        logger.info(f"Connected by {addr}\n")
 
-        print(
-            f"Testing Simulation started with these parameters:\n"
-            f"Period       : {period_test} s\n"
-            f"Wave height  : {Hw_test} m\n"
-            f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
-            f"Control mode : {config['control_mode']}\n"
-        )     
-        simulation_handler(conn, sim_test, show_results= True)
-        print("Testing Simulation finished...\n")
+        show_results = False if N_BATCH > 1 else True
 
-print('Close Server.')
+        start_batch_simulation(conn, n_batch = N_BATCH, train_mode = TRAIN, show_results = show_results)
+
+
+logger.info('Close Server.')
     

@@ -13,9 +13,12 @@ import numpy as np
 from collections import deque
 import pandas as pd
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Simulation:
-    def __init__(self, oscillator, save_mode, sim_mode):
+    def __init__(self, oscillator, save_mode, sim_mode, sim_name):
         
         self.oscillator = oscillator
         self.sim_time = self.oscillator.get_t_final()
@@ -23,6 +26,7 @@ class Simulation:
         self.save_mode = save_mode
         self.control_mode = self.oscillator.get_control_mode()
         self.sim_mode = sim_mode
+        self.sim_name = sim_name
 
         # position - speed - f_pto_damp - f_pto_stif - u_latching - G_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -39,7 +43,7 @@ class Simulation:
         self.buff_len = self.period * (1 / self.d_t)
         
         # numero di periodi da osservare
-        self.attention_win = 3
+        self.attention_win = 5
 
         self.attention_len = self.attention_win * int(self.buff_len)
 
@@ -47,9 +51,9 @@ class Simulation:
         self.buff_hist = deque(maxlen= self.attention_len)
         
         if self.sim_mode == 'train':
-            self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+            self.file_name = f'simulation{self.sim_name}_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
         else:
-            self.file_name = f'simulation_{self.control_mode}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+            self.file_name = f'simulation{self.sim_name}_{self.control_mode}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
         
         self.base_data_name = f'./results/{self.sim_mode}/data/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
         self.base_plot_name = f'./results/{self.sim_mode}/plot/{self.wave_mode}/sea_state_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}'
@@ -94,7 +98,7 @@ class Simulation:
         return (self.x_max, self.v_max, self.oscillator.get_opt_damping_pto(), self.oscillator.get_opt_stifness_pto(), self.oscillator.get_period(), self.oscillator.get_wave_height(), self.fet_max)
 
 
-    def load_warmup_values(self, init_values, file_path = './warmup.json'):
+    def load_warmup_values(self, init_values, file_path = './utils/warmup.json'):
         period, Hw = init_values
 
         with open(file_path, "r") as f:
@@ -212,7 +216,7 @@ class Simulation:
 
         for f in [self.results_path, self.energy_path]:
             if not os.path.exists(f):
-                print(f"Nessun file {f} trovato...")
+                logger.error(f"Nessun file {f} trovato...")
                 return
         
         df = pd.read_csv(self.results_path)
@@ -241,7 +245,7 @@ class Simulation:
             plot_test(df_plot_last, self.save_mode, self.plot_path)
             
             tot_energy_absorbed = self.calculate_total_energy_absorbed()
-            print(f'\nTotal energy absorbed: {round(tot_energy_absorbed,2)} MJ\n')
+            logger.info(f'\nTotal energy absorbed: {round(tot_energy_absorbed,3)} MJ\n')
 
         
         plt.show()

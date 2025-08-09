@@ -3,7 +3,12 @@ import numpy as np
 import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
 from agent.WEC_env import WECEnv_Linear, WECEnv_Latching
+import logging
+
+logger = logging.getLogger(__name__)
     
 class StopTrainingOnEpisodeCount(BaseCallback):
     def __init__(self, max_episodes, verbose=0):
@@ -18,7 +23,7 @@ class StopTrainingOnEpisodeCount(BaseCallback):
             self.episode_counter += sum(self.locals["dones"])
         if self.episode_counter >= self.max_episodes:
             if self.verbose:
-                print(f"Stopping training after {self.episode_counter} episodes")
+                logger.info(f"Stopping training after {self.episode_counter} episodes")
             return False  # Stop training
         return True
     
@@ -32,9 +37,10 @@ def get_save_path(config):
     hw_table = config['wave_height_table']
     init_hw = hw_table[nSS]
     wave_mode = 'regular' if config['regular'] else 'irregular'
+    sim_name = config["sim_name"]
 
-    model_name = f'ppomodel_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-    base_path = f'./models/{wave_mode}/sea_state_{init_hw}_{init_period}'
+    model_name = f'ppomodel_sim{sim_name}_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+    base_path = f'./models/{wave_mode}/sea_state_{init_hw}_{init_period}/simulation_{config['ent_coef']}'
     
     if not os.path.exists(base_path):
         os.makedirs(base_path)
@@ -47,6 +53,7 @@ def get_save_path(config):
 def init_env(config, socket, mode):
     
     sim_time = config['sim_time_train'] * 3600 if mode == 'train' else config['sim_time_test']
+    sim_name = config['sim_name']
     timesteps = config['n_steps']
     episodes = np.ceil(np.max((4, timesteps/1800)))
     control_mode = config['control_mode']
@@ -66,10 +73,10 @@ def init_env(config, socket, mode):
     str_sim = str(config['sim_time_train']) if mode == 'train' else str(config['sim_time_test'])
 
     if mode == 'train':
-        file_name = f'simulation_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name = f'simulation{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
     
     else:
-        file_name = f'simulation_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name = f'simulation{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
 
     base_name = f'./results/{mode}/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
     
@@ -77,8 +84,7 @@ def init_env(config, socket, mode):
 
     config['n_episodes'] = episodes
 
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=2)
+    write_config_file(config)
 
     warmup_values = receive_warmup_values(socket)
     
@@ -115,7 +121,7 @@ def wait_close_message(socket):
     try:
         data = socket.recv(1024)
         if not data:
-            print("Nessun ack di chiusura ricevuto.")
+            logger.error("Nessun ack di chiusura ricevuto.")
             return False
 
         request = json.loads(data.decode().strip())
@@ -126,14 +132,14 @@ def wait_close_message(socket):
             time.sleep(1)
             return True
         else:
-            print(f"Comando sconosciuto ricevuto: {cmd}")
+            logger.error(f"Comando sconosciuto ricevuto: {cmd}")
             return False
 
     except json.JSONDecodeError:
-        print("Errore nel parsing del JSON ricevuto.")
+        logger.error("Errore nel parsing del JSON ricevuto.")
         return False
     except Exception as e:
-        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
 
 def send_closeack_message(socket):
@@ -144,7 +150,7 @@ def send_closeack_message(socket):
         return True
             
     except Exception as e:
-        print("Errore durante l'invio del messaggio di chiusura:", e)
+        logger.error("Errore durante l'invio del messaggio di chiusura:", e)
         return False
 
 def connection_handler(socket):
@@ -152,12 +158,12 @@ def connection_handler(socket):
     time.sleep(1)
     send_closeack_message(socket)
 
-def training_handler(model, socket, timesteps, episodes, save_mode, save_path):
-    print(f'Starting train simulation...')
-    model.learn(total_timesteps= timesteps, tb_log_name = "PPO_log" ,callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
+def training_handler(model, socket, timesteps, episodes, save_mode, save_path, sim_name):
+    logger.info(f'Starting train simulation...')
+    model.learn(total_timesteps= timesteps, tb_log_name = f"simulation{sim_name}_PPO_log" ,callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
     if save_mode:
         model.save(save_path)
-        print(f"Model saved after {timesteps} timesteps.")
+        logger.info(f"Model saved after {timesteps} timesteps.")
     
     connection_handler(socket)
 
@@ -165,14 +171,14 @@ def testing_handler(env_test, model, socket):
     obs, info = env_test.reset()
     truncated = False
 
-    print(f'Starting test simulation...')
+    logger.info(f'Starting test simulation...')
     #env_test.get_current_time() < env_test.get_t_final()
         
     while not truncated:
         action, _states = model.predict(obs)
         obs, rewards, terminated, truncated, info = env_test.step(action)
 
-    print(f"Test simulation completed...")
+    logger.info(f"Test simulation completed...")
 
     connection_handler(socket)
 
@@ -186,8 +192,59 @@ def receive_warmup_values(socket):
         return warmup_values
     
     except json.JSONDecodeError:
-        print("Errore nel parsing del JSON ricevuto.")
+        logger.error("Errore nel parsing del JSON ricevuto.")
         return False
     except Exception as e:
-        print(f"Errore durante la ricezione del messaggio di chiusura: {e}")
+        logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
+
+
+def read_config_file(file = "./utils/config.json"):
+    with open(file, "r") as f:
+        config = json.load(f)
+
+    return config
+
+def write_config_file(data, file = "./utils/config.json"):
+    with open(file, "w") as f:
+        json.dump(data, f, indent=2)
+
+def start_batch_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
+        
+        for i in range(n_batch):
+            time.sleep(3)
+            logger.info(f'batch{i+1}')
+            config = read_config_file()
+            model_path = get_save_path(config)
+            sim_name = config['sim_name']
+
+            if train_mode:
+                env_train = init_env(config, s, mode = 'train')
+                check_env(env_train)
+
+                EPISODES = config['n_episodes']
+                TIMESTEPS = config['n_steps']
+                
+                if retrain:
+                    model = PPO.load(model_retrain_path, env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/retrained/", verbose = 0)
+                else:
+                    model = PPO("MlpPolicy", env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/", ent_coef = ent_coef, verbose=0)
+                
+                training_handler(model, s, TIMESTEPS, EPISODES, save_mode = True, save_path = model_path, sim_name = sim_name)
+                env_train.close()
+            
+            try:
+                model = PPO.load(model_path)
+                logger.info("Model loaded successfully...")
+            
+            except FileNotFoundError:
+                logger.error("Model not found, starting from scratch.")
+                exit(1)
+
+            time.sleep(1)
+            env_test = init_env(config, s, mode = 'test')
+            check_env(env_test)
+            
+            testing_handler(env_test, model, s)
+            env_test.close()
+            logger.critical(f'Terminated Simulation{sim_name}...')

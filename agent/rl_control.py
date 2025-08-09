@@ -1,61 +1,47 @@
 import socket
 import json
-import os, sys, time
+import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_checker import check_env
-import numpy as np
-from utils.controller_utilities import init_env, training_handler, testing_handler, get_save_path, receive_warmup_values
+from utils.controller_utilities import start_batch_control, read_config_file
+import logging
+
+# Logger setup
+logging.basicConfig(
+    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
+    #format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 
-with open("./utils/config.json", "r") as f:
-    config = json.load(f)
+config = read_config_file()
 
 HOST = config['host']
 PORT = config['port']
 TRAIN = config['train_model']
+RE_TRAIN = config['retrain']
+MODEL_RETRAINED_PATH = config['retrain_path_model']
+ENT_COEF = config['ent_coef']
+N_BATCH = config['batch_size'] 
 
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         s.connect((HOST, PORT))
-        print("Connect to server...")
-        
-    
-        model_path = get_save_path(config)
+        logger.info("Connect to server...")
 
-        if TRAIN:
-            env_train = init_env(config, s, mode = 'train')
-            check_env(env_train)
-
-            EPISODES = config['n_episodes']
-            TIMESTEPS = config['n_steps']
-            model = PPO("MlpPolicy", env_train, tensorboard_log = "./board/", verbose=0)
-            training_handler(model, s, TIMESTEPS, EPISODES, save_mode = True, save_path = model_path)
-            env_train.close()
-        
-        try:
-            model = PPO.load(model_path)
-            print("Model loaded successfully...")
-        
-        except FileNotFoundError:
-            print("Model not found, starting from scratch.")
-            exit(1)
-
-        time.sleep(1)
-        env_test = init_env(config, s, mode = 'test')
-        check_env(env_test)
-        
-        testing_handler(env_test, model, s)
-        env_test.close()
+        start_batch_control(s, N_BATCH, TRAIN, RE_TRAIN, MODEL_RETRAINED_PATH, ENT_COEF)
 
     except json.JSONDecodeError:
-        print("Decode error in the response by the server...")
+        logger.error("Decode error in the response by the server...")
         #break
     except Exception as e:
-        print(e)
-        print("Connection close by the server...")
+        logger.error(e)
+        logger.error("Connection close by the server...")
         #break
 
-print("Close Client.")
+logger.info("Close Client.")

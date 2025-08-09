@@ -151,7 +151,7 @@ class Oscillator:
         v_sq = np.square(self.v)
         v_integral = trapezoid(v_sq, self.t)
         
-        ## P_abs
+        ## P_abs [J]
         self.energy_abs = v_integral * self.C
     
     

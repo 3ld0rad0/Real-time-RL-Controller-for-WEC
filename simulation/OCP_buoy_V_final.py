@@ -39,8 +39,8 @@ def shellcmd( cmd, verbose=False ): #Esegue un comando di shell, catturando outp
     if verbose: print( out.stdout, out.stderr )
 
 # %%
-if not pathlib.Path("mpl_utils.py").exists():
-    shellcmd( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
+# if not pathlib.Path("mpl_utils.py").exists():
+#     shellcmd( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
 import utils.mpl_utils as mut
 
 # %%

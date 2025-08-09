@@ -5,6 +5,10 @@ import time
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import deque
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Define the custom environment based on buoy simulation
 
@@ -117,6 +121,8 @@ class WECEnv_Linear(gym.Env):
         self.current_time = state_raw['time']
         #print(f"Current State: {self.state}")
 
+    def get_current_state(self):
+        return self.state
 
     def send_action(self, control):
         #print('Send Action')
@@ -157,12 +163,13 @@ class WECEnv_Linear(gym.Env):
         normalized_state = self.normalize_state(self.state)
         self.state = normalized_state
 
+        x, v, C, K = self.get_current_state()
+
+        # x = self.state[0]
+        # v = self.state[1]
         
-        x = self.state[0]
-        v = self.state[1]
-        
-        C = self.state[2]
-        K = self.state[3]
+        # C = self.state[2]
+        # K = self.state[3]
 
         f_pto = -(C * v) - (K * x)
         #power = np.abs((v**2) * f_pto)  # Potenza inst. estratta
@@ -193,7 +200,7 @@ class WECEnv_Linear(gym.Env):
                 #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
                 
                 self.n_ep += 1
-                print(f'Episode {self.n_ep} completed...')
+                logger.info(f'Episode {self.n_ep} completed...')
 
         if self.current_time == self.t_final:
             self.save_reward()
@@ -239,28 +246,12 @@ class WECEnv_Latching(gym.Env):
         self.x_obs = np.ceil(warmup[0])
         self.v_obs = np.ceil(warmup[1])
         self.C_opt = warmup[2]
-        self.K_opt = np.abs(warmup[3])
+        # self.K_opt = np.abs(warmup[3])
         self.curr_period = warmup[4]
         self.curr_Hw = warmup[5]
         self.fet_obs = np.ceil(warmup[6])
-        #self.G_star_opt = 10.0  # Valore di G* ottimale, da definire in base alla simulazione
 
-        
-        # Stato: [position, speed, PTO_damping_coeff, fet, G]
-        self.observation_space = gym.spaces.Box(
-            low=np.array([-1.0, -1.0, 0.0, -1.0, 0.0], dtype=np.float32),
-            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
-            dtype=np.float32
-        )
 
-        if not self.fixed_G_star:
-            # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
-            # Azione : [ 0, 1, 2 ] --> 0 = nessuna azione, 1 = aumenta G*, 2 = diminuisci G*
-            self.action_space = gym.spaces.MultiDiscrete([2,3])
-
-        else:
-            # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
-            self.action_space = gym.spaces.Discrete(2)
 
         # valutare variabile var_values
         self.var_values = False
@@ -282,6 +273,38 @@ class WECEnv_Latching(gym.Env):
         self.max_steps_per_episode = self.init_data['max_steps_per_episode']
         self.current_ep_step = 0 
         self.sim_mode = sim_mode
+
+        self.support_vector = deque(maxlen = int(2 * self.curr_period))
+
+
+        ############################# OBSERVATION SPACE ######################################
+        # Stato: [position, speed, fet, PTO_damping_coeff, G]
+        self.observation_space = gym.spaces.Box(
+            low=np.array([-1.0, -1.0, -1.0, 0.0, 0.0], dtype=np.float32),
+            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
+            dtype=np.float32
+        )
+
+        # self.observation_space = gym.spaces.Box(
+        #     low=np.array([-self.x_obs, -self.v_obs, -self.fet_obs, 0.0, 0.0], dtype=np.float32),
+        #     high=np.array([self.x_obs, self.v_obs, self.fet_obs, self.C_opt, self.G_star_opt], dtype=np.float32),
+        #     dtype=np.float32
+        # )
+        ######################################################################################
+
+        ############################# ACTION SPACE ###########################################
+        if not self.fixed_G_star:
+            # Azione 0: [ 0, 1 ] --> 0 = no latching, 1 = latching
+            # Azione 1: [ 0, 1, 2 ] --> 0 = nessuna azione, 1 = aumenta G*, 2 = diminuisci G*
+            self.action_space = gym.spaces.MultiDiscrete([2,3])
+
+        else:
+            # Azione: [ 0, 1 ] --> 0 = no latching, 1 = latching
+            self.action_space = gym.spaces.Discrete(2)
+
+        ######################################################################################
+
+
         self.reset()
 
 
@@ -294,12 +317,12 @@ class WECEnv_Latching(gym.Env):
 
 
     def normalize_state(self, state):
-        x, v, C, fe_t, G_star = state
+        x, v, fe_t, C, G_star = state
         return np.array([
             x / self.x_obs,
             v / self.v_obs,
-            C / self.C_opt,
             fe_t / self.fet_obs,
+            C / self.C_opt,
             G_star / self.G_star_opt
         ], dtype=np.float32)
 
@@ -338,12 +361,16 @@ class WECEnv_Latching(gym.Env):
             self.update_values((curr_period, curr_hw, w_mode))
         
         
-        self.state = (state_raw['position'], state_raw['velocity'], state_raw['f_pto_damp'], state_raw['excitation_force'], state_raw['G_star'])
+        self.state = (state_raw['position'], state_raw['velocity'], state_raw['excitation_force'], state_raw['f_pto_damp'], state_raw['G_star'])
         
         self.current_time = state_raw['time']
         #print(f"Current State: {self.state}")
 
     
+    def get_current_state(self):
+        return self.state
+
+
     def send_action(self, control):
         #print('Send Action')
         control_u = str(control[0])
@@ -381,6 +408,104 @@ class WECEnv_Latching(gym.Env):
         
         return new_G
 
+    # def edit_distance(self):
+    #     distance = 0
+        
+    #     for tuple in self.support_vector:
+    #         e_v = tuple[0]
+    #         e_fet = tuple[1]
+            
+    #         if e_v != e_fet:
+    #             distance += 1
+            
+    #         elif (e_v == '->' and e_fet == '->') or (e_v == '-<' and e_fet == '-<'): # minimo o massimo coincidono
+    #             distance -= 1
+        
+    #     if distance <= 0:
+    #         print('Resonance in the period !')
+    #         return 100
+        
+    #     return 1 / distance
+    
+    # def approximate_resonance(self, old_p, x_new, x_old, thresh):
+        
+    #     if old_p == '\\': # decrescente
+
+    #         if x_new < x_old:
+    #             return '\\'
+            
+    #         elif np.abs(x_old - x_new) < thresh:
+    #             return '-<'
+
+    #         else:
+    #             return '/'
+        
+    #     elif old_p == '/': # crescente
+
+    #         if x_new < x_old:
+    #             return '\\'
+            
+    #         elif np.abs(x_old - x_new) < thresh:
+    #             return '->'
+
+    #         else:
+    #             return '/'
+            
+    #     elif old_p == '->': # massimo
+            
+    #         if np.abs(x_old - x_new) < thresh:
+    #             return '->'
+
+    #         else:
+    #             return '\\'
+            
+    #     elif old_p == '-<': # minimo
+            
+    #         if np.abs(x_old - x_new) < thresh:
+    #             return '-<'
+
+    #         else:
+    #             return '/'
+            
+    #     else:
+            
+    #         if x_new < x_old:
+    #             return '\\'
+
+    #         else:
+    #             return '/'
+
+
+    # def calculate_support_vector_reward(self, velocity, excitation_force):
+        
+    #     threshold_v = 0.01
+    #     threshold_fet = 0.015
+        
+    #     if len(self.support_vector) == 0:
+    #         # self.diff = 0
+    #         self.support_vector.append(('s', 's', velocity, excitation_force))
+        
+    #     else:
+    #         last_e = self.support_vector[-1]
+    #         last_placeholder_v = last_e[0]
+    #         last_placeholder_fet = last_e[1]
+    #         last_v = last_e[2]
+    #         last_fet = last_e[3]
+
+    #         # self.v.append(np.abs(velocity - last_v))
+    #         # self.diff = np.mean(self.v)
+    #         new_v_placeholder = self.approximate_resonance(last_placeholder_v, velocity, last_v, threshold_v)
+    #         new_fet_placeholder = self.approximate_resonance(last_placeholder_fet, excitation_force, last_fet, threshold_fet)
+        
+    #         self.support_vector.append((new_v_placeholder, new_fet_placeholder, velocity, excitation_force))
+        
+    #     if len(self.support_vector) == int(2 * self.curr_period):
+    #         distance = self.edit_distance()
+    #         return distance
+        
+    #     else:
+    #         return 0
+
 
     def step(self, action):
         
@@ -396,31 +521,43 @@ class WECEnv_Latching(gym.Env):
             new_G_star = self.init_G_star
         
         self.send_action((new_u, new_G_star))
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.get_observation()
 
+        #sv_term = self.calculate_support_vector_reward(self.state[1], self.state[2] * 10**-6)
+
+        
         normalized_state = self.normalize_state(self.state)
         self.state = normalized_state
 
-        x = self.state[0]
-        v = self.state[1]
-        C = self.state[2]
-        fe = self.state[3]
-        G_star = self.state[4]
+        x, v, fe, C, G_star = self.get_current_state()
+
+        # x = self.state[0]
+        # v = self.state[1]
+        # fe = self.state[2]
+        # C = self.state[3]
+        # G_star = self.state[4]
 
         f_pto = -(C * v)
         power_term =  self.alpha * np.abs(v * f_pto)
         
-        position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
+        # position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
         # velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
         
         # m = 402517.0
+        # G = G_star * m
+        # G_max = 10.0 * m
+        # G_norm = G/G_max
     
-        latching_term = self.beta * (new_u * G_star* v **2)
+        latching_term = self.beta * (new_u * G_star * v **2)
 
         phase_term = self.gamma * np.abs (fe * v)
 
-        self.reward = power_term + latching_term + phase_term
+        #sv_term = 0.001 * sv_term
+
+        relative_fe_term = 0.0001 * (1/fe)
+        #self.reward = power_term + relative_fe_term
+        self.reward = power_term
 
         self.n_step += 1
         self.current_ep_step += 1
@@ -446,7 +583,7 @@ class WECEnv_Latching(gym.Env):
                 #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
                 
                 self.n_ep += 1
-                print(f'Episode {self.n_ep} completed...')
+                logger.info(f'Episode {self.n_ep} completed...')
 
 
         

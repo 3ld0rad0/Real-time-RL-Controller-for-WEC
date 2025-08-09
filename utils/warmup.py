@@ -8,8 +8,11 @@ from simulation.PM_Spectrum import PM_Spectrum
 
 import numpy as np
 import json
+import logging
 
-def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adaptive_sampling=True):
+logger = logging.getLogger(__name__)
+
+def warmup(warmup_time, init_values, file_path='warmup.json', n_sim=100, adaptive_sampling=True):
     period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input = init_values
     oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input)
 
@@ -71,14 +74,14 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
             'v_max': float(v_max) + 1.0,
             'opt_damping': opt_fpto_damp,
             'opt_stifness': opt_fpto_stif,
-            'fet_max': float(fe_t_max) + 1.0
+            'fet_max': float(fe_t_max)
         }
 
     else:
         simulation_data = {
             'x_max': float(x_max) + 0.5,
             'v_max': float(v_max) + 0.5,
-            'fet_max': float(fe_t_max) + 0.5
+            'fet_max': float(fe_t_max)
         }
 
 
@@ -99,7 +102,7 @@ def warmup(warmup_time, init_values, file_path='./warmup.json', n_sim=100, adapt
 
 if __name__ == "__main__":
     
-    with open('./utils/config.json', 'r') as f:
+    with open('config.json', 'r') as f:
         config = json.load(f)
     
 
@@ -115,21 +118,6 @@ if __name__ == "__main__":
     control_mode = 'linear'
     d_t_oscillator = config['d_t']
 
-    # vals_period = list(range(period_b[0], period_b[1] + 1))
-    # vals_hw = []
-    # val = hw_b[0]
-    # d_t = 0.5
-    
-    # while val <= hw_b[1]:
-    #     vals_hw.append(round(val, 1))
-    #     val += d_t
-
-    # xx, yy = np.meshgrid(vals_period,vals_hw)
-    # tuple = []
-    
-    # for i in range (len(xx)):
-    #     for j in range (len(xx[0])):
-    #          tuple.append((xx[i,j], yy[i,j]))
 
     ss_values = []
 
@@ -155,6 +143,6 @@ if __name__ == "__main__":
             spectral_input = (A_ω, ω, φ)
 
         warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, spectral_input))
-        print(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')
+        logger.info(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')
 
         counter += 1
