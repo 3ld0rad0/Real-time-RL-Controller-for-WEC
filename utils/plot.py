@@ -2,6 +2,9 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 def plot_energy(save_mode, results_path, plot_path):
         if not os.path.exists(results_path):
@@ -29,6 +32,7 @@ def plot_energy(save_mode, results_path, plot_path):
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
+            logger.info('\nSave energy results and plots...\n')
         
         #plt.show()
 
@@ -60,6 +64,7 @@ def plot_reward(save_mode, results_path, plot_path):
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
+            logger.info('\nSave reward results and plots...\n')
         
         #plt.show()
 
@@ -109,6 +114,7 @@ def plot_linear(data, energy_data, last_data, save_mode, plot_path):
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
+            logger.info('\nSave simulation train results and plots...\n')
         
 
 def plot_latching(data, energy_data, last_data, save_mode, plot_path):
@@ -164,6 +170,7 @@ def plot_latching(data, energy_data, last_data, save_mode, plot_path):
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
+            logger.info('\nSave simulation train results and plots...\n')
     
 
 def plot_test(last_data, save_mode, plot_path):
@@ -189,3 +196,4 @@ def plot_test(last_data, save_mode, plot_path):
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
+            logger.info('\nSave simulation test results and plots...\n')

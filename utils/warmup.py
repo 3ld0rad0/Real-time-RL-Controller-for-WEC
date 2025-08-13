@@ -4,17 +4,24 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
-from simulation.PM_Spectrum import PM_Spectrum
 
 import numpy as np
 import json
 import logging
 
+# Logger setup
+logging.basicConfig(
+    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
+    #format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
-def warmup(warmup_time, init_values, file_path='warmup.json', n_sim=100, adaptive_sampling=True):
-    period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input = init_values
-    oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, spectral_input)
+def warmup(warmup_time, init_values, file_path='./utils/warmup.json', n_sim=100, adaptive_sampling=True):
+    period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS = init_values
+    oscillator = Oscillator(C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS)
 
     opt_fpto_damp = oscillator.get_opt_damping_pto()
     opt_fpto_stif = oscillator.get_opt_stifness_pto()
@@ -72,16 +79,17 @@ def warmup(warmup_time, init_values, file_path='warmup.json', n_sim=100, adaptiv
         simulation_data = {
             'x_max': float(x_max) + 1.0,
             'v_max': float(v_max) + 1.0,
+            'fet_max': float(fe_t_max),
             'opt_damping': opt_fpto_damp,
             'opt_stifness': opt_fpto_stif,
-            'fet_max': float(fe_t_max)
         }
 
     else:
         simulation_data = {
             'x_max': float(x_max) + 0.5,
             'v_max': float(v_max) + 0.5,
-            'fet_max': float(fe_t_max)
+            'fet_max': float(fe_t_max),
+            'opt_damping' : opt_fpto_damp
         }
 
 
@@ -102,7 +110,7 @@ def warmup(warmup_time, init_values, file_path='warmup.json', n_sim=100, adaptiv
 
 if __name__ == "__main__":
     
-    with open('config.json', 'r') as f:
+    with open('./utils/config.json', 'r') as f:
         config = json.load(f)
     
 
@@ -111,38 +119,20 @@ if __name__ == "__main__":
     G_STAR = config['init_G_star']
     regular = config['regular']
     reg_lbl = 'regular' if regular else 'irregular'
-    warmup_time = config['warmup_time'] * 3600  # Convert hours to seconds
-    period_b = config['period_table']
-    hw_b = config['wave_height_table']
-    #control_mode = config['control_mode']
+    warmup_time = config['warmup_time']
     control_mode = 'linear'
     d_t_oscillator = config['d_t']
 
 
-    ss_values = []
-
-    for i,j in zip (period_b, hw_b):
-        ss_values.append((i,j))
-    
-    spectral_input = None
-
     # per ogni coppia (period, Hw) calcola i valori di warmup
-    counter = 0
+    ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
+    ss_wh = [0.8, 1.2, 1.6, 2.0, 2.4, 2.9, 3.4, 4.0, 4.5]
     
-    for t in ss_values:
-        p = t[0]
-        hw = t[1]
+    for i in range(len(ss_period)):
 
-        if not regular:
-            pm = PM_Spectrum()
-            nSS = counter
-            nω = 512
-            ω_min = 2.0*np.pi/18.0
-            ω_max = 2.0*np.pi/4.0
-            Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-            spectral_input = (A_ω, ω, φ)
+        nSS = i
+        p = ss_period[nSS]
+        hw = ss_wh[nSS]
 
-        warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, spectral_input))
+        warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, nSS))
         logger.info(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')
-
-        counter += 1

@@ -2,8 +2,9 @@ import socket
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.server_utilities import start_batch_simulation, read_config_file, write_config_file
+from utils.server_utilities import start_simulation_train_test, read_config_file, write_config_file
 import logging
+import datetime
 
 # Logger setup
 logging.basicConfig(
@@ -24,7 +25,11 @@ TRAIN = config['train_model']
 N_BATCH = config['batch_size']
 
 sim_name = "1" if N_BATCH > 1 else ""
+#show_results = False if N_BATCH > 1 else True
 config["sim_name"] = sim_name
+# timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+# config["sim_dir"] = f"simulation_{timestamp}"
+#config["show_results"] = show_results
 
 write_config_file(config)
 
@@ -46,9 +51,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     with conn:
         logger.info(f"Connected by {addr}\n")
 
-        show_results = False if N_BATCH > 1 else True
-
-        start_batch_simulation(conn, n_batch = N_BATCH, train_mode = TRAIN, show_results = show_results)
+        start_simulation_train_test(conn, n_batch = N_BATCH, train_mode = TRAIN)
 
 
 logger.info('Close Server.')

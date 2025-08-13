@@ -38,10 +38,17 @@ def get_save_path(config):
     init_hw = hw_table[nSS]
     wave_mode = 'regular' if config['regular'] else 'irregular'
     sim_name = config["sim_name"]
+    mixed_sea_state = config['mixed_sea_state']
 
-    model_name = f'ppomodel_sim{sim_name}_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-    base_path = f'./models/{wave_mode}/sea_state_{init_hw}_{init_period}/simulation_{config['ent_coef']}'
+    model_name_single = f'ppomodel_sim{sim_name}_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+    base_path_single = f'./models/{wave_mode}/sea_state_{init_hw}_{init_period}/simulation_{config['ent_coef']}'
     
+    model_name_mixed = f'ppomodel_sim{sim_name}_{control_mode}_{str_train}h_{f"{d_t}".replace('.','')}s_{wave_mode}'
+    base_path_mixed = f'./models/{wave_mode}/sea_state_mixed/simulation_{config['ent_coef']}'
+
+    model_name = model_name_mixed if mixed_sea_state else model_name_single
+    base_path = base_path_mixed if mixed_sea_state else base_path_single
+
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     
@@ -71,14 +78,26 @@ def init_env(config, socket, mode):
     beta = config['beta_latching']
     gamma = config['gamma_latching']
     str_sim = str(config['sim_time_train']) if mode == 'train' else str(config['sim_time_test'])
+    sim_dir = config['results_dir']
+    mixed_sea_state = config['mixed_sea_state']
+
+    file_name_single = ""
+    file_name_mixed = ""
 
     if mode == 'train':
-        file_name = f'simulation{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_single = f'simulation{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{wave_mode}'
     
     else:
-        file_name = f'simulation{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_single = f'simulation{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{wave_mode}'
 
-    base_name = f'./results/{mode}/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
+    file_name = file_name_mixed if mixed_sea_state else file_name_single
+
+    base_name_single = f'{sim_dir}/{mode}/data/{wave_mode}/sea_state_{init_hw}_{init_period}'
+    base_name_mixed = f'{sim_dir}/{mode}/data/{wave_mode}/sea_state_mixed'
+
+    base_name = base_name_mixed if mixed_sea_state else base_name_single
     
     reward_path  = f'{base_name}/{file_name}_reward.csv'
 
@@ -93,7 +112,8 @@ def init_env(config, socket, mode):
         init_data = {
             "n_steps": timesteps,
             "n_episodes": episodes,
-            "max_steps_per_episode": timesteps//episodes
+            "max_steps_per_episode": timesteps//episodes,
+            "mixed_sea_state" : mixed_sea_state
         }
         sim_mode = mode
         env = WECEnv_Linear(sim_time, warmup_values, socket, init_data, sim_mode, reward_file_path=reward_path)
@@ -107,6 +127,7 @@ def init_env(config, socket, mode):
             "fixed_G_star": fixed_G_star,
             "opt_G_star": opt_G_star,
             "init_G_star": init_G_star,
+            "mixed_sea_state" : mixed_sea_state,
             "alpha": alpha,
             "beta": beta,
             "gamma": gamma
@@ -126,6 +147,7 @@ def wait_close_message(socket):
 
         request = json.loads(data.decode().strip())
         cmd = request.get("cmd")
+        #energy_absorbed = request.get("energy_abs")
 
         if cmd == "close":
             #print("Close message receive by the client...")

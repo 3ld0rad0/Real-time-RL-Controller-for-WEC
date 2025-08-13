@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections import deque
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,29 @@ class WECEnv_Linear(gym.Env):
         self.current_time = 0.0
 
         # warmup values
-        self.x_obs = np.ceil(warmup[0])
-        self.v_obs = np.ceil(warmup[1])
-        self.C_opt = warmup[2]
-        self.K_opt = np.abs(warmup[3])
+        self.x_obs = np.ceil(warmup['x_warmup'])
+        self.v_obs = np.ceil(warmup['v_warmup'])
+        self.fet_obs = np.ceil(warmup['fet_warmup'])
+        self.C_opt = warmup['opt_damping']
+        self.K_opt = warmup['opt_stifness']
+        self.curr_period = warmup['period']
+        self.curr_Hw = warmup['hw']
 
-        self.curr_period = warmup[4]
-        self.curr_Hw = warmup[5]
+        
+        self.n_step = 0
+        self.n_ep = 0
+        self.reward_v = []
+        self.cum_reward = []
+        self.checkpoint_reward = 600
+        # valutare se mantenere la possibilià di avg
+        self.avg = False
+        self.mixed_sea_state = self.init_data['mixed_sea_state']
 
+
+        self.episodes = self.init_data['n_episodes']
+        self.max_steps_per_episode = self.init_data['max_steps_per_episode']
+        self.current_ep_step = 0
+        self.sim_mode = sim_mode
         
         self.delta_max = 10000.0  # massimo cambiamento ammesso per step
         
@@ -46,22 +62,6 @@ class WECEnv_Linear(gym.Env):
         # Azione: [-delta_max, +delta_max]
         self.action_space = gym.spaces.Box(low= -1.0, high=1.0, shape=(2,), dtype=np.float32)
 
-        # valutare se mantenere la possibilià di avg
-        self.avg = False
-        # valutare variabile var_values
-        self.var_values = False
-        
-        self.n_step = 0
-        self.n_ep = 0
-        self.reward_v = []
-        self.cum_reward = []
-        self.checkpoint_reward = 600
-
-
-        self.episodes = self.init_data['n_episodes']
-        self.max_steps_per_episode = self.init_data['max_steps_per_episode']
-        self.current_ep_step = 0
-        self.sim_mode = sim_mode
         self.reset()
     
     def get_current_time(self):
@@ -80,22 +80,22 @@ class WECEnv_Linear(gym.Env):
         ], dtype=np.float32)
     
     
-    # def update_values(self, values, file_path = './warmup.json'):
-    #     with open(file_path, "r") as f:
-    #         warmup_values = json.load(f)
+    def update_sea_state(self, values, file_path = './utils/warmup.json'):
+        with open(file_path, "r") as f:
+            warmup_values = json.load(f)
 
-    #     period, Hw, mode = values
-    #     w_mode = 'regular' if mode else 'irregular'
-    #     w_params = f"T_{period}_Hw_{Hw}"
-    #     w_v = warmup_values[w_mode][w_params]
+        period, Hw, mode = values
+        w_mode = 'regular' if mode else 'irregular'
+        w_params = f"T_{period}_Hw_{Hw}"
+        w_v = warmup_values[w_mode][w_params]
 
-    #     self.x_obs = np.float64(w_v["x_max"])
-    #     self.v_obs = np.float64(w_v["v_max"])
-    #     self.C_opt = np.float64(w_v['opt_damping'])
-    #     self.K_opt = np.float64(w_v['opt_stifness'])
+        self.x_obs = np.float64(w_v["x_max"])
+        self.v_obs = np.float64(w_v["v_max"])
+        self.C_opt = np.float64(w_v['opt_damping'])
+        self.K_opt = np.float64(w_v['opt_stifness'])
 
-    #     self.curr_period = period
-    #     self.curr_Hw = Hw
+        self.curr_period = period
+        self.curr_Hw = Hw
     
     def get_observation(self):
         payload_get = {"cmd": "get"}
@@ -104,13 +104,13 @@ class WECEnv_Linear(gym.Env):
         response = self.socket.recv(1024).decode().strip()
         state_raw = json.loads(response)
 
-        # curr_period = state_raw['period']
-        # curr_hw = state_raw['wave_height']
-        # w_mode = state_raw['w_mode']
+        curr_period = state_raw['period']
+        curr_hw = state_raw['wave_height']
+        w_mode = state_raw['w_mode']
         
-        # # in caso di simulazione dove i valori di periodo e altezza d'onda cambino nel tempo
-        # if self.curr_period != curr_period or self.curr_Hw != curr_hw :
-        #     self.update_values((curr_period, curr_hw, w_mode))
+        # in caso di simulazione dove i valori di periodo e altezza d'onda cambino nel tempo
+        if self.curr_period != curr_period or self.curr_Hw != curr_hw :
+            self.update_sea_state((curr_period, curr_hw, w_mode))
 
         if self.avg:
             self.state = (state_raw['H_max_position'], state_raw['H_avg_velocity'], state_raw['H_avg_fpto_damp'], state_raw['H_avg_fpto_stif'])
@@ -155,9 +155,9 @@ class WECEnv_Linear(gym.Env):
         
         new_C, new_K = self.control_action((delta_C, delta_K))
 
-        
+        time.sleep(0.001)        
         self.send_action([new_C, new_K])
-        time.sleep(0.01)
+        time.sleep(0.001)
         self.get_observation()
 
         normalized_state = self.normalize_state(self.state)
@@ -195,9 +195,15 @@ class WECEnv_Linear(gym.Env):
             self.terminated = self.current_ep_step >= self.max_steps_per_episode
             if self.terminated:
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
-                # if self.var_values:
-                #     payload_done = {'cmd' : 'done'}
-                #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                if self.mixed_sea_state:
+                    try:
+                        new_sea_state = random.randint(0,8)
+                        payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
+                        self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                        # logger.info("Changing sea_state...")
+                    
+                    except Exception as e:
+                        logger.error("Errore nell'invio del messaggio... ",e)
                 
                 self.n_ep += 1
                 logger.info(f'Episode {self.n_ep} completed...')
@@ -243,25 +249,21 @@ class WECEnv_Latching(gym.Env):
         self.fixed_G_star = self.init_data['fixed_G_star']
 
         # warmup values
-        self.x_obs = np.ceil(warmup[0])
-        self.v_obs = np.ceil(warmup[1])
-        self.C_opt = warmup[2]
-        # self.K_opt = np.abs(warmup[3])
-        self.curr_period = warmup[4]
-        self.curr_Hw = warmup[5]
-        self.fet_obs = np.ceil(warmup[6])
+        self.x_obs = np.ceil(warmup['x_warmup'])
+        self.v_obs = np.ceil(warmup['v_warmup'])
+        self.fet_obs = np.ceil(warmup['fet_warmup'])
+        self.C_opt = warmup['opt_damping']
+        self.curr_period = warmup['period']
+        self.curr_Hw = warmup['hw']
 
 
-
-        # valutare variabile var_values
-        self.var_values = False
         self.n_step = 0
         self.n_ep = 0
         self.reward_v = []
         self.cum_reward = []
         self.checkpoint_reward = 600
 
-
+        self.mixed_sea_state = self.init_data['mixed_sea_state']
         self.init_G_star = self.init_data['init_G_star']
         self.G_star_opt = self.init_data['opt_G_star']
 
@@ -274,7 +276,7 @@ class WECEnv_Latching(gym.Env):
         self.current_ep_step = 0 
         self.sim_mode = sim_mode
 
-        self.support_vector = deque(maxlen = int(2 * self.curr_period))
+        #self.support_vector = deque(maxlen = int(2 * self.curr_period))
 
 
         ############################# OBSERVATION SPACE ######################################
@@ -327,22 +329,22 @@ class WECEnv_Latching(gym.Env):
         ], dtype=np.float32)
 
 
-    # def update_values(self, values, file_path = './warmup.json'):
-    #     with open(file_path, "r") as f:
-    #         warmup_values = json.load(f)
+    def update_sea_state(self, values, file_path = './utils/warmup.json'):
+        with open(file_path, "r") as f:
+            warmup_values = json.load(f)
 
-    #     period, Hw, mode = values
-    #     w_mode = 'regular' if mode else 'irregular'
-    #     w_params = f"T_{period}_Hw_{Hw}"
-    #     w_v = warmup_values[w_mode][w_params]
+        period, Hw, mode = values
+        w_mode = 'regular' if mode else 'irregular'
+        w_params = f"T_{period}_Hw_{Hw}"
+        w_v = warmup_values[w_mode][w_params]
 
-    #     self.x_obs = np.float64(w_v["x_max"])
-    #     self.v_obs = np.float64(w_v["v_max"])
-    #     self.C_opt = np.float64(w_v['opt_damping'])
-    #     self.K_opt = np.float64(w_v['opt_stifness'])
+        self.x_obs = np.float64(w_v["x_max"])
+        self.v_obs = np.float64(w_v["v_max"])
+        self.fet_obs = np.float64(w_v["fet_max"])
 
-    #     self.curr_period = period
-    #     self.curr_Hw = Hw
+        self.curr_period = period
+        self.curr_Hw = Hw
+        logger.info(f"Sea_state changed now period is {self.curr_period} and Hw is {self.curr_Hw}")
 
     
     def get_observation(self):
@@ -358,7 +360,7 @@ class WECEnv_Latching(gym.Env):
         
         # in caso di simulazione dove i valori di periodo e altezza d'onda cambino nel tempo
         if self.curr_period != curr_period or self.curr_Hw != curr_hw :
-            self.update_values((curr_period, curr_hw, w_mode))
+            self.update_sea_state((curr_period, curr_hw, w_mode))
         
         
         self.state = (state_raw['position'], state_raw['velocity'], state_raw['excitation_force'], state_raw['f_pto_damp'], state_raw['G_star'])
@@ -520,6 +522,8 @@ class WECEnv_Latching(gym.Env):
             new_u = self.control_action_u(action)
             new_G_star = self.init_G_star
         
+        #time.sleep(0.001)
+        time.sleep(0.001)
         self.send_action((new_u, new_G_star))
         time.sleep(0.001)
         self.get_observation()
@@ -556,8 +560,8 @@ class WECEnv_Latching(gym.Env):
         #sv_term = 0.001 * sv_term
 
         relative_fe_term = 0.0001 * (1/fe)
-        #self.reward = power_term + relative_fe_term
         self.reward = power_term
+        #self.reward = power_term - latching_term + phase_term
 
         self.n_step += 1
         self.current_ep_step += 1
@@ -578,9 +582,15 @@ class WECEnv_Latching(gym.Env):
 
             if self.terminated:
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
-                # if self.var_values:
-                #     payload_done = {'cmd' : 'done'}
-                #     self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                if self.mixed_sea_state:
+                    try:
+                        new_sea_state = random.randint(0,8)
+                        payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
+                        self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                        # logger.info("Changing sea_state...")
+                    
+                    except Exception as e:
+                        logger.error("Errore nell'invio del messaggio... ",e)
                 
                 self.n_ep += 1
                 logger.info(f'Episode {self.n_ep} completed...')

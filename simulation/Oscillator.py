@@ -13,10 +13,15 @@ from matplotlib_inline.backend_inline import set_matplotlib_formats
 set_matplotlib_formats('svg')
 
 class Oscillator:
-    def __init__(self, period, Hw, C, K, G_star, regular, t_final, control_mode, d_t, spectrum):
+    def __init__(self, C, K, G_star, regular, t_final, control_mode, d_t, sea_state):
 
         self.regular = regular
-        self.spectrum = spectrum
+        #self.spectrum = spectrum
+        self.ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
+        self.ss_wh = [0.8, 1.2, 1.6, 2.0, 2.4, 2.9, 3.4, 4.0, 4.5]
+        self.sea_state = sea_state
+        self.T = self.ss_period[self.sea_state]
+        self.Hw = self.ss_wh[self.sea_state]
         self.control_mode = control_mode
 
         self.r = 5
@@ -25,8 +30,6 @@ class Oscillator:
         self.rho = 1025
         self.g = 9.81
         self.m = self.rho * self.volume 
-        self.T = period
-        self.Hw = Hw
         self.wave_velocity = self.g * self.T / (2 * np.pi)
         self.wave_l = self.wave_velocity * self.T
         self.k = 2*np.pi/self.wave_l
@@ -74,6 +77,8 @@ class Oscillator:
         if not self.regular:
             ######################## IRREGULAR CASE ######################
 
+            self.spectrum = self.init_irregular_parameters(self.sea_state)
+            
             if self.spectrum is not None:
                 # Usa lo spettro da PM_Spectrum
                 self.N_freq = len(self.spectrum[0])
@@ -120,6 +125,17 @@ class Oscillator:
         self.t_final = t_final
         self.d_t = d_t
         self.eval_window_len = (self.d_t * 100) // 2
+
+    
+    
+    def init_irregular_parameters(self,nSS):
+        pm = PM_Spectrum()
+        nω = 50  # Number of frequency components
+        ω_min = 2.0 * np.pi / 18.0
+        ω_max = 2.0 * np.pi / 4.0
+        Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
+        spectral_input = (A_ω, ω, φ)
+        return spectral_input
 
 
     def fe_t_irregular(self, t):
@@ -207,12 +223,58 @@ class Oscillator:
     
 
     ## Nel caso in cui siano previsti valori variabili nella simulazione ##
-    def update_values(self, period, Hw):
-        self.set_period(period)
-        self.set_wave_height(Hw)
-        self.omega = 2*np.pi/self.T
-        self.B = 2/3*np.pi*self.r**3*self.rho*self.omega
-        self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+    def update_sea_state(self, sea_state):
+        self.set_sea_state(sea_state)
+        # self.set_period(period)
+        # self.set_wave_height(Hw)
+        self.wave_velocity = self.g * self.T / (2 * np.pi)
+        self.wave_l = self.wave_velocity * self.T
+        self.k = 2*np.pi/self.wave_l
+        self.ka = self.k * self.r
+        self.A_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 1], kind='linear', fill_value="extrapolate")
+        self.B_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 2], kind='linear', fill_value="extrapolate")
+        self.A_star = self.ka_table[-1, 1]
+        self.B_star = self.B_star_interp(self.ka)
+        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
+
+        if not self.regular:
+            ######################## IRREGULAR CASE ######################
+
+            self.spectrum = self.init_irregular_parameters(self.sea_state)
+            
+            if self.spectrum is not None:
+                # Usa lo spettro da PM_Spectrum
+                self.N_freq = len(self.spectrum[0])
+                self.amps = self.spectrum[0]         # A_ω
+                self.omega = self.spectrum[1]        # ω
+                self.phases = self.spectrum[2]       # φ
+                B_array = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+                # Usa la media pesata per le ampiezze
+                weights = self.amps**2
+                self.B = np.average(B_array, weights=weights)
+                self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+                coeff = (self.rho * self.g**2) / (64 * np.pi) * (10**-3)
+                self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
+        
+        else:
+            ######################## REGULAR CASE ######################
+            
+            self.omega = 2*np.pi/self.T
+            self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
+            self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
+            coeff = (self.rho * self.g**2) / (8 * np.pi) * (10**-3)
+            self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
+        
+
+        self.G = self.G_star * (self.m_add + self.m)
+
+    def get_sea_state(self):
+        return self.sea_state
+    
+    def set_sea_state(self, ss):
+        self.sea_state = ss
+        self.set_period(self.ss_period[ss])
+        self.set_wave_height(self.ss_wh[ss])
     
     def get_t_final(self):
         return self.t_final
@@ -357,15 +419,15 @@ class Oscillator:
 if __name__ == '__main__':
     
     nSS = 0
-    pm = PM_Spectrum()
-    nω = 512
-    ω_min = 2.0*np.pi/18.0
-    ω_max = 2.0*np.pi/4.0
-    Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-    spectral_input = (A_ω, ω, φ)
+    # pm = PM_Spectrum()
+    # nω = 512
+    # ω_min = 2.0*np.pi/18.0
+    # ω_max = 2.0*np.pi/4.0
+    # Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
+    # spectral_input = (A_ω, ω, φ)
     #spectral_input = None
-    period = 9
-    Hw = 0.8
+    # period = 9
+    # Hw = 0.8
     C = 0
     K = 0
     G_STAR = 5
@@ -374,7 +436,7 @@ if __name__ == '__main__':
     control_mode = 'latching'
     d_t = 0.5
 
-    oscillator = Oscillator(period, Hw, C, K, G_STAR, regular, sim_time, control_mode, d_t, spectral_input)
+    oscillator = Oscillator(C, K, G_STAR, regular, sim_time, control_mode, d_t, nSS)
     # C = oscillator.get_opt_damping_pto()
     # K = oscillator.get_opt_stifness_pto()
     # oscillator.set_fpto(C, K)

@@ -9,30 +9,19 @@ from simulation.Oscillator import Oscillator
 from simulation.PM_Spectrum import PM_Spectrum
 from simulation.Simulation import Simulation
 import logging
+import datetime
+import random
 
 logger = logging.getLogger(__name__)
 
 
-def init_irregular_parameters(nSS):
-    pm = PM_Spectrum()
-    nω = 50  # Number of frequency components
-    ω_min = 2.0 * np.pi / 18.0
-    ω_max = 2.0 * np.pi / 4.0
-    Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-    spectral_input = (A_ω, ω, φ)
-    return spectral_input
 
-def init_SS(config):
-    nSS_train = config['init_SS_train']
-    nSS_test = config['init_SS_test']
+def init_SS(sim_train, sim_test):
+    period_train = sim_train.get_oscillator().get_period()
+    period_test = sim_test.get_oscillator().get_period()
     
-    period_bound = config['period_table']
-    period_train = period_bound[nSS_train]
-    period_test = period_bound[nSS_test]
-    
-    Hw_bound = config['wave_height_table']
-    Hw_train = Hw_bound[nSS_train]
-    Hw_test = Hw_bound[nSS_test]
+    Hw_train = sim_train.get_oscillator().get_wave_height()
+    Hw_test = sim_test.get_oscillator().get_wave_height()
     
     return period_train, Hw_train, period_test, Hw_test
 
@@ -47,30 +36,38 @@ def init_simulation(config):
     sim_time_test = config['sim_time_test'] # Already in seconds
     nSS_train = config['init_SS_train']
     nSS_test = config['init_SS_test']
-    period_bound = config['period_table']
-    period_train = period_bound[nSS_train]
-    period_test = period_bound[nSS_test]
-    Hw_bound = config['wave_height_table']
-    Hw_train = Hw_bound[nSS_train]
-    Hw_test = Hw_bound[nSS_test]
+    #period_bound = config['period_table']
+    #period_train = period_bound[nSS_train]
+    #period_test = period_bound[nSS_test]
+    #Hw_bound = config['wave_height_table']
+    #Hw_train = Hw_bound[nSS_train]
+    #Hw_test = Hw_bound[nSS_test]
     regular = config['regular']
     control_mode = config['control_mode']
     save_mode = config['save_mode']
+    show_results = config['show_results']
+    sim_dir = config['results_dir']
+    mixed_sea_state = config['mixed_sea_state']
     
-    spectral_input_train = None
-    spectral_input_test = None
+    # spectral_input_train = None
+    # spectral_input_test = None
     
-    if not regular:
-        spectral_input_train = init_irregular_parameters(nSS_train)
-        spectral_input_test = init_irregular_parameters(nSS_test)
+    # if not regular:
+    #     spectral_input_train = init_irregular_parameters(nSS_train)
+    #     spectral_input_test = init_irregular_parameters(nSS_test)
 
-    oscillator_train = Oscillator(period_train, Hw_train, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input_train)
-    oscillator_test = Oscillator(period_test, Hw_test, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input_test)
+    #oscillator_train = Oscillator(period_train, Hw_train, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input_train)
+    oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train)
+    #oscillator_test = Oscillator(period_test, Hw_test, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input_test)
+    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test)
 
-    sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name)
-    sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name)
+    sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
+    sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name, sim_dir, show_results, mixed_sea_state)
 
-
+    period_train = oscillator_train.get_period()
+    period_test = oscillator_test.get_period()
+    Hw_train = oscillator_train.get_wave_height()
+    Hw_test = oscillator_test.get_wave_height()
     init_values_train = (period_train, Hw_train)
     init_values_test = (period_test, Hw_test)
     sim_train.load_warmup_values(init_values_train)
@@ -86,12 +83,12 @@ def init_simulation(config):
     return sim_train, sim_test
 
 
-def simulation_handler(conn, sim, show_results = True):
+def simulation_handler(conn, sim):
     start_t = time.time()
     start_simulation(conn, sim)
     end_t = time.time()
     elapsed_time = np.round(end_t -start_t, 2)
-    close_simulation(conn, sim, elapsed_time, show_results)
+    close_simulation(conn, sim, elapsed_time)
 
 def start_simulation(conn, sim):
     
@@ -156,24 +153,25 @@ def simulation_step(conn, sim):
             sim.send_control_latching((new_u, new_G_star))
 
 
-    # elif cmd == 'done':
-    #     # alla fine di ogni episodio aggiorna i valori di altezza d'onda e periodo
-    #     period = random.randint(period_bound[0], period_bound[len(period_bound) - 1])
-    #     hw_arr = np.arange(Hw_bound[0], Hw_bound[len(period_bound) - 1]+ 0.1, 0.5)
-    #     Hw = random.choice(hw_arr)
-    #     sim_train.update_values(period, Hw)
+    elif cmd == 'done':
+        # alla fine di ogni episodio aggiorna i valori di altezza d'onda e periodo
+        new_sea_state = request.get("new_sea_state")
+        sim.update_sea_state(new_sea_state)
+        #logger.info(f"New sea_state {new_sea_state}...")
 
     else:
         response = {"error": "Comando non riconosciuto"}
         logger.warning(cmd)
         conn.sendall((json.dumps(response) + "\n").encode())
 
-def close_simulation(conn, sim, elapsed_time, show_results):
+def close_simulation(conn, sim, elapsed_time):
     
-    # Show the results and save them
-    if show_results:
-        sim.plot()
-        logger.info("\nSave results and plots...\n")
+    # Show the results if "show_results" is True and save them if "save_mode" is True
+    sim.plot()
+    
+    if sim.get_sim_mode() == 'test':
+        tot_energy_absorbed = sim.get_total_energy_absorbed()
+        logger.info(f'\nTotal energy absorbed: {round(tot_energy_absorbed,3)} MJ\n')
 
     logger.info(
         f"\nClose simulation...\n"
@@ -183,16 +181,17 @@ def close_simulation(conn, sim, elapsed_time, show_results):
     connection_handler(conn, sim)
 
 def connection_handler(conn, sim):
-    send_close_message(conn)
+    send_close_message(conn, sim.get_total_energy_absorbed())
     time.sleep(1)
     # Clear all the files if save_mode is False
     if not sim.get_save_mode():
         sim.clear()
+        logger.info('Clear all the files')
     wait_closeack_message(conn)
 
-def send_close_message(conn):
+def send_close_message(conn, energy_absorbed):
     try:
-        close_message = json.dumps({"cmd": "close"}).encode()
+        close_message = json.dumps({"cmd": "close", "energy_abs": energy_absorbed}).encode()
         conn.sendall(close_message)
         #print("Close simulation message send to client....")
                 
@@ -258,43 +257,93 @@ def write_config_file(data, file = "./utils/config.json"):
         json.dump(data, f, indent=2)
 
 
-def start_batch_simulation(conn, n_batch, train_mode, show_results):
 
-        if n_batch > 1:
-            logger.critical(f"Starting {n_batch} simulations in background mode...")
+# def mixed_ss_test(conn, sim_test):
+#     nSS = 9
+#     config = read_config_file()
+#     abs_energy = 0.0
 
-        for i in range (n_batch):
-            config = read_config_file()
-            
-            sim_train, sim_test = init_simulation(config)
-            period_train, Hw_train, period_test, Hw_test = init_SS(config)
-            sim_name = config['sim_name']
+#     for i in range(nSS):
+#         osc = sim_test.get_oscillator()
+#         sim_dir = config["sim_dir"] + f'/mixed_test/test_ss_{i}'    
+#         sim_test.set_sim_path(sim_dir)
         
-            if train_mode :
-                logger.info(
-                    f"Training Simulation{sim_name} started with these parameters:\n"
-                    f"Period       : {period_train} s\n"
-                    f"Wave height  : {Hw_train} m\n"
-                    f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
-                    f"Control mode : {config['control_mode']}\n"
-                    f"Control d_t  : {config['d_t']}\n"
-                )               
-                simulation_handler(conn, sim_train, show_results)
-                logger.info("Training Simulation finished...\n")
+#         if i > 0:
+#             sim_test.reset()
+#             osc.update_sea_state(i)
+#             sim_test.set_sim_path(sim_dir)
+        
+#         p = osc.get_period()
+#         hw = osc.get_wave_height()
+#         logger.info(
+#                     f"Testing Simulation{config['sim_name']} started with these parameters:\n"
+#                     f"Period       : {p} s\n"
+#                     f"Wave height  : {hw} m\n"
+#                     f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+#                     f"Control mode : {config['control_mode']}\n"
+#                     f"Control d_t  : {config['d_t']}\n"
+#         )     
+#         simulation_handler(conn, sim_test)
+#         abs_energy += sim_test.get_total_energy_absorbed()
+#         logger.info("Testing Simulation finished...\n")  
+    
+#     mean_abs_energy = np.mean(abs_energy)
+#     logger.info(f"Testing Mixed Simulation finished... mean energy absorbed : {mean_abs_energy} MJ")
 
-            logger.info(
-                f"Testing Simulation{sim_name} started with these parameters:\n"
-                f"Period       : {period_test} s\n"
-                f"Wave height  : {Hw_test} m\n"
+
+
+def start_batch_simulation(conn, n_batch, train_mode):
+        # timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        # batch_results_dir = os.path.join("./batch_simulation_results", f"batch_{timestamp}")
+        # os.makedirs(batch_results_dir, exist_ok=True)
+        logger.critical(f"Starting {n_batch} simulations in background mode...")
+        # logger.critical(f"Results will be saved in: {batch_results_dir}")
+
+        for i in range (1, n_batch):
+            start_single_simulation(conn, train_mode)
+
+            config = read_config_file()
+            config["sim_name"] = str(i)
+            write_config_file(config)
+            logger.critical(f"\nTerminated Simulation{i}...\n")
+
+
+def start_single_simulation(conn, train_mode):
+    config = read_config_file()
+    sim_train, sim_test = init_simulation(config)
+    period_train, Hw_train, period_test, Hw_test = init_SS(sim_train, sim_test)
+    sim_name = config['sim_name']
+        
+    if train_mode :
+        logger.info(
+                f"Training Simulation{sim_name} started with these parameters:\n"
+                f"Period       : {period_train} s\n"
+                f"Wave height  : {Hw_train} m\n"
                 f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
                 f"Control mode : {config['control_mode']}\n"
                 f"Control d_t  : {config['d_t']}\n"
-            )     
-            simulation_handler(conn, sim_test, show_results)
-            logger.info("Testing Simulation finished...\n")
-            logger.critical(f"\nTerminated Simulation{sim_name}...\n")
+        )               
+        simulation_handler(conn, sim_train)
+        logger.info("Training Simulation finished...\n")
 
-            if n_batch > 1:
-                config["sim_name"] = str(int(sim_name) + 1)
-                # Salva di nuovo il file
-                write_config_file(config)
+    # if config['mixed_sea_state']:
+    #     mixed_ss_test(conn, sim_test)
+
+    logger.info(
+            f"Testing Simulation{sim_name} started with these parameters:\n"
+            f"Period       : {period_test} s\n"
+            f"Wave height  : {Hw_test} m\n"
+            f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+            f"Control mode : {config['control_mode']}\n"
+            f"Control d_t  : {config['d_t']}\n"
+        )     
+    simulation_handler(conn, sim_test)
+    logger.info("Testing Simulation finished...\n")  
+
+def start_simulation_train_test(conn, n_batch, train_mode):
+    
+    if n_batch > 1:
+        start_batch_simulation(conn, n_batch, train_mode)
+
+    else:
+        start_single_simulation(conn, train_mode)
