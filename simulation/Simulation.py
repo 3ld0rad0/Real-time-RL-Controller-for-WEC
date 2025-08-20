@@ -43,7 +43,7 @@ class Simulation:
         self.buff_len = self.period * (1 / self.d_t)
         
         # numero di periodi da osservare
-        self.attention_win = 5
+        self.attention_win = 10
 
         self.attention_len = self.attention_win * int(self.buff_len)
 

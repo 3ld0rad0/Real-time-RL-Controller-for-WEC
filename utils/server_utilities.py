@@ -36,12 +36,6 @@ def init_simulation(config):
     sim_time_test = config['sim_time_test'] # Already in seconds
     nSS_train = config['init_SS_train']
     nSS_test = config['init_SS_test']
-    #period_bound = config['period_table']
-    #period_train = period_bound[nSS_train]
-    #period_test = period_bound[nSS_test]
-    #Hw_bound = config['wave_height_table']
-    #Hw_train = Hw_bound[nSS_train]
-    #Hw_test = Hw_bound[nSS_test]
     regular = config['regular']
     control_mode = config['control_mode']
     save_mode = config['save_mode']
@@ -49,16 +43,8 @@ def init_simulation(config):
     sim_dir = config['results_dir']
     mixed_sea_state = config['mixed_sea_state']
     
-    # spectral_input_train = None
-    # spectral_input_test = None
-    
-    # if not regular:
-    #     spectral_input_train = init_irregular_parameters(nSS_train)
-    #     spectral_input_test = init_irregular_parameters(nSS_test)
 
-    #oscillator_train = Oscillator(period_train, Hw_train, C, K, G_STAR, regular, sim_time_train, control_mode, d_t, spectral_input_train)
     oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train)
-    #oscillator_test = Oscillator(period_test, Hw_test, C, K, G_STAR, regular, sim_time_test, control_mode, d_t, spectral_input_test)
     oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test)
 
     sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
@@ -88,7 +74,9 @@ def simulation_handler(conn, sim):
     start_simulation(conn, sim)
     end_t = time.time()
     elapsed_time = np.round(end_t -start_t, 2)
-    close_simulation(conn, sim, elapsed_time)
+    energy = close_simulation(conn, sim, elapsed_time)
+    
+    return energy
 
 def start_simulation(conn, sim):
     
@@ -168,6 +156,8 @@ def close_simulation(conn, sim, elapsed_time):
     
     # Show the results if "show_results" is True and save them if "save_mode" is True
     sim.plot()
+
+    tot_energy_absorbed = None
     
     if sim.get_sim_mode() == 'test':
         tot_energy_absorbed = sim.get_total_energy_absorbed()
@@ -179,6 +169,8 @@ def close_simulation(conn, sim, elapsed_time):
     )
 
     connection_handler(conn, sim)
+    
+    return tot_energy_absorbed
 
 def connection_handler(conn, sim):
     send_close_message(conn, sim.get_total_energy_absorbed())
@@ -258,54 +250,25 @@ def write_config_file(data, file = "./utils/config.json"):
 
 
 
-# def mixed_ss_test(conn, sim_test):
-#     nSS = 9
-#     config = read_config_file()
-#     abs_energy = 0.0
-
-#     for i in range(nSS):
-#         osc = sim_test.get_oscillator()
-#         sim_dir = config["sim_dir"] + f'/mixed_test/test_ss_{i}'    
-#         sim_test.set_sim_path(sim_dir)
-        
-#         if i > 0:
-#             sim_test.reset()
-#             osc.update_sea_state(i)
-#             sim_test.set_sim_path(sim_dir)
-        
-#         p = osc.get_period()
-#         hw = osc.get_wave_height()
-#         logger.info(
-#                     f"Testing Simulation{config['sim_name']} started with these parameters:\n"
-#                     f"Period       : {p} s\n"
-#                     f"Wave height  : {hw} m\n"
-#                     f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
-#                     f"Control mode : {config['control_mode']}\n"
-#                     f"Control d_t  : {config['d_t']}\n"
-#         )     
-#         simulation_handler(conn, sim_test)
-#         abs_energy += sim_test.get_total_energy_absorbed()
-#         logger.info("Testing Simulation finished...\n")  
-    
-#     mean_abs_energy = np.mean(abs_energy)
-#     logger.info(f"Testing Mixed Simulation finished... mean energy absorbed : {mean_abs_energy} MJ")
-
 
 
 def start_batch_simulation(conn, n_batch, train_mode):
-        # timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        # batch_results_dir = os.path.join("./batch_simulation_results", f"batch_{timestamp}")
-        # os.makedirs(batch_results_dir, exist_ok=True)
+        
         logger.critical(f"Starting {n_batch} simulations in background mode...")
-        # logger.critical(f"Results will be saved in: {batch_results_dir}")
+        total_energy_v = np.array()
 
-        for i in range (1, n_batch):
-            start_single_simulation(conn, train_mode)
-
+        for i in range (1, n_batch+1):
+            energy_abs = start_single_simulation(conn, train_mode)
+            total_energy_v.append(energy_abs)
+            
             config = read_config_file()
-            config["sim_name"] = str(i)
+            config["sim_name"] = str(i+1)
             write_config_file(config)
             logger.critical(f"\nTerminated Simulation{i}...\n")
+        
+        mean_total_energy = np.mean(total_energy_v)
+
+        return mean_total_energy
 
 
 def start_single_simulation(conn, train_mode):
@@ -326,8 +289,6 @@ def start_single_simulation(conn, train_mode):
         simulation_handler(conn, sim_train)
         logger.info("Training Simulation finished...\n")
 
-    # if config['mixed_sea_state']:
-    #     mixed_ss_test(conn, sim_test)
 
     logger.info(
             f"Testing Simulation{sim_name} started with these parameters:\n"
@@ -337,8 +298,12 @@ def start_single_simulation(conn, train_mode):
             f"Control mode : {config['control_mode']}\n"
             f"Control d_t  : {config['d_t']}\n"
         )     
-    simulation_handler(conn, sim_test)
-    logger.info("Testing Simulation finished...\n")  
+    energy_abs = simulation_handler(conn, sim_test)
+    logger.info("Testing Simulation finished...\n")
+    
+    return energy_abs  
+
+
 
 def start_simulation_train_test(conn, n_batch, train_mode):
     

@@ -231,13 +231,13 @@ def write_config_file(data, file = "./utils/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 
-def start_batch_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
+def start_batch_control(s, n_batch, train_mode, model_path, retrain, model_retrain_path, ent_coef):
         
         for i in range(n_batch):
             time.sleep(3)
             logger.info(f'batch{i+1}')
             config = read_config_file()
-            model_path = get_save_path(config)
+            model_path = get_save_path(config) if model_path == '' else model_path
             sim_name = config['sim_name']
 
             if train_mode:

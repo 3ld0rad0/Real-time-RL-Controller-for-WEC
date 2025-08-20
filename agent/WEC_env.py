@@ -49,6 +49,7 @@ class WECEnv_Linear(gym.Env):
         self.sim_mode = sim_mode
         
         self.delta_max = 10000.0  # massimo cambiamento ammesso per step
+        self.ss_distribution = 'uniform'
         
         
 
@@ -197,7 +198,16 @@ class WECEnv_Linear(gym.Env):
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
                 if self.mixed_sea_state:
                     try:
-                        new_sea_state = random.randint(0,8)
+                        new_sea_state = None
+                        
+                        if self.ss_distribution == 'uniform':
+                            new_sea_state = random.randint(0,8)
+                        
+                        else:
+                            values = list(range(0,9))
+                            w = ( 0.250, 0.200, 0.177, 0.145, 0.100, 0.070, 0.045, 0.007, 0.006 )
+                            new_sea_state = random.choices(values, weights=w, k=1)[0]
+
                         payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
                         self.socket.sendall((json.dumps(payload_done) + "\n").encode())
                         # logger.info("Changing sea_state...")
@@ -275,6 +285,7 @@ class WECEnv_Latching(gym.Env):
         self.max_steps_per_episode = self.init_data['max_steps_per_episode']
         self.current_ep_step = 0 
         self.sim_mode = sim_mode
+        self.ss_distribution = 'uniform' ## default use a vector of fixed probs. // uniform use uniform probs. to picks sea states
 
         #self.support_vector = deque(maxlen = int(2 * self.curr_period))
 
@@ -410,103 +421,6 @@ class WECEnv_Latching(gym.Env):
         
         return new_G
 
-    # def edit_distance(self):
-    #     distance = 0
-        
-    #     for tuple in self.support_vector:
-    #         e_v = tuple[0]
-    #         e_fet = tuple[1]
-            
-    #         if e_v != e_fet:
-    #             distance += 1
-            
-    #         elif (e_v == '->' and e_fet == '->') or (e_v == '-<' and e_fet == '-<'): # minimo o massimo coincidono
-    #             distance -= 1
-        
-    #     if distance <= 0:
-    #         print('Resonance in the period !')
-    #         return 100
-        
-    #     return 1 / distance
-    
-    # def approximate_resonance(self, old_p, x_new, x_old, thresh):
-        
-    #     if old_p == '\\': # decrescente
-
-    #         if x_new < x_old:
-    #             return '\\'
-            
-    #         elif np.abs(x_old - x_new) < thresh:
-    #             return '-<'
-
-    #         else:
-    #             return '/'
-        
-    #     elif old_p == '/': # crescente
-
-    #         if x_new < x_old:
-    #             return '\\'
-            
-    #         elif np.abs(x_old - x_new) < thresh:
-    #             return '->'
-
-    #         else:
-    #             return '/'
-            
-    #     elif old_p == '->': # massimo
-            
-    #         if np.abs(x_old - x_new) < thresh:
-    #             return '->'
-
-    #         else:
-    #             return '\\'
-            
-    #     elif old_p == '-<': # minimo
-            
-    #         if np.abs(x_old - x_new) < thresh:
-    #             return '-<'
-
-    #         else:
-    #             return '/'
-            
-    #     else:
-            
-    #         if x_new < x_old:
-    #             return '\\'
-
-    #         else:
-    #             return '/'
-
-
-    # def calculate_support_vector_reward(self, velocity, excitation_force):
-        
-    #     threshold_v = 0.01
-    #     threshold_fet = 0.015
-        
-    #     if len(self.support_vector) == 0:
-    #         # self.diff = 0
-    #         self.support_vector.append(('s', 's', velocity, excitation_force))
-        
-    #     else:
-    #         last_e = self.support_vector[-1]
-    #         last_placeholder_v = last_e[0]
-    #         last_placeholder_fet = last_e[1]
-    #         last_v = last_e[2]
-    #         last_fet = last_e[3]
-
-    #         # self.v.append(np.abs(velocity - last_v))
-    #         # self.diff = np.mean(self.v)
-    #         new_v_placeholder = self.approximate_resonance(last_placeholder_v, velocity, last_v, threshold_v)
-    #         new_fet_placeholder = self.approximate_resonance(last_placeholder_fet, excitation_force, last_fet, threshold_fet)
-        
-    #         self.support_vector.append((new_v_placeholder, new_fet_placeholder, velocity, excitation_force))
-        
-    #     if len(self.support_vector) == int(2 * self.curr_period):
-    #         distance = self.edit_distance()
-    #         return distance
-        
-    #     else:
-    #         return 0
 
 
     def step(self, action):
@@ -522,13 +436,10 @@ class WECEnv_Latching(gym.Env):
             new_u = self.control_action_u(action)
             new_G_star = self.init_G_star
         
-        #time.sleep(0.001)
         time.sleep(0.001)
         self.send_action((new_u, new_G_star))
         time.sleep(0.001)
         self.get_observation()
-
-        #sv_term = self.calculate_support_vector_reward(self.state[1], self.state[2] * 10**-6)
 
         
         normalized_state = self.normalize_state(self.state)
@@ -536,32 +447,21 @@ class WECEnv_Latching(gym.Env):
 
         x, v, fe, C, G_star = self.get_current_state()
 
-        # x = self.state[0]
-        # v = self.state[1]
-        # fe = self.state[2]
-        # C = self.state[3]
-        # G_star = self.state[4]
 
         f_pto = -(C * v)
         power_term =  self.alpha * np.abs(v * f_pto)
         
-        # position_term = 0.01 * x**2  # Penalità per spostamenti eccessivi
-        # velocity_term = (10**-3) * v**2  # Penalità per velocità eccessive
         
         # m = 402517.0
         # G = G_star * m
         # G_max = 10.0 * m
         # G_norm = G/G_max
     
-        latching_term = self.beta * (new_u * G_star * v **2)
-
+        #latching_term = self.beta * (new_u * G_star * v **2)
         phase_term = self.gamma * np.abs (fe * v)
-
-        #sv_term = 0.001 * sv_term
-
-        relative_fe_term = 0.0001 * (1/fe)
-        self.reward = power_term
-        #self.reward = power_term - latching_term + phase_term
+        #relative_fe_term = 0.0001 * (1/fe)
+        
+        self.reward = power_term + phase_term
 
         self.n_step += 1
         self.current_ep_step += 1
@@ -584,7 +484,16 @@ class WECEnv_Latching(gym.Env):
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
                 if self.mixed_sea_state:
                     try:
-                        new_sea_state = random.randint(0,8)
+                        new_sea_state = None
+                        
+                        if self.ss_distribution == 'uniform':
+                            new_sea_state = random.randint(0,8)
+                        
+                        else:
+                            values = list(range(0,9))
+                            w = ( 0.250, 0.200, 0.177, 0.145, 0.100, 0.070, 0.045, 0.007, 0.006 )
+                            new_sea_state = random.choices(values, weights=w, k=1)[0]
+                        
                         payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
                         self.socket.sendall((json.dumps(payload_done) + "\n").encode())
                         # logger.info("Changing sea_state...")
