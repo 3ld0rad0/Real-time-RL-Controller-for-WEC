@@ -4,7 +4,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.server_utilities import start_simulation_train_test, read_config_file, write_config_file
 import logging
-import datetime
 
 # Logger setup
 logging.basicConfig(

@@ -13,7 +13,7 @@ from matplotlib_inline.backend_inline import set_matplotlib_formats
 set_matplotlib_formats('svg')
 
 class Oscillator:
-    def __init__(self, C, K, G_star, regular, t_final, control_mode, d_t, sea_state):
+    def __init__(self, C, K, G_star, regular, t_final, control_mode, d_t, sea_state, seed_spectrum):
 
         self.regular = regular
         #self.spectrum = spectrum
@@ -23,6 +23,7 @@ class Oscillator:
         self.T = self.ss_period[self.sea_state]
         self.Hw = self.ss_wh[self.sea_state]
         self.control_mode = control_mode
+        self.seed_spectrum = seed_spectrum
 
         self.r = 5
         self.S_cs = np.pi*self.r**2
@@ -77,7 +78,7 @@ class Oscillator:
         if not self.regular:
             ######################## IRREGULAR CASE ######################
 
-            self.spectrum = self.init_irregular_parameters(self.sea_state)
+            self.spectrum = self.init_irregular_parameters(self.sea_state, self.seed_spectrum)
             
             if self.spectrum is not None:
                 # Usa lo spettro da PM_Spectrum
@@ -128,8 +129,8 @@ class Oscillator:
 
     
     
-    def init_irregular_parameters(self,nSS):
-        pm = PM_Spectrum()
+    def init_irregular_parameters(self, nSS, seed):
+        pm = PM_Spectrum(seed)
         nω = 50  # Number of frequency components
         ω_min = 2.0 * np.pi / 18.0
         ω_max = 2.0 * np.pi / 4.0
@@ -435,8 +436,9 @@ if __name__ == '__main__':
     sim_time = 60
     control_mode = 'latching'
     d_t = 0.5
+    seed_spectrum = 17
 
-    oscillator = Oscillator(C, K, G_STAR, regular, sim_time, control_mode, d_t, nSS)
+    oscillator = Oscillator(C, K, G_STAR, regular, sim_time, control_mode, d_t, nSS, seed_spectrum)
     # C = oscillator.get_opt_damping_pto()
     # K = oscillator.get_opt_stifness_pto()
     # oscillator.set_fpto(C, K)

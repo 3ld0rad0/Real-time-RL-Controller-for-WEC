@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def warmup(warmup_time, init_values, file_path='./utils/warmup.json', n_sim=100, adaptive_sampling=True):
     period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS = init_values
-    oscillator = Oscillator(C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS)
+    oscillator = Oscillator(C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS, seed_spectrum = 17)
 
     opt_fpto_damp = oscillator.get_opt_damping_pto()
     opt_fpto_stif = oscillator.get_opt_stifness_pto()

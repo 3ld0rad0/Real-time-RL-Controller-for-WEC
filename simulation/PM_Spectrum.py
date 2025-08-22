@@ -10,10 +10,15 @@ with open("./utils/config.json", "r") as f:
 
 class PM_Spectrum:
 
-    Hs_tbl = config['wave_height_table']
-    Te_tbl = config['period_table']
-    # SS number:   0      1      2      3      4      5      6      7      8
-    # po_tbl = ( 0.250, 0.200, 0.177, 0.145, 0.100, 0.070, 0.045, 0.007, 0.006 )
+    def __init__(self, seed):
+        self.seed = seed
+        with open("./utils/config.json", "r") as f:
+            config = json.load(f)
+
+        self.Hs_tbl = config['wave_height_table']
+        self.Te_tbl = config['period_table']
+        # SS number:   0      1      2      3      4      5      6      7      8
+        # po_tbl = ( 0.250, 0.200, 0.177, 0.145, 0.100, 0.070, 0.045, 0.007, 0.006 )
  
     def Amp_Phase( self, nSS, nω, ω_min, ω_max ):
        
@@ -26,7 +31,7 @@ class PM_Spectrum:
         Δω = ω_span / (nω-1)
        
         #generates random numbers with the same seed to maintain comparable results
-        random.seed(17)
+        random.seed(self.seed)
    
         Σ_Δω = 0.0
         Δω_dist = np.zeros( nω )    

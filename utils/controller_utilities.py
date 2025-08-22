@@ -249,6 +249,7 @@ def start_batch_control(s, n_batch, train_mode, model_path, retrain, model_retra
                 
                 if retrain:
                     model = PPO.load(model_retrain_path, env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/retrained/", verbose = 0)
+                    logger.info("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
                 else:
                     model = PPO("MlpPolicy", env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/", ent_coef = ent_coef, verbose=0)
                 

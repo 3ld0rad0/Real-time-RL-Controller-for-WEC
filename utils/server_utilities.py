@@ -44,8 +44,8 @@ def init_simulation(config):
     mixed_sea_state = config['mixed_sea_state']
     
 
-    oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train)
-    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test)
+    oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train, seed_spectrum = 17)
+    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = random.randint(1,50))
 
     sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
     sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name, sim_dir, show_results, mixed_sea_state)
@@ -255,7 +255,7 @@ def write_config_file(data, file = "./utils/config.json"):
 def start_batch_simulation(conn, n_batch, train_mode):
         
         logger.critical(f"Starting {n_batch} simulations in background mode...")
-        total_energy_v = np.array()
+        total_energy_v = []
 
         for i in range (1, n_batch+1):
             energy_abs = start_single_simulation(conn, train_mode)
@@ -267,8 +267,7 @@ def start_batch_simulation(conn, n_batch, train_mode):
             logger.critical(f"\nTerminated Simulation{i}...\n")
         
         mean_total_energy = np.mean(total_energy_v)
-
-        return mean_total_energy
+        logger.info(f"Mean Absorbed energy in batch test simulation is : {round(mean_total_energy,4)} MJ")
 
 
 def start_single_simulation(conn, train_mode):
