@@ -37,7 +37,11 @@ class WECEnv_Linear(gym.Env):
         self.n_ep = 0
         self.reward_v = []
         self.cum_reward = []
-        self.checkpoint_reward = 600
+        self.reward_v.append({
+            "step": 0,
+            "reward": 0
+        })
+        self.checkpoint_reward = 1800
         # valutare se mantenere la possibilià di avg
         self.avg = False
         self.mixed_sea_state = self.init_data['mixed_sea_state']
@@ -63,7 +67,7 @@ class WECEnv_Linear(gym.Env):
         # Azione: [-delta_max, +delta_max]
         self.action_space = gym.spaces.Box(low= -1.0, high=1.0, shape=(2,), dtype=np.float32)
 
-        self.reset()
+        #self.reset()
     
     def get_current_time(self):
         return self.current_time
@@ -183,11 +187,11 @@ class WECEnv_Linear(gym.Env):
         self.current_ep_step += 1
         self.cum_reward.append(self.reward)
 
-        if self.n_step % self.checkpoint_reward == 0:
+        if self.current_ep_step % self.checkpoint_reward == 0:
             
             self.reward_v.append({
                 "step": self.n_step,
-                "reward": np.mean(self.cum_reward)
+                "reward": np.sum(self.cum_reward)
             })
         
 
@@ -217,6 +221,7 @@ class WECEnv_Linear(gym.Env):
                 
                 self.n_ep += 1
                 logger.info(f'Episode {self.n_ep} completed...')
+                #logger.info(f'Current time step : {self.n_step}')
 
         if self.current_time == self.t_final:
             self.save_reward()
@@ -238,7 +243,6 @@ class WECEnv_Linear(gym.Env):
     def reset(self):
         self.terminated = False
         self.truncated = False
-        #self.done = False
         self.state = (0.0, 0.0, 0.0, 0.0)
         self.current_ep_step = 0
         self.observation = np.array(self.state, dtype= np.float32)
@@ -271,7 +275,11 @@ class WECEnv_Latching(gym.Env):
         self.n_ep = 0
         self.reward_v = []
         self.cum_reward = []
-        self.checkpoint_reward = 600
+        self.reward_v.append({
+            "step": 0,
+            "reward": 0
+        })
+        self.checkpoint_reward = 1800
 
         self.mixed_sea_state = self.init_data['mixed_sea_state']
         self.init_G_star = self.init_data['init_G_star']
@@ -318,7 +326,7 @@ class WECEnv_Latching(gym.Env):
         ######################################################################################
 
 
-        self.reset()
+        #self.reset()
 
 
     def get_current_time(self):
@@ -467,11 +475,11 @@ class WECEnv_Latching(gym.Env):
         self.current_ep_step += 1
         self.cum_reward.append(self.reward)
 
-        if self.n_step % self.checkpoint_reward == 0:
+        if self.current_ep_step % self.checkpoint_reward == 0:
             
             self.reward_v.append({
                 "step": self.n_step,
-                "reward": np.mean(self.cum_reward)
+                "reward": np.sum(self.cum_reward)
             })
             self.cum_reward.clear()
 
@@ -503,6 +511,7 @@ class WECEnv_Latching(gym.Env):
                 
                 self.n_ep += 1
                 logger.info(f'Episode {self.n_ep} completed...')
+                #logger.info(f'Current time step : {self.n_step}')
 
 
         

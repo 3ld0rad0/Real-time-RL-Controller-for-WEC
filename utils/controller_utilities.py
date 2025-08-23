@@ -242,7 +242,7 @@ def start_batch_control(s, n_batch, train_mode, model_path, retrain, model_retra
 
             if train_mode:
                 env_train = init_env(config, s, mode = 'train')
-                check_env(env_train)
+                #check_env(env_train)
 
                 EPISODES = config['n_episodes']
                 TIMESTEPS = config['n_steps']
@@ -266,7 +266,7 @@ def start_batch_control(s, n_batch, train_mode, model_path, retrain, model_retra
 
             time.sleep(1)
             env_test = init_env(config, s, mode = 'test')
-            check_env(env_test)
+            #check_env(env_test)
             
             testing_handler(env_test, model, s)
             env_test.close()
