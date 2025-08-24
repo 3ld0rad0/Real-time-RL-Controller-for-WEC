@@ -283,6 +283,7 @@ class WECEnv_Latching(gym.Env):
 
         self.mixed_sea_state = self.init_data['mixed_sea_state']
         self.init_G_star = self.init_data['init_G_star']
+        self.current_G_star = self.init_G_star
         self.G_star_opt = self.init_data['opt_G_star']
 
         self.alpha = self.init_data['alpha']
@@ -424,8 +425,9 @@ class WECEnv_Latching(gym.Env):
         else:
             action = 1.0
         
-        d_G = (self.state[3] * self.G_star_opt) + action
+        d_G = (self.state[4] * self.G_star_opt) + action
         new_G = np.clip(d_G, 1.0, self.G_star_opt)
+        self.current_G_star = new_G
         
         return new_G
 
@@ -437,7 +439,8 @@ class WECEnv_Latching(gym.Env):
         
         if not self.fixed_G_star:
             new_u = self.control_action_u(action[0])
-            new_G_star = self.control_action_G_star(action[1])
+            # solo se il latching è attivo cambia il valore di G*
+            new_G_star = self.control_action_G_star(action[1]) if new_u == 1.0 else self.current_G_star
         
         else:
             # se G* è fissato, l'azione è solo il latching
@@ -469,7 +472,8 @@ class WECEnv_Latching(gym.Env):
         phase_term = self.gamma * np.abs (fe * v)
         #relative_fe_term = 0.0001 * (1/fe)
         
-        self.reward = power_term + phase_term
+        #self.reward = power_term + phase_term
+        self.reward = power_term
 
         self.n_step += 1
         self.current_ep_step += 1
@@ -489,8 +493,9 @@ class WECEnv_Latching(gym.Env):
             self.terminated = self.current_ep_step >= self.max_steps_per_episode
 
             if self.terminated:
+                self.n_ep += 1
                 # se la simulazione prevede valori variabili di periodo e altezza d'onda
-                if self.mixed_sea_state:
+                if (self.n_ep < self.episodes) and self.mixed_sea_state:
                     try:
                         new_sea_state = None
                         
@@ -509,7 +514,7 @@ class WECEnv_Latching(gym.Env):
                     except Exception as e:
                         logger.error("Errore nell'invio del messaggio... ",e)
                 
-                self.n_ep += 1
+                #self.n_ep += 1
                 logger.info(f'Episode {self.n_ep} completed...')
                 #logger.info(f'Current time step : {self.n_step}')
 
@@ -539,6 +544,7 @@ class WECEnv_Latching(gym.Env):
         self.state = (0.0 ,0.0, 0.0, 0.0, self.init_G_star)
         self.state = self.normalize_state(self.state)
         self.current_ep_step = 0
+        self.current_G_star = self.init_G_star
         self.observation = np.array(self.state, dtype= np.float32)
         info = {}
         

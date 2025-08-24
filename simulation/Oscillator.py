@@ -241,7 +241,7 @@ class Oscillator:
         if not self.regular:
             ######################## IRREGULAR CASE ######################
 
-            self.spectrum = self.init_irregular_parameters(self.sea_state)
+            self.spectrum = self.init_irregular_parameters(self.sea_state, self.seed_spectrum)
             
             if self.spectrum is not None:
                 # Usa lo spettro da PM_Spectrum

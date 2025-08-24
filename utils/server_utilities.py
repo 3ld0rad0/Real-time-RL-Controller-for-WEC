@@ -277,14 +277,22 @@ def start_single_simulation(conn, train_mode):
     sim_name = config['sim_name']
         
     if train_mode :
-        logger.info(
-                f"Training Simulation{sim_name} started with these parameters:\n"
-                f"Period       : {period_train} s\n"
-                f"Wave height  : {Hw_train} m\n"
-                f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
-                f"Control mode : {config['control_mode']}\n"
-                f"Control d_t  : {config['d_t']}\n"
-        )               
+        if not config['mixed_sea_state']:
+            logger.info(
+                    f"Training Simulation{sim_name} started with these parameters:\n"
+                    f"Period       : {period_train} s\n"
+                    f"Wave height  : {Hw_train} m\n"
+                    f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+                    f"Control mode : {config['control_mode']}\n"
+                    f"Control d_t  : {config['d_t']}\n"
+            )
+        else:
+            logger.info(                    
+                    f"Training Simulation{sim_name} started with mixed sea state mode:\n"
+                    f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+                    f"Control mode : {config['control_mode']}\n"
+                    f"Control d_t  : {config['d_t']}\n"
+            )               
         simulation_handler(conn, sim_train)
         logger.info("Training Simulation finished...\n")
 
