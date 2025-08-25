@@ -185,7 +185,7 @@ def training_handler(model, socket, timesteps, episodes, save_mode, save_path, s
     model.learn(total_timesteps= timesteps, tb_log_name = f"simulation{sim_name}_PPO_log" ,callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
     if save_mode:
         model.save(save_path)
-        logger.info(f"Model saved after {timesteps} timesteps.")
+        logger.critical(f"Model saved after {timesteps} timesteps.")
     
     connection_handler(socket)
 
@@ -231,13 +231,13 @@ def write_config_file(data, file = "./utils/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 
-def start_batch_control(s, n_batch, train_mode, model_path, retrain, model_retrain_path, ent_coef):
+def start_batch_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
         
         for i in range(n_batch):
             time.sleep(3)
-            logger.info(f'batch{i+1}')
+            logger.info(f'Starting batch simulation {i+1}')
             config = read_config_file()
-            model_path = get_save_path(config) if model_path == '' else model_path
+            model_path = get_save_path(config) if config['path_model'] == '' else config['path_model']
             sim_name = config['sim_name']
 
             if train_mode:

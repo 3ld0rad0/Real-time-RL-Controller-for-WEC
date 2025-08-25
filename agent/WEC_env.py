@@ -469,7 +469,7 @@ class WECEnv_Latching(gym.Env):
         # G_norm = G/G_max
     
         #latching_term = self.beta * (new_u * G_star * v **2)
-        phase_term = self.gamma * np.abs (fe * v)
+        #phase_term = self.gamma * np.abs (fe * v)
         #relative_fe_term = 0.0001 * (1/fe)
         
         #self.reward = power_term + phase_term

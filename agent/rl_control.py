@@ -24,7 +24,7 @@ PORT = config['port']
 TRAIN = config['train_model']
 RE_TRAIN = config['retrain']
 MODEL_RETRAINED_PATH = config['retrain_path_model']
-MODEL_PATH = config['path_model']
+#MODEL_PATH = config['path_model']
 ENT_COEF = config['ent_coef']
 N_BATCH = config['batch_size'] 
 
@@ -35,7 +35,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         logger.info("Connect to server...")
 
-        start_batch_control(s, N_BATCH, TRAIN, MODEL_PATH, RE_TRAIN, MODEL_RETRAINED_PATH, ENT_COEF)
+        start_batch_control(s, N_BATCH, TRAIN, RE_TRAIN, MODEL_RETRAINED_PATH, ENT_COEF)
 
     except json.JSONDecodeError:
         logger.error("Decode error in the response by the server...")

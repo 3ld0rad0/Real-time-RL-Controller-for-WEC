@@ -26,8 +26,6 @@ N_BATCH = config['batch_size']
 sim_name = "1" if N_BATCH > 1 else ""
 #show_results = False if N_BATCH > 1 else True
 config["sim_name"] = sim_name
-# timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-# config["sim_dir"] = f"simulation_{timestamp}"
 #config["show_results"] = show_results
 
 write_config_file(config)

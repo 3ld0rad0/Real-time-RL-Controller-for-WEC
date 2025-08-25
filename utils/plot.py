@@ -14,16 +14,16 @@ def plot_energy(save_mode, results_path, plot_path):
         df = pd.read_csv(results_path)
 
         t = df['time']
-        power = df['energy_abs']
+        energy = df['energy_abs']
 
         # Crea il grafico
         plt.figure(figsize=(10, 5))
-        plt.plot(t / 3600, power * 10 **-6, label=r'Potenza media $10^{-6}$', color='royalblue')
+        plt.plot(t / 3600, energy * 10 **-6, label=r'Potenza media $10^{-6}$', color='royalblue')
 
         # Etichette e titolo
         plt.xlabel('Tempo (h)')
-        plt.ylabel('Potenza media (MJ)')
-        plt.title('Potenza media nel tempo')
+        plt.ylabel('Energia (MJ)')
+        plt.title('Energia media nel tempo')
         plt.grid(True)
         plt.legend()
         plt.tight_layout()

@@ -23,8 +23,8 @@
   "gamma_latching": 0.1,
   "n_episodes": 60.0,
   "ent_coef": 0.01,
-  "batch_size": 5,
-  "sim_name": "6",
+  "batch_size": 10,
+  "sim_name": "11",
   "period_table": [
     9.0,
     9.5,
