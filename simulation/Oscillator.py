@@ -16,7 +16,6 @@ class Oscillator:
     def __init__(self, C, K, G_star, regular, t_final, control_mode, d_t, sea_state, seed_spectrum):
 
         self.regular = regular
-        #self.spectrum = spectrum
         self.ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
         self.ss_wh = [0.8, 1.2, 1.6, 2.0, 2.4, 2.9, 3.4, 4.0, 4.5]
         self.sea_state = sea_state
@@ -111,9 +110,9 @@ class Oscillator:
         ######################## Latching control ########################
         
         if self.control_mode == 'latching':
-            # self.C_star = 0.5
-            # self.C = self.C_star*self.r**(5/2)*self.rho*self.g**(1/2)
-            self.C = 0.3 * self.get_opt_damping_pto()
+            self.C_star = 0.1
+            self.C = self.C_star*self.r**(5/2)*self.rho*self.g**(1/2)
+            #self.C = 0.3 * self.get_opt_damping_pto()
             self.K = 0
 
         #self.opt_G_star = 10.0
@@ -131,7 +130,7 @@ class Oscillator:
     
     def init_irregular_parameters(self, nSS, seed):
         pm = PM_Spectrum(seed)
-        nω = 50  # Number of frequency components
+        nω = 256  # Number of frequency components
         ω_min = 2.0 * np.pi / 18.0
         ω_max = 2.0 * np.pi / 4.0
         Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
@@ -226,8 +225,6 @@ class Oscillator:
     ## Nel caso in cui siano previsti valori variabili nella simulazione ##
     def update_sea_state(self, sea_state):
         self.set_sea_state(sea_state)
-        # self.set_period(period)
-        # self.set_wave_height(Hw)
         self.wave_velocity = self.g * self.T / (2 * np.pi)
         self.wave_l = self.wave_velocity * self.T
         self.k = 2*np.pi/self.wave_l
@@ -388,6 +385,12 @@ class Oscillator:
     def get_control_mode(self):
         return self.control_mode
     
+    def get_damping_c_star(self, C_star):
+        return C_star*self.r**(5/2)*self.rho*self.g**(1/2)
+
+    def get_table_period(self):
+        return self.ss_period
+
     def plot(self):
         # Plot the results
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 6))
@@ -419,24 +422,15 @@ class Oscillator:
 
 if __name__ == '__main__':
     
-    nSS = 0
-    # pm = PM_Spectrum()
-    # nω = 512
-    # ω_min = 2.0*np.pi/18.0
-    # ω_max = 2.0*np.pi/4.0
-    # Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-    # spectral_input = (A_ω, ω, φ)
-    #spectral_input = None
-    # period = 9
-    # Hw = 0.8
+    nSS = 5
     C = 0
     K = 0
     G_STAR = 5
-    regular = 1
+    regular = 0
     sim_time = 60
     control_mode = 'latching'
     d_t = 0.5
-    seed_spectrum = 17
+    seed_spectrum = 123
 
     oscillator = Oscillator(C, K, G_STAR, regular, sim_time, control_mode, d_t, nSS, seed_spectrum)
     # C = oscillator.get_opt_damping_pto()

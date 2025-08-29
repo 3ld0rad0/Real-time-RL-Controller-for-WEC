@@ -45,7 +45,7 @@ def init_simulation(config):
     
 
     oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train, seed_spectrum = 17)
-    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = random.randint(1,50))
+    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = 123)
 
     sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
     sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name, sim_dir, show_results, mixed_sea_state)
@@ -185,10 +185,6 @@ def send_close_message(conn, energy_absorbed):
     try:
         close_message = json.dumps({"cmd": "close", "energy_abs": energy_absorbed}).encode()
         conn.sendall(close_message)
-        #print("Close simulation message send to client....")
-                
-        #response = socket.recv(1024).decode().strip()
-        #print("Server close-ack:", response)
         return True
             
     except Exception as e:
@@ -262,7 +258,7 @@ def start_batch_simulation(conn, n_batch, train_mode):
             total_energy_v.append(energy_abs)
             
             config = read_config_file()
-            config["sim_name"] = str(i+1)
+            config["sim_name"] = str(i+1) if i < n_batch else ""
             write_config_file(config)
             logger.critical(f"\nTerminated Simulation{i}...\n")
         

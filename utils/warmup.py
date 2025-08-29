@@ -48,7 +48,8 @@ def warmup(warmup_time, init_values, file_path='./utils/warmup.json', n_sim=100,
             random_ptos_v = np.random.uniform(opt_fpto_stif, -opt_fpto_stif, size=n_sim)
     else:
         # Fisso per onde irregolari
-        random_ptod_v = [oscillator.get_opt_damping_pto() * 0.2,oscillator.get_opt_damping_pto() * 0.3, oscillator.get_opt_damping_pto() * 0.4, oscillator.get_opt_damping_pto() * 0.5]
+        #random_ptod_v = [oscillator.get_opt_damping_pto() * 0.2,oscillator.get_opt_damping_pto() * 0.3, oscillator.get_opt_damping_pto() * 0.4, oscillator.get_opt_damping_pto() * 0.5]
+        random_ptod_v = [oscillator.get_damping_c_star(0.1), oscillator.get_damping_c_star(0.2), oscillator.get_damping_c_star(0.3), oscillator.get_damping_c_star(0.4), oscillator.get_damping_c_star(0.5)]
         random_ptos_v = [0.0, 0.0, 0.0, 0.0]
 
     v_arr = []

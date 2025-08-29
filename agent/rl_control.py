@@ -7,7 +7,7 @@ import logging
 
 # Logger setup
 logging.basicConfig(
-    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
+    level=logging.CRITICAL,  # Cambia a DEBUG se vuoi più dettagli
     #format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()
@@ -24,7 +24,6 @@ PORT = config['port']
 TRAIN = config['train_model']
 RE_TRAIN = config['retrain']
 MODEL_RETRAINED_PATH = config['retrain_path_model']
-#MODEL_PATH = config['path_model']
 ENT_COEF = config['ent_coef']
 N_BATCH = config['batch_size'] 
 
@@ -39,10 +38,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     except json.JSONDecodeError:
         logger.error("Decode error in the response by the server...")
-        #break
+
     except Exception as e:
         logger.error(e)
         logger.error("Connection close by the server...")
-        #break
 
 logger.info("Close Client.")

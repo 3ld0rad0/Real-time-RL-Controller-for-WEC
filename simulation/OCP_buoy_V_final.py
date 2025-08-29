@@ -1,5 +1,7 @@
 # %%
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import matplotlib.pyplot as mpl
 import numpy as np
 from scipy.interpolate import interp1d
@@ -13,6 +15,7 @@ from scipy.integrate import solve_ivp
 import subprocess
 from IPython.display import Markdown, display, Latex
 import pathlib, subprocess
+from simulation.PM_Spectrum import PM_Spectrum
 
 
 def cmdcall( cmd ):
@@ -438,7 +441,12 @@ class Problem1( ODE_System ):
         #epsilon = 1e-3
 
         module = 'numpy'
-
+        
+        if not params['regular']:
+            weights = params['amps']**2
+            self.Gamma = np.average(self.Gamma, weights= weights)
+            self.omega = np.average(self.omega, weights= weights)
+        
         # Hamiltonian
         self.ℋ = self.C * x[1]**2 + λ[0]*x[1] + λ[1]*((self.Gamma*self.Aw*sp.cos(self.omega*self.t_sym) - (self.B_omega+self.C+self.G*u[0])*x[1] - self.ktot*x[0])/self.mtot)
         self.fℋ = sp.lambdify((self.t_sym,x,u,λ), self.ℋ, modules=module)
@@ -600,24 +608,29 @@ def calculate_energy(fsys, C, RMS_nGL=5):
     return energy
 
 
-def Wave_data(T, Aw,tf,a,G_star,C_star):
-    # Useful parameters
-    g = 9.81  # Acceleration due to gravity [m/s^2]
-    rho = 1025    # Water density [kg/m^3]
+def init_irregular_parameters(nSS, seed):
+        pm = PM_Spectrum(seed)
+        nω = 256  # Number of frequency components
+        ω_min = 2.0 * np.pi / 18.0
+        ω_max = 2.0 * np.pi / 4.0
+        Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
+        spectral_input = (A_ω, ω, φ)
+        return spectral_input
 
-    wave_velocity = g * T / (2 * np.pi)   # Wave velocity [m/s]
-    wave_l = wave_velocity * T            # Wave length [m]
-    k = 2*np.pi/wave_l                    # Wave number [m^-1]    
-    omega = 2*np.pi/T                     # Wave frequency [rad/s]
 
-    T_final = tf                     # Final Time [s]
-    t_space=np.linspace(0,T_final,1000)
-    wave_t=Aw*np.cos(omega*t_space)
-
+def Wave_data(T, Aw, tf, a, G_star, C_star, regular):
+    # ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
+    # ss_wh = [0.8, 1.2, 1.6, 2.0, 2.4, 2.9, 3.4, 4.0, 4.5]
+    # T = ss_period[nSS]
+    # Aw = ss_wh[nSS]
     S_cs = np.pi*a**2                     # Buoy cross sectional area [m^2]
     Volume = 2/3*np.pi*a**3               # Buoy volume [m^3]
-
+    g = 9.81                              # Acceleration due to gravity [m/s^2]
+    rho = 1025                            # Water density [kg/m^3]
     m =  rho*Volume                       # Buoy mass [kg] = displaced water mass [kg], so that buoy density = water density
+    wave_velocity = g * T / (2 * np.pi)   # Wave velocity [m/s]    
+    wave_l = wave_velocity * T            # Wave length [m]
+    k = 2*np.pi/wave_l                    # Wave number [m^-1]  
     ka = k*a                              # Wave number * buoy radius [-]
 
     # Matrix containing the table data
@@ -651,43 +664,53 @@ def Wave_data(T, Aw,tf,a,G_star,C_star):
         [10.0, 0.4771, 0.0012],
         [np.inf, 0.5, 0]
     ])
-
-    # Interpolation functions for A* and B*
+ 
+     # Interpolation functions for A* and B*
     A_star_interp = interp1d(ka_table[:, 0], ka_table[:, 1], kind='linear', fill_value="extrapolate")
     B_star_interp = interp1d(ka_table[:, 0], ka_table[:, 2], kind='linear', fill_value="extrapolate")
-
     A_star = ka_table[-1, 1]          # Dimensionless added mass [-] at infinite frequency
     B_star = B_star_interp(ka)        # Dimensionless damping coefficient [-]
+    A = 2/3*np.pi*a**3*rho*A_star            # Added mass [kg]    
 
-    A = 2/3*np.pi*a**3*rho*A_star            # Added mass [kg]
-    B = 2/3*np.pi*a**3*rho*omega*B_star      # Damping coefficient [kg/s]
+    if not regular:
+        spectrum = init_irregular_parameters(nSS, seed= 123)
 
-    # PTO Data
-    C=0
-    use_resonance = False  # Set this to False to use non-resonance conditions
+        if spectrum is not None:
+            N_freq = len(spectrum[0])
+            amps = spectrum[0]         # A_ω
+            omega = spectrum[1]        # ω
+            phases = spectrum[2]       # φ
+            B_array = B_star * (2/3*np.pi*a**3*rho*omega)
+            # Usa la media pesata per le ampiezze
+            weights = amps**2
+            B = np.average(B_array, weights=weights)
+            Gamma = np.sqrt((2*rho*g**3*B)/(omega**3))
 
-    if use_resonance:
-        C = B                             # PTO damping coefficient [kg/s]
-        K = omega**2*(m+A)-rho*g*S_cs     # PTO stiffness coefficient [N/m]
+
     else:
-        C = C_star*a**(5/2)*rho*g**(1/2)  # PTO damping coefficient [kg/s]
-        K = 600                           # PTO stiffness coefficient [N/m]
+        N_freq = 0
+        amps = 0
+        phases = 0
+        omega = 2*np.pi/T
+        B = B_star * (2/3*np.pi*a**3*rho*omega)
+        Gamma = np.sqrt((2*rho*g**3*B)/(omega**3))
+
     
-    prova_edo= 1
+    C = C_star*a**(5/2)*rho*g**(1/2)
+    K = 0
 
-    if prova_edo:
-        C=0.3*B
-        K=0
-
-    # Excitation force
-
-    Gamma = np.sqrt((2*rho*g**3*B)/(omega**3)) # Excitation force amplitude per unit incident wave amplitude [N/m]
+    #T_final = tf
+    #t_space=np.linspace(0,T_final,1000)
+    #wave_t=Aw*np.cos(omega*t_space)
 
     
 
     # Definition of physical parameters for the problem (realistic example)
     params = {
+        'n_freq': N_freq,
         'Gamma': Gamma,
+        'amps': amps,
+        'phases': phases,
         'Aw': Aw,
         'omega': omega,
         'mtot': m + A,
@@ -698,19 +721,47 @@ def Wave_data(T, Aw,tf,a,G_star,C_star):
         'T': T,
         'G_star': G_star,
         'K': K,
+        'regular': regular
     }
 
     return params
 
 
 class OscillatorSystem:
-    def __init__(self, params, tf):
+    def __init__(self, params, tf, regular):
         self.params = params
         self.tf = tf
+        self.regular = regular
+
+    def fe_t_irregular(self, t):
+        """Calcola la forza di eccitazione per onde irregolari"""
+        # Somma le componenti armoniche
+        force = np.sum([
+            self.params['Gamma'][i] * self.params['amps'][i] * np.cos(self.params['omega'][i] * t + self.params['phases'][i])
+            for i in range(self.params['n_freq'])
+        ])
+        
+        return force
+    
+
+    def wave_elevation_irregular(self, t):
+        """Calcola l'elevazione dell'onda per onde irregolari"""
+        return np.sum([
+            self.params['amps'][i] * np.cos(self.params['omega'][i] * t + self.params['phases'][i])
+            for i in range(self.params['n_freq'])
+        ])
+    
 
     def system(self, t, X):
         x1, x2 = X
-        fe_t = self.params['Gamma'] * self.params['Aw'] * np.cos(self.params['omega'] * t)
+        
+        if self.regular:
+            fe_t = self.params['Gamma'] * self.params['Aw'] * np.cos(self.params['omega'] * t)
+        
+        else:
+            fe_t = self.fe_t_irregular(t)
+
+        
         dx1_dt = x2
         dx2_dt = (1 / self.params['mtot']) * (
             -(self.params['B_omega'] + self.params['C']) * x2
@@ -730,27 +781,40 @@ class OscillatorSystem:
         self.x = sol.y[0]
         self.v = sol.y[1]
 
-        return self.t, self.x, self.v
+        if self.regular:
+            self.fe_t = self.params['Gamma'] * self.params['Aw'] * np.cos(self.params['omega'] * self.t)
+            self.wave_t = self.params['Aw']* np.cos(self.params['omega'] * self.t)
+
+        else:
+            self.fe_t = np.array([self.fe_t_irregular(ti) for ti in self.t])
+            self.wave_t = np.array([self.wave_elevation_irregular(ti) for ti in self.t])
+
+        return self.t, self.x, self.v, self.fe_t
 
 
 
-molt=5
+molt=1
 tf=60*molt
-tf = 100
+
 x0=[0.0, 0.0]
 
-# Wave data
-T = 9                                 # Wave period [s]
-Aw = 0.8                                # Wave height [m]
 
 # Buoy data
 a = 5                                 # Hemisperical buoy radius [m]
 
-C_star= 0.5
+C_star= 0.1
 G_star = 5
 
-params = Wave_data(T,Aw,tf,a,G_star,C_star)
+nSS = 0
+# Wave data
+ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
+ss_wh = [0.8, 1.2, 1.6, 2.0, 2.4, 2.9, 3.4, 4.0, 4.5]
 
+T = ss_period[nSS]                                  # Wave period [s]
+Aw = ss_wh[nSS]                                     # Wave height [m]
+regular = False
+
+params = Wave_data(T, Aw, tf, a, G_star, C_star, regular)
 
 # Display the parameters of the system in a structured format
 print("System Parameters:")
@@ -765,8 +829,8 @@ omega = params['omega']  # Wave frequency
 C = params['C']  # PTO damping coefficient
 K = params['K']  # PTO stiffness coefficient
 
-oscillator = OscillatorSystem(params, tf)
-t_array, x_array, v_array = oscillator.solve()
+oscillator = OscillatorSystem(params, tf, regular)
+t_array, x_array, v_array, fet_array = oscillator.solve()
 
 
 nt=300*molt
@@ -796,7 +860,7 @@ print(f"Absorbed energy: {E_abs*10**(-6):.2f} MJ")
 # %%
 
 t_space = np.linspace(0, tf, 1000)
-fe_t = Gamma*Aw*np.cos(omega*t_space) 
+#fe_t = Gamma*Aw*np.cos(omega*t_space) 
 
 ft1, fx1, ft1p, fx1p = fsys.dump( 'x', var=0, npnts=plot_pnts )
 ft2, fy1, ft2p, fy1p = fsys.dump( 'x', var=1, npnts=plot_pnts )
@@ -833,7 +897,7 @@ ax1.grid()
 # Plot v(t)
 ax2.plot(ft2, fy1, '-', label=r'Buoy velocity $\dot{\xi}(t)$ with control', lw=2, color='blue')
 ax2.plot(t_array, v_array, '--',label=r'Buoy velocity $\dot{\xi}(t)$ with no control', lw=2,color='red')
-ax2.plot(t_space, fe_t*1e-6, '-', label=r'Excitation force $10^{-6} \times f_{e}(T)$', lw=2, color='#17becf')
+ax2.plot(t_space, fet_array*1e-6, '-', label=r'Excitation force $10^{-6} \times f_{e}(T)$', lw=2, color='#17becf')
 ax2.set_ylabel("Velocity [m/s] vs\n Wave force [MN]")
 ax2.set_xlabel('$t [s]$')
 ax2.set_ylim(-3, 3)
@@ -851,7 +915,7 @@ file_name_dynamics = 'OCP_Buoy_Dynamics_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_
     params['G_star'], params['Aw'], params['T'], int(params['C']), params['K']
 )
 fig.tight_layout()
-fig.savefig(file_name_dynamics)
+#fig.savefig(file_name_dynamics)
 
 # Create a single figure with 2x2 subplots for ax3, ax4, ax5, and ax6
 fig_combined, axs = mpl.subplots(nrows=2, ncols=2, figsize=(12, 10))
@@ -921,6 +985,6 @@ file_name_combined = 'OCP_buoy_combined_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_
     params['G_star'], params['Aw'], params['T'], int(params['C']), params['K']
 )
 fig_combined.tight_layout()
-fig_combined.savefig(file_name_combined)
+#fig_combined.savefig(file_name_combined)
 
 mpl.show()

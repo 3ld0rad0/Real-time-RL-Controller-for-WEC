@@ -444,8 +444,8 @@ class Problem1( ODE_System ):
         module = 'numpy'
 
         # Hamiltonian
-        self.Gamma = np.mean(self.Gamma)
-        self.omega = np.mean(self.omega)
+        #self.Gamma = np.mean(self.Gamma)
+        #self.omega = np.mean(self.omega)
         self.ℋ = self.C * x[1]**2 + λ[0]*x[1] + λ[1]*((self.Gamma*self.Aw*sp.cos(self.omega*self.t_sym) - (self.B_omega+self.C+self.G*u[0])*x[1] - self.ktot*x[0])/self.mtot)
         self.fℋ = sp.lambdify((self.t_sym,x,u,λ), self.ℋ, modules=module)
 
@@ -740,9 +740,8 @@ def calculate_energy(fsys, C, RMS_nGL=5):
 
 
 
-molt=5
+molt=1
 tf=60*molt
-tf = 100
 
 x0=[0.0, 0.0]
 
@@ -776,17 +775,11 @@ G_star = 5
 
 #######################################################################
 nSS = 0
-pm = PM_Spectrum()
-nω = 50  # Number of frequency components
-ω_min = 2.0 * np.pi / 18.0
-ω_max = 2.0 * np.pi / 4.0
-Te, Hs, A_ω, ω, φ = pm.Amp_Phase(nSS, nω, ω_min, ω_max)
-spectral_input = (A_ω, ω, φ)
-
-regular = False
+seed_spectrum = 123
+regular = True
 C = 0
 K = 0
-oscillator = Oscillator(T, Aw, C, K, G_star, regular, tf, 'latching', 0.5, spectral_input)
+oscillator = Oscillator(C, K, G_star, regular, tf, 'linear', 0.5, nSS, seed_spectrum)
 #oscillator = OscillatorSystem(params, tf)
 
 t_array = []
@@ -804,11 +797,15 @@ while current_time <= tf:
     current_time += 0.5
     #print(current_time)
 
+t_array = np.asarray(t_array).flatten().tolist()
+v_array = np.asarray(v_array).flatten().tolist()
+x_array = np.asarray(x_array).flatten().tolist()
+fet_array = np.asarray(fet_array).flatten().tolist()
 
 params = {
-    'Gamma': oscillator.get_Lambda(),
+    'Gamma': np.mean(oscillator.get_Lambda()),
     'Aw': oscillator.get_wave_height(),
-    'omega': oscillator.get_omega(),
+    'omega': np.mean(oscillator.get_omega()),
     'mtot': oscillator.get_added_mass(),
     'B_omega': oscillator.get_opt_damping_pto(),
     'C': oscillator.get_C(),
@@ -911,7 +908,7 @@ file_name_dynamics = 'OCP_Buoy_Dynamics_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_
     params['G_star'], params['Aw'], params['T'], int(params['C']), params['K']
 )
 fig.tight_layout()
-fig.savefig(file_name_dynamics)
+#fig.savefig(file_name_dynamics)
 
 # Create a single figure with 2x2 subplots for ax3, ax4, ax5, and ax6
 fig_combined, axs = mpl.subplots(nrows=2, ncols=2, figsize=(12, 10))
@@ -981,6 +978,6 @@ file_name_combined = 'OCP_buoy_combined_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_
     params['G_star'], params['Aw'], params['T'], int(params['C']), params['K']
 )
 fig_combined.tight_layout()
-fig_combined.savefig(file_name_combined)
+#fig_combined.savefig(file_name_combined)
 
 mpl.show()

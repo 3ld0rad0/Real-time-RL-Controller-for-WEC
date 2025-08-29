@@ -33,17 +33,19 @@ class Simulation:
         # position - speed - f_pto_damp - f_pto_stif - u_latching - G_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         self.current_t = 0.0
+        self.current_ss = 0
 
         self.wave_mode = 'regular' if self.oscillator.get_wmode() else 'irregular'
         
 
         self.period = self.oscillator.get_period()
+        self.observation_period = 60.0
         self.eval_len = self.oscillator.get_eval_len()
         # numero di elementi del vettore buff_hist che rappresentano un periodo d'onda
-        self.buff_len = self.period * (1 / self.d_t)
+        self.buff_len = self.observation_period * (1 / self.d_t)
         
         # numero di periodi da osservare
-        self.attention_win = 10
+        self.attention_win = 5
 
         self.attention_len = self.attention_win * int(self.buff_len)
 
@@ -55,7 +57,7 @@ class Simulation:
         # Contatore che tiene traccia di quanti salvataggi sono stati effettuati
         self.cycle_counter = 0
 
-        self.max_cycle = self.sim_time // (self.period * self.attention_win)
+        self.max_cycle = self.sim_time // (self.observation_period * self.attention_win)
 
         self.supp_buff = []
         self.energy_buff = []
@@ -176,9 +178,9 @@ class Simulation:
         data_to_write = []
         
         for entry in buff:
-            t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_array = entry
+            t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_arr, ss_arr = entry
             
-            for t, x, v, fet, wave_t, damp, stif, pow_inst, u_latch, g_star in zip(t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_array):
+            for t, x, v, fet, wave_t, damp, stif, pow_inst, u_latch, g_star, ss in zip(t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_arr, ss_arr):
                 data_to_write.append({
                     "time": t,
                     "position": x,
@@ -189,7 +191,8 @@ class Simulation:
                     "stifness_fpto": stif,
                     "u_latching": u_latch,
                     "G_star": g_star,
-                    "power_inst": pow_inst
+                    "power_inst": pow_inst,
+                    "sea_state": ss
                 })
         
         mean_energy = []
@@ -198,14 +201,12 @@ class Simulation:
         #########################################
         if r > 0:
             energy_abs = [x[1] for x in self.energy_buff]
-            #energy_abs = np.sum(energy_abs) / (r) ## energia catturata in una finestra di osservazione [W]
             energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
             eta = energy_abs / (energy_wave * (r / self.period))
 
         else:
             energy_abs = [x[1] for x in self.energy_buff]
-            #energy_abs = np.sum(energy_abs) / (self.period * self.attention_win) ## energia catturata in una finestra di osservazione [W]
             energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
             eta = energy_abs / (energy_wave * self.attention_win)
@@ -213,7 +214,8 @@ class Simulation:
         mean_energy.append({
             "time": self.current_t,
             "energy_abs":energy_abs,## Energy absorbed
-            "eta" : eta ## Capture Width Ratio
+            "eta" : eta, ## Capture Width Ratio
+            "period_sea_state": self.current_ss
         })
         ##########################################
         self.energy_buff.clear()
@@ -232,9 +234,7 @@ class Simulation:
         new_C = control[0]
         new_K = control[1]
         if new_C and new_K is not None:
-            #self.oscillator.set_control(new_C, new_K)
             self.oscillator.set_fpto(new_C, new_K)
-            #print(f"Set nuovo valore di C: {new_C}")
 
 
     def send_control_latching(self, control):
@@ -281,7 +281,6 @@ class Simulation:
             plot_test(df_plot_last, self.save_mode, self.plot_path)
             
             self.calculate_total_energy_absorbed()
-            #logger.info(f'\nTotal energy absorbed: {round(tot_energy_absorbed,3)} MJ\n')
 
         if self.show_results:
             plt.show()
@@ -314,17 +313,12 @@ class Simulation:
         
     def update_sea_state(self, sea_state):
         self.oscillator.update_sea_state(sea_state)
+        # aggiorna il sea state e il periodo
+        self.current_ss = sea_state
+        table_period = self.oscillator.get_table_period()
+        self.period = table_period[self.current_ss]
 
 
-    def average_values(self):
-        bh = np.array(self.buff_hist)
-        self.h_avg_p = np.mean(bh[:,1])
-        self.h_avg_v = np.mean(bh[:,2])
-        self.h_max_p = np.max(np.abs(bh[:,1]))
-        self.h_max_v = np.max(np.abs(bh[:,2]))
-        self.h_avg_damp = np.mean(bh[:,5])
-        self.h_avg_stif = np.mean(bh[:,6])
-        self.h_pow_avg = (self.h_avg_v**2) * self.h_avg_damp
 
     
     def step(self):
@@ -347,6 +341,9 @@ class Simulation:
 
         d_fpto = self.oscillator.get_fpto_damping()
         s_fpto = self.oscillator.get_fpto_stifness()
+
+        sea_state = self.oscillator.get_sea_state()
+        sea_state_array = np.full(shape = self.eval_len, fill_value= sea_state)
 
         
         damping_fpto_array = np.full(shape = self.eval_len, fill_value= self.oscillator.get_fpto_damping())
@@ -378,22 +375,21 @@ class Simulation:
         self.current_state = (x[-1], v[-1], d_fpto, s_fpto, u_latching, g_star)
         self.current_t = round(t[-1], 2)
 
-        self.buff_hist.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array))
+        self.buff_hist.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array, sea_state_array))
         
         if self.cycle_counter >= self.max_cycle:
-            self.supp_buff.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array))
+            self.supp_buff.append((t, x, v, fet, wave_t, damping_fpto_array, stifness_fpto_array, pow_inst, u_latching_array, g_star_array, sea_state_array))
             
             if self.current_t >= self.sim_time:
                 r = self.sim_time % (self.period * self.attention_win)
                 self.write_buffer_to_file(self.supp_buff, r)
 
         
-        elif (self.current_t  % (self.period * self.attention_win)) == 0:
+        elif (self.current_t  % (self.observation_period * self.attention_win)) == 0:
             r = 0
             self.write_buffer_to_file(self.buff_hist, r)
             self.cycle_counter += 1
 
-        self.average_values()
 
         state = {
             'time': round(t[-1], 1),
@@ -406,14 +402,7 @@ class Simulation:
             'G_star': g_star,
             'period': period,
             'wave_height': Hw,
-            'w_mode': w_mode,
-            'H_avg_position': self.h_avg_p,
-            'H_max_position': self.h_max_p,
-            'H_avg_velocity': self.h_avg_v,
-            'H_max_velocity': self.h_max_v,
-            'H_avg_fpto_damp': self.h_avg_damp,
-            'H_avg_fpto_stif': self.h_avg_stif,
-            'H_avg_pow_avg' : self.h_pow_avg
+            'w_mode': w_mode
         }
         
         return state

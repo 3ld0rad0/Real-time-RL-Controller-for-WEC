@@ -37,13 +37,13 @@ class WECEnv_Linear(gym.Env):
         self.n_ep = 0
         self.reward_v = []
         self.cum_reward = []
+        self.hist_reward = []
         self.reward_v.append({
             "step": 0,
-            "reward": 0
+            "reward": 0,
+            "reward_mean": 0
         })
         self.checkpoint_reward = 1800
-        # valutare se mantenere la possibilià di avg
-        self.avg = False
         self.mixed_sea_state = self.init_data['mixed_sea_state']
 
 
@@ -117,14 +117,10 @@ class WECEnv_Linear(gym.Env):
         if self.curr_period != curr_period or self.curr_Hw != curr_hw :
             self.update_sea_state((curr_period, curr_hw, w_mode))
 
-        if self.avg:
-            self.state = (state_raw['H_max_position'], state_raw['H_avg_velocity'], state_raw['H_avg_fpto_damp'], state_raw['H_avg_fpto_stif'])
-        
-        else :
-            self.state = (state_raw['position'], state_raw['velocity'], state_raw['f_pto_damp'], state_raw['f_pto_stif'])
+
+        self.state = (state_raw['position'], state_raw['velocity'], state_raw['f_pto_damp'], state_raw['f_pto_stif'])
         
         self.current_time = state_raw['time']
-        #print(f"Current State: {self.state}")
 
     def get_current_state(self):
         return self.state
@@ -170,17 +166,10 @@ class WECEnv_Linear(gym.Env):
 
         x, v, C, K = self.get_current_state()
 
-        # x = self.state[0]
-        # v = self.state[1]
-        
-        # C = self.state[2]
-        # K = self.state[3]
-
         f_pto = -(C * v) - (K * x)
         #power = np.abs((v**2) * f_pto)  # Potenza inst. estratta
         power = np.abs(v * f_pto)
         penalty_x = 0.01 * x**2  # Penalità per spostamenti eccessivi
-        #penalty_x = 0.0
         self.reward = power - penalty_x
 
         self.n_step += 1
@@ -188,12 +177,14 @@ class WECEnv_Linear(gym.Env):
         self.cum_reward.append(self.reward)
 
         if self.current_ep_step % self.checkpoint_reward == 0:
-            
+            episode_reward = np.sum(self.cum_reward)
+            self.hist_reward.append(episode_reward)
             self.reward_v.append({
                 "step": self.n_step,
-                "reward": np.sum(self.cum_reward)
+                "reward": episode_reward,
+                "reward_mean" : np.mean(self.hist_reward[-50:])
             })
-        
+            self.cum_reward.clear()
 
         if self.sim_mode == 'train':
             # self.done = self.current_ep_step >= self.max_steps_per_episode
@@ -275,9 +266,11 @@ class WECEnv_Latching(gym.Env):
         self.n_ep = 0
         self.reward_v = []
         self.cum_reward = []
+        self.hist_reward = []
         self.reward_v.append({
             "step": 0,
-            "reward": 0
+            "reward": 0,
+            "reward_mean": 0
         })
         self.checkpoint_reward = 1800
 
@@ -287,7 +280,7 @@ class WECEnv_Latching(gym.Env):
         self.G_star_opt = self.init_data['opt_G_star']
 
         self.alpha = self.init_data['alpha']
-        self.beta = self.init_data['beta']
+        #self.beta = self.init_data['beta']
         self.gamma = self.init_data['gamma']
 
         self.episodes = self.init_data['n_episodes']
@@ -296,7 +289,6 @@ class WECEnv_Latching(gym.Env):
         self.sim_mode = sim_mode
         self.ss_distribution = 'uniform' ## default use a vector of fixed probs. // uniform use uniform probs. to picks sea states
 
-        #self.support_vector = deque(maxlen = int(2 * self.curr_period))
 
 
         ############################# OBSERVATION SPACE ######################################
@@ -306,12 +298,6 @@ class WECEnv_Latching(gym.Env):
             high=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
             dtype=np.float32
         )
-
-        # self.observation_space = gym.spaces.Box(
-        #     low=np.array([-self.x_obs, -self.v_obs, -self.fet_obs, 0.0, 0.0], dtype=np.float32),
-        #     high=np.array([self.x_obs, self.v_obs, self.fet_obs, self.C_opt, self.G_star_opt], dtype=np.float32),
-        #     dtype=np.float32
-        # )
         ######################################################################################
 
         ############################# ACTION SPACE ###########################################
@@ -394,7 +380,6 @@ class WECEnv_Latching(gym.Env):
 
 
     def send_action(self, control):
-        #print('Send Action')
         control_u = str(control[0])
         control_G_star = str(control[1])
 
@@ -447,9 +432,9 @@ class WECEnv_Latching(gym.Env):
             new_u = self.control_action_u(action)
             new_G_star = self.init_G_star
         
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.send_action((new_u, new_G_star))
-        time.sleep(0.001)
+        time.sleep(0.01)
         self.get_observation()
 
         
@@ -461,16 +446,8 @@ class WECEnv_Latching(gym.Env):
 
         f_pto = -(C * v)
         power_term =  self.alpha * np.abs(v * f_pto)
-        
-        
-        # m = 402517.0
-        # G = G_star * m
-        # G_max = 10.0 * m
-        # G_norm = G/G_max
-    
         #latching_term = self.beta * (new_u * G_star * v **2)
         #phase_term = self.gamma * np.abs (fe * v)
-        #relative_fe_term = 0.0001 * (1/fe)
         
         #self.reward = power_term + phase_term
         self.reward = power_term
@@ -480,16 +457,16 @@ class WECEnv_Latching(gym.Env):
         self.cum_reward.append(self.reward)
 
         if self.current_ep_step % self.checkpoint_reward == 0:
-            
+            episode_reward = np.sum(self.cum_reward)
+            self.hist_reward.append(episode_reward)
             self.reward_v.append({
                 "step": self.n_step,
-                "reward": np.sum(self.cum_reward)
+                "reward": episode_reward,
+                "reward_mean" : np.mean(self.hist_reward[-50:])
             })
             self.cum_reward.clear()
 
         if self.sim_mode == 'train':
-            #done = (self.current_time % (self.t_final//self.episodes)) == 0
-            #self.done = self.current_ep_step >= self.max_steps_per_episode
             self.terminated = self.current_ep_step >= self.max_steps_per_episode
 
             if self.terminated:
@@ -522,7 +499,6 @@ class WECEnv_Latching(gym.Env):
         
         if self.current_time == self.t_final:
             self.save_reward()
-            #self.done = True
             self.truncated = True
 
         self.observation = np.array(self.state, dtype=np.float32)
@@ -538,7 +514,6 @@ class WECEnv_Latching(gym.Env):
 
     
     def reset(self, seed = None):
-        #self.done = False
         self.terminated = False
         self.truncated = False
         self.state = (0.0 ,0.0, 0.0, 0.0, self.init_G_star)

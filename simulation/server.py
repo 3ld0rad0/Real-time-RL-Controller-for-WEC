@@ -7,7 +7,7 @@ import logging
 
 # Logger setup
 logging.basicConfig(
-    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
+    level=logging.CRITICAL,  # Cambia a DEBUG se vuoi più dettagli
     #format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()

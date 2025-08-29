@@ -18,7 +18,6 @@ class StopTrainingOnEpisodeCount(BaseCallback):
 
     def _on_step(self) -> bool:
         # SB3 salva info episodio qui
-        #print(f"Timestep: {self.num_timesteps}")
         if self.locals.get("dones") is not None:
             self.episode_counter += sum(self.locals["dones"])
         if self.episode_counter >= self.max_episodes:
@@ -75,7 +74,7 @@ def init_env(config, socket, mode):
     opt_G_star = config['opt_G_star']
     init_G_star = config['init_G_star']
     alpha = config['alpha_latching']
-    beta = config['beta_latching']
+    #beta = config['beta_latching']
     gamma = config['gamma_latching']
     str_sim = str(config['sim_time_train']) if mode == 'train' else str(config['sim_time_test'])
     sim_dir = config['results_dir']
@@ -129,7 +128,7 @@ def init_env(config, socket, mode):
             "init_G_star": init_G_star,
             "mixed_sea_state" : mixed_sea_state,
             "alpha": alpha,
-            "beta": beta,
+            #"beta": beta,
             "gamma": gamma
         }
 
@@ -150,7 +149,6 @@ def wait_close_message(socket):
         #energy_absorbed = request.get("energy_abs")
 
         if cmd == "close":
-            #print("Close message receive by the client...")
             time.sleep(1)
             return True
         else:
@@ -168,7 +166,6 @@ def send_closeack_message(socket):
     try:
         ack_message = json.dumps({"cmd": "ack-close"}).encode()
         socket.sendall(ack_message)
-        #print("Close ack send to server....")
         return True
             
     except Exception as e:
@@ -194,7 +191,6 @@ def testing_handler(env_test, model, socket):
     truncated = False
 
     logger.info(f'Starting test simulation...')
-    #env_test.get_current_time() < env_test.get_t_final()
         
     while not truncated:
         action, _states = model.predict(obs)
@@ -210,7 +206,6 @@ def receive_warmup_values(socket):
         response = socket.recv(1024).decode().strip()
         warmup_values = json.loads(response)
     
-        #print('Warmup values received...')
         return warmup_values
     
     except json.JSONDecodeError:

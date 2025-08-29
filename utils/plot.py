@@ -46,7 +46,7 @@ def plot_reward(save_mode, results_path, plot_path):
         df = pd.read_csv(results_path)
 
         step = df['step']
-        reward = df['reward']
+        reward = df['reward_mean']
 
         # Crea il grafico
         plt.figure(figsize=(10, 5))
@@ -55,7 +55,7 @@ def plot_reward(save_mode, results_path, plot_path):
         # Etichette e titolo
         plt.xlabel('Step')
         plt.ylabel('Reward')
-        plt.title('Reward ottenuto per ogni step')
+        plt.title('Mean Reward')
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
