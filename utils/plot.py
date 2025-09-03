@@ -99,9 +99,9 @@ def plot_linear(data, energy_data, last_data, save_mode, plot_path):
         ax[1, 0].grid()
 
         # Subplot 4: Instantaneous Power (bottom-right)
-        ax[1, 1].plot(data['time']/3600, data['power_inst'] * 10**-6, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[1, 1].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
         ax[1, 1].set_xlabel(r'$t$ [h]')
-        ax[1, 1].set_ylabel("Inst. Power [MJ]")
+        ax[1, 1].set_ylabel("Inst. Power [KW]")
         ax[1, 1].legend(loc='lower right', fontsize='small')
         ax[1, 1].grid()
 
@@ -155,9 +155,9 @@ def plot_latching(data, energy_data, last_data, save_mode, plot_path):
         ax[1, 1].grid()
 
         # Subplot 5: Instantaneous Power (bottom-right)
-        ax[2, 0].plot(data['time']/3600, data['power_inst'] * 10**-6, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[2, 0].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
         ax[2, 0].set_xlabel(r'$t$ [h]')
-        ax[2, 0].set_ylabel("Inst. Power [MJ]")
+        ax[2, 0].set_ylabel("Inst. Power [KW]")
         ax[2, 0].legend(loc='lower right', fontsize='small')
         ax[2, 0].grid()
 

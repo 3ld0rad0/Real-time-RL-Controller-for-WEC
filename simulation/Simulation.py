@@ -33,7 +33,7 @@ class Simulation:
         # position - speed - f_pto_damp - f_pto_stif - u_latching - G_star
         self.current_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         self.current_t = 0.0
-        self.current_ss = 0
+        self.current_ss = self.oscillator.get_sea_state()
 
         self.wave_mode = 'regular' if self.oscillator.get_wmode() else 'irregular'
         

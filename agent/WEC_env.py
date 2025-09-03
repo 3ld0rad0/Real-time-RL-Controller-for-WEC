@@ -347,6 +347,7 @@ class WECEnv_Latching(gym.Env):
         self.x_obs = np.float64(w_v["x_max"])
         self.v_obs = np.float64(w_v["v_max"])
         self.fet_obs = np.float64(w_v["fet_max"])
+        self.C_opt = np.float64(w_v["opt_damping"])
 
         self.curr_period = period
         self.curr_Hw = Hw
@@ -372,7 +373,6 @@ class WECEnv_Latching(gym.Env):
         self.state = (state_raw['position'], state_raw['velocity'], state_raw['excitation_force'], state_raw['f_pto_damp'], state_raw['G_star'])
         
         self.current_time = state_raw['time']
-        #print(f"Current State: {self.state}")
 
     
     def get_current_state(self):
