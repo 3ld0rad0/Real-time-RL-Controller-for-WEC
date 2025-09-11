@@ -6,21 +6,23 @@ import socket
 import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from simulation.Oscillator import Oscillator
-from simulation.PM_Spectrum import PM_Spectrum
 from simulation.Simulation import Simulation
 import logging
-import datetime
-import random
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 
 
 def init_SS(sim_train, sim_test):
-    period_train = sim_train.get_oscillator().get_period()
-    period_test = sim_test.get_oscillator().get_period()
     
-    Hw_train = sim_train.get_oscillator().get_wave_height()
+    if sim_train != None:
+        period_train = sim_train.get_oscillator().get_period()
+        Hw_train = sim_train.get_oscillator().get_wave_height()
+    else:
+        period_train = None
+        Hw_train = None
+    period_test = sim_test.get_oscillator().get_period()
     Hw_test = sim_test.get_oscillator().get_wave_height()
     
     return period_train, Hw_train, period_test, Hw_test
@@ -28,6 +30,7 @@ def init_SS(sim_train, sim_test):
 def init_simulation(config):
 
     C = config['init_C']
+    C_STAR = config['init_C_star']
     K = config['init_K']
     G_STAR = config['init_G_star']
     d_t = config['d_t']
@@ -44,8 +47,8 @@ def init_simulation(config):
     mixed_sea_state = config['mixed_sea_state']
     
 
-    oscillator_train = Oscillator(C, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train, seed_spectrum = 17)
-    oscillator_test = Oscillator(C, K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = 123)
+    oscillator_train = Oscillator(C, C_STAR, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train, seed_spectrum = 17)
+    oscillator_test = Oscillator(C, C_STAR,K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = 123)
 
     sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
     sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name, sim_dir, show_results, mixed_sea_state)
@@ -69,18 +72,19 @@ def init_simulation(config):
     return sim_train, sim_test
 
 
-def simulation_handler(conn, sim):
+def simulation_handler(conn, sim, control):
     start_t = time.time()
-    start_simulation(conn, sim)
+    start_simulation(conn, sim, control)
     end_t = time.time()
     elapsed_time = np.round(end_t -start_t, 2)
     energy = close_simulation(conn, sim, elapsed_time)
     
     return energy
 
-def start_simulation(conn, sim):
+def start_simulation(conn, sim, control):
     
-    send_warmup_values(sim,conn)
+    if control == 'rl':
+        send_warmup_values(sim,conn)
     
     t_final = sim.get_sim_time()
         
@@ -248,25 +252,27 @@ def write_config_file(data, file = "./utils/config.json"):
 
 
 
-def start_batch_simulation(conn, n_batch, train_mode):
+def start_batch_simulation_rl(conn, n_batch, train_mode):
         
-        logger.critical(f"Starting {n_batch} simulations in background mode...")
-        total_energy_v = []
+    logger.critical(f"Starting {n_batch} simulations in background mode...")
+    total_energy_v = []
 
-        for i in range (1, n_batch+1):
-            energy_abs = start_single_simulation(conn, train_mode)
-            total_energy_v.append(energy_abs)
+    for i in range (1, n_batch+1):
+        energy_abs = start_single_simulation_rl(conn, train_mode)
+        total_energy_v.append(energy_abs)
             
-            config = read_config_file()
-            config["sim_name"] = str(i+1) if i < n_batch else ""
-            write_config_file(config)
-            logger.critical(f"\nTerminated Simulation{i}...\n")
+        config = read_config_file()
+        config["sim_name"] = str(i+1) if i < n_batch else ""
+        write_config_file(config)
+        logger.critical(f"\nTerminated Simulation{i}...\n")
         
-        mean_total_energy = np.mean(total_energy_v)
-        logger.info(f"Mean Absorbed energy in batch test simulation is : {round(mean_total_energy,4)} MJ")
+    mean_total_energy = np.mean(total_energy_v)
+    logger.info(f"Mean Absorbed energy in batch test simulation is : {round(mean_total_energy,4)} MJ")
+        
+    return mean_total_energy
 
 
-def start_single_simulation(conn, train_mode):
+def start_single_simulation_rl(conn, train_mode):
     config = read_config_file()
     sim_train, sim_test = init_simulation(config)
     period_train, Hw_train, period_test, Hw_test = init_SS(sim_train, sim_test)
@@ -289,7 +295,7 @@ def start_single_simulation(conn, train_mode):
                     f"Control mode : {config['control_mode']}\n"
                     f"Control d_t  : {config['d_t']}\n"
             )               
-        simulation_handler(conn, sim_train)
+        simulation_handler(conn, sim_train, 'rl')
         logger.info("Training Simulation finished...\n")
 
 
@@ -301,17 +307,78 @@ def start_single_simulation(conn, train_mode):
             f"Control mode : {config['control_mode']}\n"
             f"Control d_t  : {config['d_t']}\n"
         )     
-    energy_abs = simulation_handler(conn, sim_test)
+    energy_abs = simulation_handler(conn, sim_test, 'rl')
     logger.info("Testing Simulation finished...\n")
     
     return energy_abs  
 
 
 
-def start_simulation_train_test(conn, n_batch, train_mode):
+def start_simulation_rl(conn, n_batch, train_mode, config):
     
     if n_batch > 1:
-        start_batch_simulation(conn, n_batch, train_mode)
+        energy_abs = start_batch_simulation_rl(conn, n_batch, train_mode)
 
     else:
-        start_single_simulation(conn, train_mode)
+        energy_abs = start_single_simulation_rl(conn, train_mode)
+
+    entry = []
+    entry.append({
+        "control_type" : "rl_control",
+        "test_time" : config['sim_time_test'],
+        "fine_tuned_model" : config['retrain'],
+        "regular" : config['regular'],
+        "sea_state" : config['init_SS_test'],
+        "C_star" : config['init_C_star'],
+        "G_star" : 'variable',
+        "energy_abs" : energy_abs
+    })
+    
+    if config['regular']:
+        path = os.path.join(config['results_dir'], "final/data/energy_results_regular_waves.csv")
+    
+    else:
+        path = os.path.join(config['results_dir'], "final/data/energy_results_irregular_waves.csv")
+    save_energy_tabular_data(entry, path)
+
+def start_simulation_baseline(conn, config):
+    config = read_config_file()
+    _, sim_test = init_simulation(config)
+    T_zero = sim_test.get_period_zero()
+    config['period_zero'] = T_zero
+    write_config_file(config)
+    _, _, period_test, Hw_test = init_SS(None, sim_test)
+    logger.info(
+        f"Testing Simulation with threshold control started with these parameters:\n"
+            f"Period       : {period_test} s\n"
+            f"Wave height  : {Hw_test} m\n"
+            f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
+            f"Control mode : {config['control_mode']}\n"
+            f"Control d_t  : {config['d_t']}\n"
+        ) 
+    energy_abs = simulation_handler(conn, sim_test, 'baseline')
+
+    entry = []
+    entry.append({
+        "control_type" : "threshold_control",
+        "test_time" : config['sim_time_test'],
+        "fine_tuned_model" : False,
+        "regular" : config['regular'],
+        "sea_state" : config['init_SS_test'],
+        "C_star" : config['init_C_star'],
+        "G_star" : str(config['init_G_star']),
+        "energy_abs" : energy_abs
+    })
+    
+    if config['regular']:
+        path = os.path.join(config['results_dir'], "final/data/energy_results_regular_waves.csv")
+    
+    else:
+        path = os.path.join(config['results_dir'], "final/data/energy_results_irregular_waves.csv")
+    save_energy_tabular_data(entry, path)
+
+
+def save_energy_tabular_data(entry, path):
+    df_energy = pd.DataFrame(entry)
+    header = not os.path.exists(path)
+    df_energy.to_csv(path, mode='a', header= header, index=False)

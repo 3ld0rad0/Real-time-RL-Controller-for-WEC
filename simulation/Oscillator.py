@@ -13,7 +13,7 @@ from matplotlib_inline.backend_inline import set_matplotlib_formats
 set_matplotlib_formats('svg')
 
 class Oscillator:
-    def __init__(self, C, K, G_star, regular, t_final, control_mode, d_t, sea_state, seed_spectrum):
+    def __init__(self, C, C_star, K, G_star, regular, t_final, control_mode, d_t, sea_state, seed_spectrum):
 
         self.regular = regular
         self.ss_period = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0]
@@ -70,7 +70,6 @@ class Oscillator:
         self.B_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 2], kind='linear', fill_value="extrapolate")
         self.A_star = self.ka_table[-1, 1]
         self.B_star = self.B_star_interp(self.ka)
-        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
 
         ########################################################################
         
@@ -81,6 +80,7 @@ class Oscillator:
             
             if self.spectrum is not None:
                 # Usa lo spettro da PM_Spectrum
+                self.A_star = self.ka_table[-1, 1]
                 self.N_freq = len(self.spectrum[0])
                 self.amps = self.spectrum[0]         # A_ω
                 self.omega = self.spectrum[1]        # ω
@@ -96,6 +96,7 @@ class Oscillator:
         else:
             ######################## REGULAR CASE ######################
             
+            self.A_star = self.A_star_interp(self.ka)
             self.omega = 2*np.pi/self.T
             self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
             self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
@@ -110,13 +111,14 @@ class Oscillator:
         ######################## Latching control ########################
         
         if self.control_mode == 'latching':
-            self.C_star = 0.5
+            self.C_star = C_star
             self.C = self.C_star*self.r**(5/2)*self.rho*self.g**(1/2)
             #self.C = 0.3 * self.get_opt_damping_pto()
             self.K = 0
 
         #self.opt_G_star = 10.0
         self.G_star = G_star
+        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
         self.G = self.G_star * (self.m_add + self.m)
         self.u = 0.0 ## control inactive
         
@@ -233,7 +235,6 @@ class Oscillator:
         self.B_star_interp = interp1d(self.ka_table[:, 0], self.ka_table[:, 2], kind='linear', fill_value="extrapolate")
         self.A_star = self.ka_table[-1, 1]
         self.B_star = self.B_star_interp(self.ka)
-        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
 
         if not self.regular:
             ######################## IRREGULAR CASE ######################
@@ -256,14 +257,14 @@ class Oscillator:
         
         else:
             ######################## REGULAR CASE ######################
-            
+            self.A_star = self.A_star_interp(self.ka)
             self.omega = 2*np.pi/self.T
             self.B = self.B_star * (2/3*np.pi*self.r**3*self.rho*self.omega)
             self.Lmbd = np.sqrt((2*self.rho*self.g**3*self.B)/(self.omega**3))
             coeff = (self.rho * self.g**2) / (8 * np.pi) * (10**-3)
             self.energy_wave = (coeff * self.Hw**2 * self.T) * (2 * self.r) * (10**3)
         
-
+        self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
         self.G = self.G_star * (self.m_add + self.m)
 
     def get_sea_state(self):
@@ -333,6 +334,15 @@ class Oscillator:
     def get_omega(self):
         return self.omega
     
+    def get_omega_zero(self):
+        self.omega_zero = np.sqrt((self.rho * self.g * self.S_cs + self.K) / (self.m + self.m_add))
+        return self.omega_zero
+    
+    def get_period_zero(self):
+        omega_zero = self.get_omega_zero()
+        self.period_zero = 2*np.pi/ omega_zero
+        return self.period_zero
+
     def get_added_mass(self):
         return self.m_add
     
@@ -426,16 +436,18 @@ if __name__ == '__main__':
     C = 0
     K = 0
     G_STAR = 5
+    C_STAR = 0.1
     regular = 0
     sim_time = 60
     control_mode = 'latching'
     d_t = 0.5
     seed_spectrum = 123
 
-    oscillator = Oscillator(C, K, G_STAR, regular, sim_time, control_mode, d_t, nSS, seed_spectrum)
+    oscillator = Oscillator(C, C_STAR, K, G_STAR, regular, sim_time, control_mode, d_t, nSS, seed_spectrum)
     # C = oscillator.get_opt_damping_pto()
     # K = oscillator.get_opt_stifness_pto()
     # oscillator.set_fpto(C, K)
     oscillator.solve(t_eval= np.linspace(0, sim_time, 1000))
+    oscillator.get_period_zero()
     oscillator.plot()
     plt.show()

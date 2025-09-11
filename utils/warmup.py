@@ -20,8 +20,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def warmup(warmup_time, init_values, file_path='./utils/warmup.json', n_sim=100, adaptive_sampling=True):
-    period, Hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS = init_values
-    oscillator = Oscillator(C, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS, seed_spectrum = 17)
+    period, Hw, C, C_STAR, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS = init_values
+    oscillator = Oscillator(C, C_STAR, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS, seed_spectrum = 17)
 
     opt_fpto_damp = oscillator.get_opt_damping_pto()
     opt_fpto_stif = oscillator.get_opt_stifness_pto()
@@ -116,6 +116,7 @@ if __name__ == "__main__":
     
 
     C = config['init_C']
+    C_STAR = config['init_C_star']
     K = config['init_K']
     G_STAR = config['init_G_star']
     regular = config['regular']
@@ -135,5 +136,5 @@ if __name__ == "__main__":
         p = ss_period[nSS]
         hw = ss_wh[nSS]
 
-        warmup(warmup_time= warmup_time, init_values= (p, hw, C, K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, nSS))
+        warmup(warmup_time= warmup_time, init_values= (p, hw, C, C_STAR,K, G_STAR, regular, warmup_time, control_mode, d_t_oscillator, nSS))
         logger.info(f'Load warmup values for {reg_lbl} wave, with period : {p} and wave height : {hw}')

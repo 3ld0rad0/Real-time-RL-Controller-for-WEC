@@ -226,7 +226,7 @@ def write_config_file(data, file = "./utils/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 
-def start_batch_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
+def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
         
         for i in range(n_batch):
             time.sleep(3)
@@ -266,3 +266,82 @@ def start_batch_control(s, n_batch, train_mode, retrain, model_retrain_path, ent
             testing_handler(env_test, model, s)
             env_test.close()
             logger.critical(f'Terminated Simulation{sim_name}...')
+
+##################################### BASELINE CONTROL METHOD UTILS ###################################################################
+
+def compute_threshold(config):
+    regular = config['regular']
+    nSS = config['init_SS_test']
+    period_table = config['period_table']
+    hw_table = config['wave_height_table']
+    T_zero = config['period_zero']
+    T_e = period_table[nSS]
+    H_s = hw_table[nSS]
+
+    if regular:
+        H = H_s/np.sqrt(2)
+        T = T_e/ 0.857
+        z_th = H/2* np.sin((np.pi/2) * (1 - T_zero/T))
+
+    else:
+        z_th = H_s/(2*np.sqrt(2)) * np.sin((np.pi/2) * (1 - T_zero/T_e))
+
+    return z_th
+
+def get_observation(s):
+    payload_get = {"cmd": "get"}
+    s.sendall((json.dumps(payload_get) + "\n").encode())
+            
+    response = s.recv(1024).decode().strip()
+    state_raw = json.loads(response)
+    
+    state = (state_raw['position'], state_raw['velocity'], state_raw['excitation_force'], state_raw['f_pto_damp'], state_raw['G_star'])
+    current_time = state_raw['time']
+    return state, current_time
+
+def send_action(s, control):
+    control_u = control[0]
+    control_G_star = control[1]
+    payload_control = {
+        "cmd": "control",
+        "params": {
+            "u": control_u,
+            "G_star": control_G_star
+        }
+    }
+    s.sendall((json.dumps(payload_control) + "\n").encode())
+
+
+def start_threshold_control(s, config):
+    th = compute_threshold(config)
+    logger.info(f"Threshold value z_th = {th}")
+    current_t = 0
+    t_final = config['sim_time_test']
+    G_star = config['init_G_star']
+    
+    logger.info(f'Starting test simulation...')
+    while current_t < t_final:
+        time.sleep(0.01)
+        state,  t = get_observation(s)
+        time.sleep(0.01)
+        current_t = t
+        
+        if current_t == t_final:
+            break
+        
+        position = state[0]
+        
+        if position > th:
+            control = (1, G_star)
+            send_action(s, control)
+        else:
+            control = (0, G_star)
+            send_action(s, control)
+    
+    logger.info(f"Test simulation completed...")
+
+    connection_handler(s)
+
+
+
+########################################################################################################

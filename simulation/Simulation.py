@@ -249,6 +249,7 @@ class Simulation:
         energy = df['energy_abs']
         self.total_energy_absorbed = np.sum(energy) * 10 **-6
     
+
     def get_total_energy_absorbed(self):
         return self.total_energy_absorbed
 
@@ -318,8 +319,11 @@ class Simulation:
         table_period = self.oscillator.get_table_period()
         self.period = table_period[self.current_ss]
 
-
-
+    def get_period_zero(self):
+        return self.oscillator.get_period_zero()
+        
+    # def get_omega_zero(self):
+    #     return self.oscillator.get_omega_zero()
     
     def step(self):
         if self.current_t > 0.0:

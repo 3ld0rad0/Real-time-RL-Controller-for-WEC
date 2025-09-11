@@ -2,8 +2,6 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.Oscillator import Oscillator
-from simulation.PM_Spectrum import PM_Spectrum
 import matplotlib.pyplot as mpl
 import numpy as np
 from scipy.interpolate import interp1d
@@ -17,6 +15,7 @@ from scipy.integrate import solve_ivp
 import subprocess
 from IPython.display import Markdown, display, Latex
 import pathlib, subprocess
+import pandas as pd
 
 
 def cmdcall( cmd ):
@@ -43,8 +42,8 @@ def shellcmd( cmd, verbose=False ): #Esegue un comando di shell, catturando outp
     if verbose: print( out.stdout, out.stderr )
 
 # %%
-if not pathlib.Path("mpl_utils.py").exists():
-    shellcmd( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
+# if not pathlib.Path("mpl_utils.py").exists():
+#     shellcmd( "curl -O https://raw.githubusercontent.com/joaochenriques/ipynb_libs/main/mpl_utils.py" )
 import utils.mpl_utils as mut
 
 # %%
@@ -444,8 +443,6 @@ class Problem1( ODE_System ):
         module = 'numpy'
 
         # Hamiltonian
-        #self.Gamma = np.mean(self.Gamma)
-        #self.omega = np.mean(self.omega)
         self.ℋ = self.C * x[1]**2 + λ[0]*x[1] + λ[1]*((self.Gamma*self.Aw*sp.cos(self.omega*self.t_sym) - (self.B_omega+self.C+self.G*u[0])*x[1] - self.ktot*x[0])/self.mtot)
         self.fℋ = sp.lambdify((self.t_sym,x,u,λ), self.ℋ, modules=module)
 
@@ -605,142 +602,141 @@ def calculate_energy(fsys, C, RMS_nGL=5):
 
     return energy
 
+def save_energy_tabular_data(entry, path):
+    df_energy = pd.DataFrame(entry)
+    header = not os.path.exists(path)
+    df_energy.to_csv(path, mode='a', header= header, index=False)
 
-# def Wave_data(T, Aw,tf,a,G_star,C_star):
-#     # Useful parameters
-#     g = 9.81  # Acceleration due to gravity [m/s^2]
-#     rho = 1025    # Water density [kg/m^3]
+def Wave_data(T, Aw,tf,a,G_star,C_star):
+    # Useful parameters
+    g = 9.81  # Acceleration due to gravity [m/s^2]
+    rho = 1025    # Water density [kg/m^3]
 
-#     wave_velocity = g * T / (2 * np.pi)   # Wave velocity [m/s]
-#     wave_l = wave_velocity * T            # Wave length [m]
-#     k = 2*np.pi/wave_l                    # Wave number [m^-1]    
-#     omega = 2*np.pi/T                     # Wave frequency [rad/s]
+    wave_velocity = g * T / (2 * np.pi)   # Wave velocity [m/s]
+    wave_l = wave_velocity * T            # Wave length [m]
+    k = 2*np.pi/wave_l                    # Wave number [m^-1]    
+    omega = 2*np.pi/T                     # Wave frequency [rad/s]
 
-#     T_final = tf                     # Final Time [s]
-#     t_space=np.linspace(0,T_final,1000)
-#     wave_t=Aw*np.cos(omega*t_space)
+    T_final = tf                     # Final Time [s]
+    t_space=np.linspace(0,T_final,1000)
+    wave_t=Aw*np.cos(omega*t_space)
 
-#     S_cs = np.pi*a**2                     # Buoy cross sectional area [m^2]
-#     Volume = 2/3*np.pi*a**3               # Buoy volume [m^3]
+    S_cs = np.pi*a**2                     # Buoy cross sectional area [m^2]
+    Volume = 2/3*np.pi*a**3               # Buoy volume [m^3]
 
-#     m =  rho*Volume                       # Buoy mass [kg] = displaced water mass [kg], so that buoy density = water density
-#     ka = k*a                              # Wave number * buoy radius [-]
+    m =  rho*Volume                       # Buoy mass [kg] = displaced water mass [kg], so that buoy density = water density
+    ka = k*a                              # Wave number * buoy radius [-]
 
-#     # Matrix containing the table data
-#     ka_table = np.array([
-#         #ka    #A*(ka) #B*(ka)
-#         [0,    0.8310, 0],
-#         [0.05, 0.8764, 0.1036],
-#         [0.1,  0.8627, 0.1816],
-#         [0.2,  0.7938, 0.2793],
-#         [0.3,  0.7157, 0.3254],
-#         [0.4,  0.6452, 0.3410],
-#         [0.5,  0.5861, 0.3391],
-#         [0.6,  0.5381, 0.3271],
-#         [0.7,  0.4999, 0.3098],
-#         [0.8,  0.4698, 0.2899],
-#         [0.9,  0.4464, 0.2691],
-#         [1.0,  0.4284, 0.2484],
-#         [1.2,  0.4047, 0.2096],
-#         [1.4,  0.3924, 0.1756],
-#         [1.6,  0.3871, 0.1469],
-#         [1.8,  0.3864, 0.1229],
-#         [2.0,  0.3884, 0.1031],
-#         [2.5,  0.3988, 0.0674],
-#         [3.0,  0.4111, 0.0452],
-#         [4.0,  0.4322, 0.0219],
-#         [5.0,  0.4471, 0.0116],
-#         [6.0,  0.4574, 0.0066],
-#         [7.0,  0.4647, 0.0040],
-#         [8.0,  0.4700, 0.0026],
-#         [9.0,  0.4740, 0.0017],
-#         [10.0, 0.4771, 0.0012],
-#         [np.inf, 0.5, 0]
-#     ])
+    # Matrix containing the table data
+    ka_table = np.array([
+        #ka    #A*(ka) #B*(ka)
+        [0,    0.8310, 0],
+        [0.05, 0.8764, 0.1036],
+        [0.1,  0.8627, 0.1816],
+        [0.2,  0.7938, 0.2793],
+        [0.3,  0.7157, 0.3254],
+        [0.4,  0.6452, 0.3410],
+        [0.5,  0.5861, 0.3391],
+        [0.6,  0.5381, 0.3271],
+        [0.7,  0.4999, 0.3098],
+        [0.8,  0.4698, 0.2899],
+        [0.9,  0.4464, 0.2691],
+        [1.0,  0.4284, 0.2484],
+        [1.2,  0.4047, 0.2096],
+        [1.4,  0.3924, 0.1756],
+        [1.6,  0.3871, 0.1469],
+        [1.8,  0.3864, 0.1229],
+        [2.0,  0.3884, 0.1031],
+        [2.5,  0.3988, 0.0674],
+        [3.0,  0.4111, 0.0452],
+        [4.0,  0.4322, 0.0219],
+        [5.0,  0.4471, 0.0116],
+        [6.0,  0.4574, 0.0066],
+        [7.0,  0.4647, 0.0040],
+        [8.0,  0.4700, 0.0026],
+        [9.0,  0.4740, 0.0017],
+        [10.0, 0.4771, 0.0012],
+        [np.inf, 0.5, 0]
+    ])
 
-#     # Interpolation functions for A* and B*
-#     A_star_interp = interp1d(ka_table[:, 0], ka_table[:, 1], kind='linear', fill_value="extrapolate")
-#     B_star_interp = interp1d(ka_table[:, 0], ka_table[:, 2], kind='linear', fill_value="extrapolate")
+    # Interpolation functions for A* and B*
+    A_star_interp = interp1d(ka_table[:, 0], ka_table[:, 1], kind='linear', fill_value="extrapolate")
+    B_star_interp = interp1d(ka_table[:, 0], ka_table[:, 2], kind='linear', fill_value="extrapolate")
 
-#     A_star = ka_table[-1, 1]          # Dimensionless added mass [-] at infinite frequency
-#     B_star = B_star_interp(ka)        # Dimensionless damping coefficient [-]
+    A_star = A_star_interp(ka)          # Dimensionless added mass [-] at infinite frequency
+    B_star = B_star_interp(ka)        # Dimensionless damping coefficient [-]
 
-#     A = 2/3*np.pi*a**3*rho*A_star            # Added mass [kg]
-#     B = 2/3*np.pi*a**3*rho*omega*B_star      # Damping coefficient [kg/s]
+    A = 2/3*np.pi*a**3*rho*A_star            # Added mass [kg]
+    B = 2/3*np.pi*a**3*rho*omega*B_star      # Damping coefficient [kg/s]
 
-#     # PTO Data
-#     C=0
-#     use_resonance = False  # Set this to False to use non-resonance conditions
+    # PTO Data
+    C=0
+    use_resonance = False  # Set this to False to use non-resonance conditions
 
-#     if use_resonance:
-#         C = B                             # PTO damping coefficient [kg/s]
-#         K = omega**2*(m+A)-rho*g*S_cs     # PTO stiffness coefficient [N/m]
-#     else:
-#         C = C_star*a**(5/2)*rho*g**(1/2)  # PTO damping coefficient [kg/s]
-#         K = 600                           # PTO stiffness coefficient [N/m]
-    
-#     prova_edo= 1
-
-#     if prova_edo:
-#         C=0.3*B
-#         K=0
-
-#     # Excitation force
-
-#     Gamma = np.sqrt((2*rho*g**3*B)/(omega**3)) # Excitation force amplitude per unit incident wave amplitude [N/m]
-
+    if use_resonance:
+        C = B                             # PTO damping coefficient [kg/s]
+        K = omega**2*(m+A)-rho*g*S_cs     # PTO stiffness coefficient [N/m]
+    else:
+        C = C_star*a**(5/2)*rho*g**(1/2)  # PTO damping coefficient [kg/s]
+        K = 0                           # PTO stiffness coefficient [N/m]
     
 
-#     # Definition of physical parameters for the problem (realistic example)
-#     params = {
-#         'Gamma': Gamma,
-#         'Aw': Aw,
-#         'omega': omega,
-#         'mtot': m + A,
-#         'B_omega': B,
-#         'C': C,
-#         'G': G_star * (m + A),  # choose G_star appropriately large (e.g., G_star=1000)
-#         'ktot': rho * g * S_cs + K,
-#         'T': T,
-#         'G_star': G_star,
-#         'K': K,
-#     }
+    # Excitation force
 
-#     return params
+    Gamma = np.sqrt((2*rho*g**3*B)/(omega**3)) # Excitation force amplitude per unit incident wave amplitude [N/m]
 
+    
 
-# class OscillatorSystem:
-#     def __init__(self, params, tf):
-#         self.params = params
-#         self.tf = tf
+    # Definition of physical parameters for the problem (realistic example)
+    params = {
+        'Gamma': Gamma,
+        'Aw': Aw,
+        'omega': omega,
+        'mtot': m + A,
+        'B_omega': B,
+        'C': C,
+        'G': G_star * (m + A),  # choose G_star appropriately large (e.g., G_star=1000)
+        'ktot': rho * g * S_cs + K,
+        'T': T,
+        'G_star': G_star,
+        'K': K,
+    }
 
-#     def system(self, t, X):
-#         x1, x2 = X
-#         fe_t = self.params['Gamma'] * self.params['Aw'] * np.cos(self.params['omega'] * t)
-#         dx1_dt = x2
-#         dx2_dt = (1 / self.params['mtot']) * (
-#             -(self.params['B_omega'] + self.params['C']) * x2
-#             - self.params['ktot'] * x1
-#             + fe_t
-#         )
-#         return [dx1_dt, dx2_dt]
-
-#     def solve(self, t_span=None, t_eval=None, initial_conditions=(0.0, 0.0), method='RK45'):
-#         if t_span is None:
-#             t_span = (0, self.tf)
-#         if t_eval is None:
-#             t_eval = np.linspace(t_span[0], t_span[1], 1000)
-
-#         sol = solve_ivp(self.system, t_span, initial_conditions, t_eval=t_eval, method=method)
-#         self.t = sol.t
-#         self.x = sol.y[0]
-#         self.v = sol.y[1]
-
-#         return self.t, self.x, self.v
+    return params
 
 
+class OscillatorSystem:
+    def __init__(self, params, tf):
+        self.params = params
+        self.tf = tf
 
-molt=1
+    def system(self, t, X):
+        x1, x2 = X
+        fe_t = self.params['Gamma'] * self.params['Aw'] * np.cos(self.params['omega'] * t)
+        dx1_dt = x2
+        dx2_dt = (1 / self.params['mtot']) * (
+            -(self.params['B_omega'] + self.params['C']) * x2
+            - self.params['ktot'] * x1
+            + fe_t
+        )
+        return [dx1_dt, dx2_dt]
+
+    def solve(self, t_span=None, t_eval=None, initial_conditions=(0.0, 0.0), method='RK45'):
+        if t_span is None:
+            t_span = (0, self.tf)
+        if t_eval is None:
+            t_eval = np.linspace(t_span[0], t_span[1], 1000)
+
+        sol = solve_ivp(self.system, t_span, initial_conditions, t_eval=t_eval, method=method)
+        self.t = sol.t
+        self.x = sol.y[0]
+        self.v = sol.y[1]
+
+        return self.t, self.x, self.v
+
+
+
+molt=15
 tf=60*molt
 
 x0=[0.0, 0.0]
@@ -748,73 +744,14 @@ x0=[0.0, 0.0]
 # Wave data
 T = 9                                 # Wave period [s]
 Aw = 0.8                                # Wave height [m]
+sea_state = 0
 
 # Buoy data
 a = 5                                 # Hemisperical buoy radius [m]
+C_star= 0.1
+G_star = 5.0
 
-C_star= 0.5
-G_star = 5
-
-#params = Wave_data(T,Aw,tf,a,G_star,C_star)
-
-
-# # Display the parameters of the system in a structured format
-# print("System Parameters:")
-# for key, value in params.items():
-#     print(f"{key:<15}: {value:.5e}" if isinstance(value, (float, int)) else f"{key:<15}: {value}")
-
-
-
-
-# # Physical parameters of the problem
-# Gamma = params['Gamma']  # Amplitude of the excitation force per unit wave amplitude
-# Aw = params['Aw']  # Wave amplitude
-# omega = params['omega']  # Wave frequency
-# C = params['C']  # PTO damping coefficient
-# K = params['K']  # PTO stiffness coefficient
-
-#######################################################################
-nSS = 0
-seed_spectrum = 123
-regular = True
-C = 0
-K = 0
-oscillator = Oscillator(C, K, G_star, regular, tf, 'linear', 0.5, nSS, seed_spectrum)
-#oscillator = OscillatorSystem(params, tf)
-
-t_array = []
-x_array = []
-v_array = []
-fet_array = []
-
-current_time = 0.0
-while current_time <= tf:
-    t, x, v, fet = oscillator.solve()
-    t_array.append(t)
-    x_array.append(x)
-    v_array.append(v)
-    fet_array.append(fet)
-    current_time += 0.5
-    #print(current_time)
-
-t_array = np.asarray(t_array).flatten().tolist()
-v_array = np.asarray(v_array).flatten().tolist()
-x_array = np.asarray(x_array).flatten().tolist()
-fet_array = np.asarray(fet_array).flatten().tolist()
-
-params = {
-    'Gamma': np.mean(oscillator.get_Lambda()),
-    'Aw': oscillator.get_wave_height(),
-    'omega': np.mean(oscillator.get_omega()),
-    'mtot': oscillator.get_added_mass(),
-    'B_omega': oscillator.get_opt_damping_pto(),
-    'C': oscillator.get_C(),
-    'G': G_star * oscillator.get_added_mass(),  # choose G_star appropriately large (e.g., G_star=1000)
-    'ktot': oscillator.get_ktot(),
-    'T': oscillator.get_period(),
-    'G_star': G_star,
-    'K': oscillator.get_K(),
-}
+params = Wave_data(T,Aw,tf,a,G_star,C_star)
 
 
 # Display the parameters of the system in a structured format
@@ -822,12 +759,22 @@ print("System Parameters:")
 for key, value in params.items():
     print(f"{key:<15}: {value:.5e}" if isinstance(value, (float, int)) else f"{key:<15}: {value}")
 
-############################################################################
+
+# Physical parameters of the problem
+Gamma = params['Gamma']  # Amplitude of the excitation force per unit wave amplitude
+Aw = params['Aw']  # Wave amplitude
+omega = params['omega']  # Wave frequency
+C = params['C']  # PTO damping coefficient
+K = params['K']  # PTO stiffness coefficient
+
+oscillator = OscillatorSystem(params, tf)
+t_array, x_array, v_array = oscillator.solve()
+
+
 nt=300*molt
 ndegree=3
 u_degree=0
 nGL=ndegree+1
-
 
 fsys = Problem1( ndegree = ndegree, u_ndegree =u_degree, nGL = nGL, tf = tf, nt = nt , x0 = x0, params=params )
 
@@ -845,15 +792,13 @@ for i in tqdm( range(50+1) ):
     fsys.OptimalControl( i )
 
 
-E_abs = calculate_energy(fsys, params['C'])
+E_abs = calculate_energy(fsys, C)
 
 print(f"Absorbed energy: {E_abs*10**(-6):.2f} MJ")
 # %%
 
-#t_space = np.linspace(0, tf, 1000)
-
-# fe_t = Gamma*Aw*np.cos(omega*t_space) 
-fe_t = np.asarray(fet_array) * 10**-6
+t_space = np.linspace(0, tf, 1000)
+fe_t = Gamma*Aw*np.cos(omega*t_space) 
 
 ft1, fx1, ft1p, fx1p = fsys.dump( 'x', var=0, npnts=plot_pnts )
 ft2, fy1, ft2p, fy1p = fsys.dump( 'x', var=1, npnts=plot_pnts )
@@ -878,7 +823,7 @@ ax1.plot(t_array, x_array, '--', label=r'Buoy displacement $\xi(t)$ with no cont
 ax1.set_ylabel(r'Displacement [m]')
 ax1.set_xlabel('$t [s]$')
 ax1.legend(loc='upper right',fontsize='small')
-ax1.set_ylim(-15, 15)
+ax1.set_ylim(-3, 3)
 ax1.set_xlim(tf-t_in, tf)
 ax1.tick_params(axis='both', which='major', labelsize=14, labelcolor='black', width=2)
 ax1.yaxis.set_tick_params(labelsize=14, labelcolor='black', width=2)
@@ -890,10 +835,10 @@ ax1.grid()
 # Plot v(t)
 ax2.plot(ft2, fy1, '-', label=r'Buoy velocity $\dot{\xi}(t)$ with control', lw=2, color='blue')
 ax2.plot(t_array, v_array, '--',label=r'Buoy velocity $\dot{\xi}(t)$ with no control', lw=2,color='red')
-ax2.plot(t_array, fe_t, '-', label=r'Excitation force $10^{-6} \times f_{e}(T)$', lw=2, color='#17becf')
+ax2.plot(t_space, fe_t*1e-6, '-', label=r'Excitation force $10^{-6} \times f_{e}(T)$', lw=2, color='#17becf')
 ax2.set_ylabel("Velocity [m/s] vs\n Wave force [MN]")
 ax2.set_xlabel('$t [s]$')
-ax2.set_ylim(-15, 15)
+ax2.set_ylim(-3, 3)
 ax2.set_xlim(tf-t_in, tf)
 ax2.legend(loc='upper right',fontsize='small')
 ax2.tick_params(axis='both', which='major', labelsize=14, labelcolor='black', width=2)
@@ -904,11 +849,11 @@ ax2.xaxis.set_tick_params(labelsize=14, labelcolor='black', width=2)
 ax2.grid()
 
 # Save the first figure as OCP_Buoy_Dynamics
-file_name_dynamics = 'OCP_Buoy_Dynamics_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_K_{:.2f}.pdf'.format(
+file_name_dynamics = 'OCP_Buoy_Dynamics_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_K_{:.2f}.png'.format(
     params['G_star'], params['Aw'], params['T'], int(params['C']), params['K']
 )
 fig.tight_layout()
-#fig.savefig(file_name_dynamics)
+fig.savefig(file_name_dynamics)
 
 # Create a single figure with 2x2 subplots for ax3, ax4, ax5, and ax6
 fig_combined, axs = mpl.subplots(nrows=2, ncols=2, figsize=(12, 10))
@@ -979,5 +924,19 @@ file_name_combined = 'OCP_buoy_combined_G_star_{:.2f}_Aw_{:.2f}_T_{:.2f}_C_{:d}_
 )
 fig_combined.tight_layout()
 #fig_combined.savefig(file_name_combined)
+
+energy_path = os.path.join('./results', "final/data/energy_results_regular_waves.csv")
+entry = []
+entry.append({
+    "control_type" : "optimal_control",
+    "test_time" : tf,
+    "fine_tuned_model" : False,
+    "regular" : True,
+    "sea_state" : sea_state,
+    "C_star" : C_star,
+    "G_star" : G_star,
+    "energy_abs" : E_abs*10**-6
+})
+#save_energy_tabular_data(entry, energy_path)
 
 mpl.show()
