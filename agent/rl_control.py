@@ -3,6 +3,7 @@ import json
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.controller_utilities import start_rl_control, read_config_file
+from utils.test_configs import *
 import logging
 
 # Logger setup
@@ -16,6 +17,10 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+C_STAR = 0.5
+SEA_STATE = 5
+# set_config_rl_irregular(C_star = C_STAR, sea_state = SEA_STATE)
+set_config_rlft_irregular(C_star = C_STAR, sea_state = SEA_STATE)
 
 config = read_config_file()
 

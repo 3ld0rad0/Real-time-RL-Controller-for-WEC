@@ -113,10 +113,8 @@ class Oscillator:
         if self.control_mode == 'latching':
             self.C_star = C_star
             self.C = self.C_star*self.r**(5/2)*self.rho*self.g**(1/2)
-            #self.C = 0.3 * self.get_opt_damping_pto()
             self.K = 0
 
-        #self.opt_G_star = 10.0
         self.G_star = G_star
         self.m_add = self.A_star * (2/3*np.pi*self.r**3*self.rho)
         self.G = self.G_star * (self.m_add + self.m)

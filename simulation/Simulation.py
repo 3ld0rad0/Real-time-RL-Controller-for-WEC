@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Simulation:
-    def __init__(self, oscillator, save_mode, sim_mode, sim_name, sim_dir, show_results, mixed_sea_state):
+    def __init__(self, oscillator, save_mode, sim_mode, sim_alg, sim_name, sim_dir, show_results, mixed_sea_state):
         
         self.oscillator = oscillator
         self.sim_time = self.oscillator.get_t_final()
@@ -26,6 +26,7 @@ class Simulation:
         self.save_mode = save_mode
         self.show_results = show_results
         self.control_mode = self.oscillator.get_control_mode()
+        self.control_alg = sim_alg
         self.sim_mode = sim_mode
         self.sim_name = sim_name
         self.mixed_sea_state = mixed_sea_state
@@ -71,12 +72,12 @@ class Simulation:
         file_name_mixed = ""
 
         if self.sim_mode == 'train':
-            file_name_single = f'simulation{self.sim_name}_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
-            file_name_mixed = f'simulation_mixed{self.sim_name}_{self.control_mode}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.wave_mode}'
+            file_name_single = f'simulation{self.sim_name}_{self.control_mode}_{self.control_alg}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+            file_name_mixed = f'simulation_mixed{self.sim_name}_{self.control_mode}_{self.control_alg}_{str(self.sim_time / 3600)}h_{f"{self.d_t}".replace('.','')}s_{self.wave_mode}'
         
         else:
-            file_name_single = f'simulation{self.sim_name}_{self.control_mode}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
-            file_name_mixed = f'simulation_mixed{self.sim_name}_{self.control_mode}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.wave_mode}'
+            file_name_single = f'simulation{self.sim_name}_{self.control_mode}_{self.control_alg}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.oscillator.get_wave_height()}_{self.oscillator.get_period()}_{self.wave_mode}'
+            file_name_mixed = f'simulation_mixed{self.sim_name}_{self.control_mode}_{self.control_alg}_{str(self.sim_time)}s_{f"{self.d_t}".replace('.','')}s_{self.wave_mode}'
             
         self.file_name = file_name_mixed if self.mixed_sea_state else file_name_single
         

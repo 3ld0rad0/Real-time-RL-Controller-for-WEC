@@ -41,6 +41,9 @@ def init_simulation(config):
     nSS_test = config['init_SS_test']
     regular = config['regular']
     control_mode = config['control_mode']
+    control_alg = 'rl' if config['rl_control'] else 'base'
+    fine_tune = 'ft' if config['retrain'] else ''
+    control_alg = control_alg + fine_tune
     save_mode = config['save_mode']
     show_results = config['show_results']
     sim_dir = config['results_dir']
@@ -50,8 +53,8 @@ def init_simulation(config):
     oscillator_train = Oscillator(C, C_STAR, K, G_STAR, regular, sim_time_train, control_mode, d_t, nSS_train, seed_spectrum = 17)
     oscillator_test = Oscillator(C, C_STAR,K, G_STAR, regular, sim_time_test, control_mode, d_t, nSS_test, seed_spectrum = 123)
 
-    sim_train = Simulation(oscillator_train, save_mode, 'train', sim_name, sim_dir, show_results, mixed_sea_state)
-    sim_test = Simulation(oscillator_test, save_mode, 'test', sim_name, sim_dir, show_results, mixed_sea_state)
+    sim_train = Simulation(oscillator_train, save_mode, 'train', control_alg, sim_name, sim_dir, show_results, mixed_sea_state)
+    sim_test = Simulation(oscillator_test, save_mode, 'test', control_alg, sim_name, sim_dir, show_results, mixed_sea_state)
 
     period_train = oscillator_train.get_period()
     period_test = oscillator_test.get_period()
@@ -287,6 +290,7 @@ def start_single_simulation_rl(conn, train_mode):
                     f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
                     f"Control mode : {config['control_mode']}\n"
                     f"Control d_t  : {config['d_t']}\n"
+                    f"C*           : {config['init_C_star']}\n"
             )
         else:
             logger.info(                    
@@ -294,6 +298,7 @@ def start_single_simulation_rl(conn, train_mode):
                     f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
                     f"Control mode : {config['control_mode']}\n"
                     f"Control d_t  : {config['d_t']}\n"
+                    f"C*           : {config['init_C_star']}\n"
             )               
         simulation_handler(conn, sim_train, 'rl')
         logger.info("Training Simulation finished...\n")
@@ -306,6 +311,7 @@ def start_single_simulation_rl(conn, train_mode):
             f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
             f"Control mode : {config['control_mode']}\n"
             f"Control d_t  : {config['d_t']}\n"
+            f"C*           : {config['init_C_star']}\n"
         )     
     energy_abs = simulation_handler(conn, sim_test, 'rl')
     logger.info("Testing Simulation finished...\n")
@@ -339,7 +345,7 @@ def start_simulation_rl(conn, n_batch, train_mode, config):
     
     else:
         path = os.path.join(config['results_dir'], "final/data/energy_results_irregular_waves.csv")
-    save_energy_tabular_data(entry, path)
+    #save_energy_tabular_data(entry, path)
 
 def start_simulation_baseline(conn, config):
     config = read_config_file()
@@ -355,6 +361,7 @@ def start_simulation_baseline(conn, config):
             f"Wave mode    : {'regular' if config['regular'] else 'irregular'}\n"
             f"Control mode : {config['control_mode']}\n"
             f"Control d_t  : {config['d_t']}\n"
+            f"C*           : {config['init_C_star']}\n"
         ) 
     energy_abs = simulation_handler(conn, sim_test, 'baseline')
 
@@ -375,7 +382,7 @@ def start_simulation_baseline(conn, config):
     
     else:
         path = os.path.join(config['results_dir'], "final/data/energy_results_irregular_waves.csv")
-    save_energy_tabular_data(entry, path)
+    #save_energy_tabular_data(entry, path)
 
 
 def save_energy_tabular_data(entry, path):

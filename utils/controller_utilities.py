@@ -63,6 +63,9 @@ def init_env(config, socket, mode):
     timesteps = config['n_steps']
     episodes = np.ceil(np.max((4, timesteps/1800)))
     control_mode = config['control_mode']
+    control_alg = 'rl' if config['rl_control'] else 'base'
+    fine_tune = 'ft' if config['retrain'] else ''
+    control_alg = control_alg + fine_tune
     wave_mode = 'regular' if config['regular'] else 'irregular'
     nSS = config['init_SS_train'] if mode == 'train' else config['init_SS_test']
     period_table = config['period_table']
@@ -84,12 +87,12 @@ def init_env(config, socket, mode):
     file_name_mixed = ""
 
     if mode == 'train':
-        file_name_single = f'simulation{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{str_sim}h_{f"{d_t}".replace('.','')}s_{wave_mode}'
+        file_name_single = f'simulation{sim_name}_{control_mode}_{control_alg}_{str_sim}h_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{control_alg}_{str_sim}h_{f"{d_t}".replace('.','')}s_{wave_mode}'
     
     else:
-        file_name_single = f'simulation{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
-        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{str_sim}s_{f"{d_t}".replace('.','')}s_{wave_mode}'
+        file_name_single = f'simulation{sim_name}_{control_mode}_{control_alg}_{str_sim}s_{f"{d_t}".replace('.','')}s_{init_hw}_{init_period}_{wave_mode}'
+        file_name_mixed = f'simulation_mixed{sim_name}_{control_mode}_{control_alg}_{str_sim}s_{f"{d_t}".replace('.','')}s_{wave_mode}'
 
     file_name = file_name_mixed if mixed_sea_state else file_name_single
 
@@ -230,7 +233,7 @@ def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_co
         
         for i in range(n_batch):
             time.sleep(3)
-            logger.info(f'Starting batch simulation {i+1}')
+            #logger.info(f'Starting batch simulation {i+1}')
             config = read_config_file()
             model_path = get_save_path(config) if config['path_model'] == '' else config['path_model']
             sim_name = config['sim_name']

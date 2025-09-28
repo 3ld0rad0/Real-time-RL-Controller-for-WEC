@@ -3,6 +3,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.server_utilities import start_simulation_rl, read_config_file, write_config_file, start_simulation_baseline
+from utils.test_configs import *
 import logging
 
 # Logger setup
@@ -16,6 +17,13 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+C_STAR = 0.5
+SEA_STATE = 5
+# set_config_rl_irregular(C_star = C_STAR, sea_state = SEA_STATE)
+# set_config_baseline_irregular(C_star = C_STAR, sea_state = SEA_STATE)
+set_config_rlft_irregular(C_star = C_STAR, sea_state = SEA_STATE)
+
+
 config = read_config_file()
 
 HOST = config['host']  # Standard loopback interface address (localhost)
@@ -25,9 +33,7 @@ N_BATCH = config['batch_size']
 RL_CONTROL = config['rl_control']
 
 sim_name = "1" if N_BATCH > 1 else ""
-#show_results = False if N_BATCH > 1 else True
 config["sim_name"] = sim_name
-#config["show_results"] = show_results
 
 write_config_file(config)
 
