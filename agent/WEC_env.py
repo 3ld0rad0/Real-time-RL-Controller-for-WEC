@@ -1,3 +1,6 @@
+"""DEFINE CUSTOM ENVIRONMENTS FOR REINFORCEMENT LEARNING AGENTS"""
+
+
 import gymnasium as gym
 import numpy as np
 import json

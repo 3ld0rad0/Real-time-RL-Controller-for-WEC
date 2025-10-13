@@ -1,3 +1,6 @@
+"""DEFINE THE WEC OSCILLATOR CLASS AND ITS DYNAMICS"""
+
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

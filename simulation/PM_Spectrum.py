@@ -1,3 +1,6 @@
+"""CREATE PIERSON-MOSKOVITZ SPECTRUM FOR GIVEN SIGNIFICANT WAVE HEIGHT AND ENERGY PERIOD"""
+
+
 import random
 import numpy as np
 import json
