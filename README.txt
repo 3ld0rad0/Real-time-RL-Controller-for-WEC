@@ -1,1 +1,0 @@
-In the following project a new real time controller for WEC, based on Reinforcement Learning, is proposed.

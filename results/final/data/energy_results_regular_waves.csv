@@ -1,0 +1,3 @@
+control_type,test_time,fine_tuned_model,regular,sea_state,C_star,G_star,energy_abs
+rl_control,900,False,True,0,0.1,variable,12.483202523464671
+optimal_control,900,False,True,0,0.1,5.0,13.024057782954704
