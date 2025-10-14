@@ -17,7 +17,7 @@ Server-Client approach allows to create many Control scripts (in the **agent** f
 - Modify the **config.json** file in the utils folder;
 - Open two terminal windows, and navigate to the current project folder;
 - Run in the first windows the following command, to start the Server: **python -m simulation.server**;
-- Run in the second windows the following command to start the Client: **python -m agent."your_controller"**;
+- Run in the second windows the following command to start the Client: **python -m agent.<your_controller>**;
 
 
 The program will save the results in the **results** folder.
