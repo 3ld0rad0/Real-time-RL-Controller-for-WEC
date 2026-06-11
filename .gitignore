@@ -70,3 +70,5 @@ venv.bak/
 
 # Project specific ignores
 # Ignoriamo i risultati delle simulazioni/addestramenti se generano file di log o modelli pesanti
+models/
+results/

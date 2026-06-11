@@ -9,8 +9,12 @@ from simulation.Oscillator import Oscillator
 from simulation.Simulation import Simulation
 import logging
 import pandas as pd
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 
@@ -91,16 +95,28 @@ def start_simulation(conn, sim, control):
     
     t_final = sim.get_sim_time()
         
-    while sim.get_current_time() < t_final:
-        try:
-            simulation_step(conn, sim)
-
-        except socket.timeout:
-            logger.error("Timeout: nessun comando ricevuto dal client.")
-            exit(1)
-
-        except Exception as e:
-            exit(1)
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        "•",
+        TimeElapsedColumn(),
+        "•",
+        TimeRemainingColumn(),
+        transient=True,
+    ) as progress:
+        task_desc = f"[cyan]Simulating ({sim.get_sim_mode()})..."
+        task_id = progress.add_task(task_desc, total=t_final)
+        
+        while sim.get_current_time() < t_final:
+            try:
+                simulation_step(conn, sim)
+                progress.update(task_id, completed=sim.get_current_time())
+            except socket.timeout:
+                logger.error("Timeout: nessun comando ricevuto dal client.")
+                exit(1)
+            except Exception as e:
+                exit(1)
 
 
 def simulation_step(conn, sim):
@@ -121,16 +137,6 @@ def simulation_step(conn, sim):
     if cmd == "get":
         # Esegui passo di simulazione
         payload = sim.step()
-        curr_time = sim.get_current_time()
-        progress = curr_time / sim.get_sim_time()
-        
-        bar_length = 30  # lunghezza della barra di avanzamento
-        block = int(bar_length * progress)
-        progress_bar = "[" + "#" * block + "-" * (bar_length - block) + "]"
-        percent = int(progress * 100)
-
-        print(f"\r{progress_bar} {percent}% - Tempo simulato: {curr_time:.1f}s", end="")
-
         conn.sendall((json.dumps(payload) + "\n").encode())
 
     elif cmd == "control":
@@ -168,10 +174,10 @@ def close_simulation(conn, sim, elapsed_time):
     
     if sim.get_sim_mode() == 'test':
         tot_energy_absorbed = sim.get_total_energy_absorbed()
-        logger.info(f'\nTotal energy absorbed: {round(tot_energy_absorbed,3)} MJ\n')
+        console.print(Panel(f"[bold green]Total energy absorbed: {round(tot_energy_absorbed,3)} MJ[/bold green]", title="[bold]Simulation Results[/bold]", expand=False))
 
     logger.info(
-        f"\nClose simulation...\n"
+        f"Close simulation...\n"
         f"Elapsed real time : {elapsed_time} s\n"
     )
 

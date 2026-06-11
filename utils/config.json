@@ -1,6 +1,6 @@
 {
   "control_mode": "latching",
-  "rl_control": true,
+  "rl_control": false,
   "regular": false,
   "mixed_sea_state": false,
   "save_mode": true,
@@ -15,7 +15,7 @@
   "fixed_G_star": false,
   "d_t": 0.5,
   "sim_time_train": 16.0,
-  "sim_time_test": 900,
+  "sim_time_test": 15.0,
   "warmup_time": 300,
   "n_steps": 115200,
   "init_SS_train": 0,

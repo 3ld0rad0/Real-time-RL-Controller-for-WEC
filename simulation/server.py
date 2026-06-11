@@ -4,25 +4,24 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.server_utilities import start_simulation_rl, read_config_file, write_config_file, start_simulation_baseline
 from utils.test_configs import *
+from rich.logging import RichHandler
 import logging
 
 # Logger setup
 logging.basicConfig(
-    level=logging.INFO,  # Cambia a DEBUG se vuoi più dettagli
-    #format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)]
 )
 
 logger = logging.getLogger(__name__)
 
-C_STAR = 0.5
-SEA_STATE = 5
+# C_STAR = 0.5
+# SEA_STATE = 5
 # set_config_rl_irregular(C_star = C_STAR, sea_state = SEA_STATE)
 # set_config_baseline_irregular(C_star = C_STAR, sea_state = SEA_STATE)
-set_config_rlft_irregular(C_star = C_STAR, sea_state = SEA_STATE)
-
+# set_config_rlft_irregular(C_star = C_STAR, sea_state = SEA_STATE)
 
 config = read_config_file()
 
