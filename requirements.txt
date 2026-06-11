@@ -1,0 +1,13 @@
+numpy
+pandas
+matplotlib
+scipy
+sympy
+mpmath
+ipython
+stable-baselines3
+gymnasium
+matplotlib-inline
+cycler
+tqdm
+google
