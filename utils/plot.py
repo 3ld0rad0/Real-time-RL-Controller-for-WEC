@@ -13,6 +13,9 @@ set_matplotlib_formats('svg')
 
 logger = logging.getLogger(__name__)
 
+# Applico lo stile globale
+plt.style.use('seaborn-v0_8-darkgrid')
+
 
 def load_and_process_data(csv_file_path , regular = False):
     """
@@ -262,7 +265,10 @@ def plot_reward(save_mode, results_path, plot_path):
 
         # Crea il grafico
         plt.figure(figsize=(10, 5))
-        plt.plot(step, reward, label='Reward', color='purple')
+        plt.plot(step, reward, label='Reward (Raw)', color='purple', alpha=0.3)
+        
+        reward_ma = reward.rolling(window=5, min_periods=1).mean()
+        plt.plot(step, reward_ma, label='Reward (MA 5)', color='purple', linewidth=2)
 
         # Etichette e titolo
         plt.xlabel('Step')
@@ -307,7 +313,9 @@ def plot_comparative_rewards(src_path, model, C_star = [0.1, 0.3, 0.5], save_pat
         y1 = df['reward_mean']
         y2 = df['reward']
         std = df['reward_std']
-        ax.plot(x, y1, label= f'Episode Mean Reward C* = {C_star[i]}', color = colors[i], linestyle = 'solid', alpha = 0.5)
+        ax.plot(x, y1, label= f'Episode Mean Reward C* = {C_star[i]}', color = colors[i], linestyle = 'solid', alpha = 0.2)
+        y1_ma = y1.rolling(window=5, min_periods=1).mean()
+        ax.plot(x, y1_ma, label= f'Moving Avg C* = {C_star[i]}', color = colors[i], linestyle = 'solid', linewidth=2)
         ax.plot(x, y2, label = f'Episode Reward C* = {C_star[i]}', color = colors1[i], linestyle = 'solid', alpha = 0.5)
         #ax.fill_between(x, y1 - std, y1 + std, alpha = 0.25, color = colors1[i])
         ax.set_xlabel('Episode')
@@ -375,8 +383,8 @@ def plot_linear(data, energy_data, last_data, save_mode, plot_path):
 
 def plot_latching(data, energy_data, last_data, save_mode, plot_path):
         
-        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(15, 8))
-        fig.tight_layout(pad=3.0)
+        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(15, 12))
+        fig.tight_layout(pad=4.0)
 
         # Subplot 1: Displacement (top-left)
         ax[0, 0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
@@ -384,71 +392,77 @@ def plot_latching(data, energy_data, last_data, save_mode, plot_path):
         ax[0, 0].set_xlabel(r'$t$ [s]')
         ax[0, 0].set_ylabel(r'Displacement [m]')
         ax[0, 0].legend(loc='lower right', fontsize='small')
-        ax[0, 0].grid()
         
         # Subplot 2: Velocity and Excitation Force (top-right)
         ax[0, 1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
         ax[0, 1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
+        
+        if 'u_latching' in last_data.columns:
+            ax[0, 1].fill_between(last_data['time'], 0, 1,
+                               where=(last_data['u_latching'] > 0.5), color='yellow', alpha=0.2, 
+                               transform=ax[0, 1].get_xaxis_transform(), label='Latching Active')
+
         ax[0, 1].set_xlabel(r'$t$ [s]')
         ax[0, 1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
         ax[0, 1].legend(loc='lower right', fontsize='small')
-        ax[0, 1].grid()
 
-        # Subplot 3: Latching control u (bottom-left)
-        ax[1, 0].plot(last_data['time'], last_data['u_latching'], label=r'u control latching', color='green')
-        ax[1, 0].set_xlabel(r'$t$ [s]')
-        ax[1, 0].set_ylabel("Binary Control")
+        # Subplot 3: Instantaneous Power (middle-left)
+        ax[1, 0].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[1, 0].set_xlabel(r'$t$ [h]')
+        ax[1, 0].set_ylabel("Inst. Power [kW]")
         ax[1, 0].legend(loc='lower right', fontsize='small')
-        ax[1, 0].set_ylim([0, 1.1])
-        ax[1, 0].grid()
 
-        # Subplot 4: G_star(bottom-right)
+        # Subplot 4: G_star (middle-right)
         ax[1, 1].plot(last_data['time'], last_data['G_star'], label=r'G_star', color='purple')
         ax[1, 1].set_xlabel(r'$t$ [s]')
         ax[1, 1].set_ylabel("G_star[]")
         ax[1, 1].legend(loc='lower right', fontsize='small')
         ax[1, 1].set_ylim([0, 11])
-        ax[1, 1].grid()
 
-        # Subplot 5: Instantaneous Power (bottom-right)
-        ax[2, 0].plot(data['time']/3600, data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
+        # Subplot 5: Capture Width Ratio (bottom-left)
+        ax[2, 0].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
         ax[2, 0].set_xlabel(r'$t$ [h]')
-        ax[2, 0].set_ylabel("Inst. Power [KW]")
+        ax[2, 0].set_ylabel("CWR")
         ax[2, 0].legend(loc='lower right', fontsize='small')
-        ax[2, 0].grid()
-
-        # Subplot 6: Capture Width Ratio(bottom-left)
-        ax[2, 1].plot(energy_data['time']/3600, energy_data['eta'], label=r'Capture Width Ratio', color='green')
-        ax[2, 1].set_xlabel(r'$t$ [h]')
-        ax[2, 1].set_ylabel("CWR")
-        ax[2, 1].legend(loc='lower right', fontsize='small')
-        ax[2, 1].grid()
+        
+        # Elimino il sesto grafico che è vuoto
+        fig.delaxes(ax[2, 1])
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
             logger.info('\nSave simulation train results and plots...\n')
-    
+
 
 def plot_test(last_data, save_mode, plot_path):
         
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(15, 8))
-        fig.tight_layout(pad=3.0)
+        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(15, 12))
+        fig.tight_layout(pad=4.0)
 
-        # Subplot 1: Displacement (top-left)
+        # Subplot 1: Displacement (top)
         ax[0].plot(last_data['time'], last_data['position'], label=r'Buoy displacement $\xi(t)$')
         ax[0].plot(last_data['time'], last_data['wave_t'], label=r'Wave displacement $\zeta (t)$', color='#17becf',linestyle='dashed')
         ax[0].set_xlabel(r'$t$ [s]')
         ax[0].set_ylabel(r'Displacement [m]')
         ax[0].legend(loc='lower right', fontsize='small')
-        ax[0].grid()
         
-        # Subplot 2: Velocity and Excitation Force (top-right)
+        # Subplot 2: Velocity and Excitation Force (middle)
         ax[1].plot(last_data['time'], last_data['velocity'], label=r'Buoy velocity $\dot{\xi}(t)$', color='red')
         ax[1].plot(last_data['time'], last_data['excitation_force'] * 10**-6, label=r'Excitation force $10^{-6} \times f_{e}(T)$', color='#1b9e77', linestyle='dashed')
+        
+        if 'u_latching' in last_data.columns:
+            ax[1].fill_between(last_data['time'], 0, 1,
+                               where=(last_data['u_latching'] > 0.5), color='yellow', alpha=0.2, 
+                               transform=ax[1].get_xaxis_transform(), label='Latching Active')
+
         ax[1].set_xlabel(r'$t$ [s]')
         ax[1].set_ylabel("Velocity [m/s]\nvs\nWave force [MN]")
         ax[1].legend(loc='lower right', fontsize='small')
-        ax[1].grid()
+
+        # Subplot 3: Instantaneous Power (bottom)
+        ax[2].plot(last_data['time'], last_data['power_inst'] * 10**-3, label=r'Inst. Power $10^{-3}$', color='orange')
+        ax[2].set_xlabel(r'$t$ [s]')
+        ax[2].set_ylabel("Power [kW]")
+        ax[2].legend(loc='lower right', fontsize='small')
 
         if save_mode:
             plt.savefig(plot_path, dpi = 300)
