@@ -3,6 +3,7 @@ import json
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.controller_utilities import start_threshold_control, read_config_file
+from utils.connection import JSONSocketWrapper
 from utils.test_configs import *
 from rich.logging import RichHandler
 import logging
@@ -32,8 +33,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         s.connect((HOST, PORT))
         logger.info("Connect to server...")
+        
+        wrapped_s = JSONSocketWrapper(s)
 
-        start_threshold_control(s, config)
+        start_threshold_control(wrapped_s, config)
 
     except json.JSONDecodeError:
         logger.error("Decode error in the response by the server...")

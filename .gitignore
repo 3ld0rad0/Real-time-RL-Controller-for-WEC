@@ -72,3 +72,4 @@ venv.bak/
 # Ignoriamo i risultati delle simulazioni/addestramenti se generano file di log o modelli pesanti
 models/
 results/
+board/

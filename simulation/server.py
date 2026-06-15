@@ -3,6 +3,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.server_utilities import start_simulation_rl, read_config_file, write_config_file, start_simulation_baseline
+from utils.connection import JSONSocketWrapper
 from utils.test_configs import *
 from rich.logging import RichHandler
 import logging
@@ -54,11 +55,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     with conn:
         logger.info(f"Connected by {addr}\n")
         
+        wrapped_conn = JSONSocketWrapper(conn)
+        
         if RL_CONTROL:
-            start_simulation_rl(conn, n_batch = N_BATCH, train_mode = TRAIN, config = config)
+            start_simulation_rl(wrapped_conn, n_batch = N_BATCH, train_mode = TRAIN, config = config)
 
         else:
-            start_simulation_baseline(conn, config = config)
+            start_simulation_baseline(wrapped_conn, config = config)
 
 logger.info('Close Server.')
     

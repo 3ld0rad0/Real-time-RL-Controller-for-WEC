@@ -107,10 +107,9 @@ class WECEnv_Linear(gym.Env):
     
     def get_observation(self):
         payload_get = {"cmd": "get"}
-        self.socket.sendall((json.dumps(payload_get) + "\n").encode())
+        self.socket.send_msg(payload_get)
             
-        response = self.socket.recv(1024).decode().strip()
-        state_raw = json.loads(response)
+        state_raw = self.socket.recv_msg()
 
         curr_period = state_raw['period']
         curr_hw = state_raw['wave_height']
@@ -139,7 +138,7 @@ class WECEnv_Linear(gym.Env):
                 "K": control_K
             }
         }
-        self.socket.sendall((json.dumps(payload_control) + "\n").encode())
+        self.socket.send_msg(payload_control)
 
     # Controlla se l'azione non porti i valori oltre i limiti dati dai valori ottimali
     def control_action(self, action):
@@ -158,10 +157,8 @@ class WECEnv_Linear(gym.Env):
         delta_K = action[1] * self.delta_max
         
         new_C, new_K = self.control_action((delta_C, delta_K))
-
-        time.sleep(0.001)        
+      
         self.send_action([new_C, new_K])
-        time.sleep(0.001)
         self.get_observation()
 
         normalized_state = self.normalize_state(self.state)
@@ -207,7 +204,7 @@ class WECEnv_Linear(gym.Env):
                             new_sea_state = random.choices(values, weights=w, k=1)[0]
 
                         payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
-                        self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                        self.socket.send_msg(payload_done)
                         # logger.info("Changing sea_state...")
                     
                     except Exception as e:
@@ -359,10 +356,9 @@ class WECEnv_Latching(gym.Env):
     
     def get_observation(self):
         payload_get = {"cmd": "get"}
-        self.socket.sendall((json.dumps(payload_get) + "\n").encode())
+        self.socket.send_msg(payload_get)
             
-        response = self.socket.recv(1024).decode().strip()
-        state_raw = json.loads(response)
+        state_raw = self.socket.recv_msg()
 
         curr_period = state_raw['period']
         curr_hw = state_raw['wave_height']
@@ -394,7 +390,7 @@ class WECEnv_Latching(gym.Env):
                 "G_star": control_G_star
             }
         }
-        self.socket.sendall((json.dumps(payload_control) + "\n").encode())
+        self.socket.send_msg(payload_control)
 
     
     def control_action_u(self, action):
@@ -435,9 +431,7 @@ class WECEnv_Latching(gym.Env):
             new_u = self.control_action_u(action)
             new_G_star = self.init_G_star
         
-        time.sleep(0.01)
         self.send_action((new_u, new_G_star))
-        time.sleep(0.01)
         self.get_observation()
 
         
@@ -488,7 +482,7 @@ class WECEnv_Latching(gym.Env):
                             new_sea_state = random.choices(values, weights=w, k=1)[0]
                         
                         payload_done = {'cmd' : 'done', 'new_sea_state': new_sea_state}
-                        self.socket.sendall((json.dumps(payload_done) + "\n").encode())
+                        self.socket.send_msg(payload_done)
                         # logger.info("Changing sea_state...")
                     
                     except Exception as e:

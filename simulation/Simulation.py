@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 import utils.mpl_utils as mut
 from  utils.mpl_utils import linecolors
 mut.config_plots()
-from matplotlib_inline.backend_inline import set_matplotlib_formats
-set_matplotlib_formats('svg')
+
 
 from utils.plot import *
 import numpy as np

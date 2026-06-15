@@ -120,24 +120,17 @@ def start_simulation(conn, sim, control):
 
 
 def simulation_step(conn, sim):
-    data = conn.recv(1024)
-    if not data:
-        logger.error('No data received... close connection')
+    request = conn.recv_msg()
+    if request is None:
+        logger.error('No data received or decode error... close connection')
         raise Exception
-          # Decodifica JSON ricevuto
-    try:
-        request = json.loads(data.decode().strip())
-                
-    except json.JSONDecodeError:
-        logger.error("Errore nel JSON ricevuto")
-        logger.error(data)
 
     cmd = request.get("cmd")
 
     if cmd == "get":
         # Esegui passo di simulazione
         payload = sim.step()
-        conn.sendall((json.dumps(payload) + "\n").encode())
+        conn.send_msg(payload)
 
     elif cmd == "control":
         params = request.get("params", {})
@@ -163,7 +156,7 @@ def simulation_step(conn, sim):
     else:
         response = {"error": "Comando non riconosciuto"}
         logger.warning(cmd)
-        conn.sendall((json.dumps(response) + "\n").encode())
+        conn.send_msg(response)
 
 def close_simulation(conn, sim, elapsed_time):
     
@@ -187,7 +180,6 @@ def close_simulation(conn, sim, elapsed_time):
 
 def connection_handler(conn, sim):
     send_close_message(conn, sim.get_total_energy_absorbed())
-    time.sleep(1)
     # Clear all the files if save_mode is False
     if not sim.get_save_mode():
         sim.clear()
@@ -196,8 +188,8 @@ def connection_handler(conn, sim):
 
 def send_close_message(conn, energy_absorbed):
     try:
-        close_message = json.dumps({"cmd": "close", "energy_abs": energy_absorbed}).encode()
-        conn.sendall(close_message)
+        close_message = {"cmd": "close", "energy_abs": energy_absorbed}
+        conn.send_msg(close_message)
         return True
             
     except Exception as e:
@@ -206,26 +198,20 @@ def send_close_message(conn, energy_absorbed):
 
 def wait_closeack_message(conn):
     try:
-        data = conn.recv(1024)
-        if not data:
+        request = conn.recv_msg()
+        if not request:
             logger.error("Nessun ack di chiusura ricevuto.")
             return False
 
-        request = json.loads(data.decode().strip())
         cmd = request.get("cmd")
 
         if cmd == "ack-close":
             #print("Close ack receive by the client...")
-            time.sleep(1)  # Attendi un attimo prima di rispondere
-            #conn.sendall(b"Server close.\n")
             return True
         else:
             logger.error(f"Comando sconosciuto ricevuto: {cmd}")
             return False
 
-    except json.JSONDecodeError:
-        logger.error("Errore nel parsing del JSON ricevuto.")
-        return False
     except Exception as e:
         logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
@@ -236,7 +222,7 @@ def send_warmup_values(sim, conn):
         warmup_values = sim.get_warmup_values()
         # print(f'Max heave :{warmup_values[0]} m')
         # print(f'Max velocity :{warmup_values[1]} m/s')
-        conn.sendall((json.dumps(warmup_values) + "\n").encode())
+        conn.send_msg(warmup_values)
         
         #print('Send warmup values to controller...\n')
         return True

@@ -12,8 +12,7 @@ import matplotlib.pyplot as plt
 import utils.mpl_utils as mut
 from  utils.mpl_utils import linecolors
 mut.config_plots()
-from matplotlib_inline.backend_inline import set_matplotlib_formats
-set_matplotlib_formats('svg')
+
 
 class Oscillator:
     def __init__(self, C, C_star, K, G_star, regular, t_final, control_mode, d_t, sea_state, seed_spectrum):

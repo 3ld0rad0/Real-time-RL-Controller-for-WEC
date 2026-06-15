@@ -8,8 +8,7 @@ import logging
 import utils.mpl_utils as mut
 from  utils.mpl_utils import linecolors
 mut.config_plots()
-from matplotlib_inline.backend_inline import set_matplotlib_formats
-set_matplotlib_formats('svg')
+
 
 logger = logging.getLogger(__name__)
 

@@ -43,6 +43,11 @@ def main():
     
     args = parser.parse_args()
 
+    # Se non vogliamo mostrare i risultati, forziamo il backend 'Agg' per matplotlib
+    # così da evitare crash in ambienti sprovvisti di librerie grafiche (es. Qt/X11).
+    if not args.show_results:
+        os.environ['MPLBACKEND'] = 'Agg'
+
     # Legge l'attuale configurazione
     if not os.path.exists(CONFIG_PATH):
         print(f"[!] Errore: {CONFIG_PATH} non trovato.")

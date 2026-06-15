@@ -3,6 +3,7 @@ import json
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.controller_utilities import start_rl_control, read_config_file
+from utils.connection import JSONSocketWrapper
 from utils.test_configs import *
 from rich.logging import RichHandler
 import logging
@@ -38,8 +39,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         s.connect((HOST, PORT))
         logger.info("Connect to server...")
+        
+        wrapped_s = JSONSocketWrapper(s)
 
-        start_rl_control(s, N_BATCH, TRAIN, RE_TRAIN, MODEL_RETRAINED_PATH, ENT_COEF)
+        start_rl_control(wrapped_s, N_BATCH, TRAIN, RE_TRAIN, MODEL_RETRAINED_PATH, ENT_COEF)
 
     except json.JSONDecodeError:
         logger.error("Decode error in the response by the server...")

@@ -142,33 +142,28 @@ def init_env(config, socket, mode):
 
 def wait_close_message(socket):
     try:
-        data = socket.recv(1024)
-        if not data:
+        request = socket.recv_msg()
+        if not request:
             logger.error("Nessun ack di chiusura ricevuto.")
             return False
 
-        request = json.loads(data.decode().strip())
         cmd = request.get("cmd")
         #energy_absorbed = request.get("energy_abs")
 
         if cmd == "close":
-            time.sleep(1)
             return True
         else:
             logger.error(f"Comando sconosciuto ricevuto: {cmd}")
             return False
 
-    except json.JSONDecodeError:
-        logger.error("Errore nel parsing del JSON ricevuto.")
-        return False
     except Exception as e:
         logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
 
 def send_closeack_message(socket):
     try:
-        ack_message = json.dumps({"cmd": "ack-close"}).encode()
-        socket.sendall(ack_message)
+        ack_message = {"cmd": "ack-close"}
+        socket.send_msg(ack_message)
         return True
             
     except Exception as e:
@@ -177,7 +172,6 @@ def send_closeack_message(socket):
 
 def connection_handler(socket):
     wait_close_message(socket)
-    time.sleep(1)
     send_closeack_message(socket)
 
 def training_handler(model, socket, timesteps, episodes, save_mode, save_path, sim_name):
@@ -206,14 +200,9 @@ def testing_handler(env_test, model, socket):
 
 def receive_warmup_values(socket):
     try:
-        response = socket.recv(1024).decode().strip()
-        warmup_values = json.loads(response)
-    
+        warmup_values = socket.recv_msg()
         return warmup_values
     
-    except json.JSONDecodeError:
-        logger.error("Errore nel parsing del JSON ricevuto.")
-        return False
     except Exception as e:
         logger.error(f"Errore durante la ricezione del messaggio di chiusura: {e}")
         return False
@@ -245,17 +234,17 @@ def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_co
                 EPISODES = config['n_episodes']
                 TIMESTEPS = config['n_steps']
                 
-                if retrain:
-                    model = PPO.load(model_retrain_path, env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/retrained/", verbose = 0)
+                if retrain and model_retrain_path != "":
+                    model = PPO.load(model_retrain_path, env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/retrained/", verbose = 0, device='cpu')
                     logger.info("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
                 else:
-                    model = PPO("MlpPolicy", env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/", ent_coef = ent_coef, verbose=0)
+                    model = PPO("MlpPolicy", env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/", ent_coef = ent_coef, verbose=0, device='cpu')
                 
                 training_handler(model, s, TIMESTEPS, EPISODES, save_mode = True, save_path = model_path, sim_name = sim_name)
                 env_train.close()
             
             try:
-                model = PPO.load(model_path)
+                model = PPO.load(model_path, device='cpu')
                 logger.info("Model loaded successfully...")
             
             except FileNotFoundError:
@@ -293,10 +282,9 @@ def compute_threshold(config):
 
 def get_observation(s):
     payload_get = {"cmd": "get"}
-    s.sendall((json.dumps(payload_get) + "\n").encode())
+    s.send_msg(payload_get)
             
-    response = s.recv(1024).decode().strip()
-    state_raw = json.loads(response)
+    state_raw = s.recv_msg()
     
     state = (state_raw['position'], state_raw['velocity'], state_raw['excitation_force'], state_raw['f_pto_damp'], state_raw['G_star'])
     current_time = state_raw['time']
@@ -312,7 +300,7 @@ def send_action(s, control):
             "G_star": control_G_star
         }
     }
-    s.sendall((json.dumps(payload_control) + "\n").encode())
+    s.send_msg(payload_control)
 
 
 def start_threshold_control(s, config):
@@ -324,9 +312,7 @@ def start_threshold_control(s, config):
     
     logger.info(f'Starting test simulation...')
     while current_t < t_final:
-        time.sleep(0.01)
         state,  t = get_observation(s)
-        time.sleep(0.01)
         current_t = t
         
         if current_t == t_final:
