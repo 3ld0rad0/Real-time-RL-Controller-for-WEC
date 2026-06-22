@@ -1,13 +1,11 @@
-import numpy as np
-import json
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.Oscillator import Oscillator
-
 import numpy as np
 import json
 import logging
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from simulation.Oscillator import Oscillator
 
 # Logger setup
 logging.basicConfig(
@@ -48,10 +46,8 @@ def warmup(warmup_time, init_values, file_path='./utils/warmup.json', n_sim=100,
             random_ptos_v = np.random.uniform(opt_fpto_stif, -opt_fpto_stif, size=n_sim)
     else:
         # Fisso per onde irregolari
-        #random_ptod_v = [oscillator.get_opt_damping_pto() * 0.2,oscillator.get_opt_damping_pto() * 0.3, oscillator.get_opt_damping_pto() * 0.4, oscillator.get_opt_damping_pto() * 0.5]
-        random_ptod_v = [oscillator.get_damping_c_star(0.1), oscillator.get_damping_c_star(0.2), oscillator.get_damping_c_star(0.3), oscillator.get_damping_c_star(0.4), oscillator.get_damping_c_star(0.5)]
-        random_ptos_v = [0.0, 0.0, 0.0, 0.0]
-
+        random_ptod_v = [oscillator.get_damping_c_star(c) for c in [0.1, 0.2, 0.3, 0.4, 0.5]]
+        random_ptos_v = [0.0] * len(random_ptod_v)
     v_arr = []
     x_arr = []
     fe_t_arr = []

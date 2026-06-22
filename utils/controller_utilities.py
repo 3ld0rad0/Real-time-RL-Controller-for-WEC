@@ -175,7 +175,7 @@ def connection_handler(socket):
     send_closeack_message(socket)
 
 def training_handler(model, socket, timesteps, episodes, save_mode, save_path, sim_name):
-    logger.info(f'Starting train simulation...')
+    logger.debug(f'Starting train simulation...')
     model.learn(total_timesteps= timesteps, tb_log_name = f"simulation{sim_name}_PPO_log" ,callback=StopTrainingOnEpisodeCount(max_episodes= episodes, verbose=1))
     if save_mode:
         model.save(save_path)
@@ -187,7 +187,7 @@ def testing_handler(env_test, model, socket):
     obs, info = env_test.reset()
     truncated = False
 
-    logger.info(f'Starting test simulation...')
+    logger.debug(f'Starting test simulation...')
         
     while not truncated:
         action, _states = model.predict(obs)
@@ -218,12 +218,19 @@ def write_config_file(data, file = "./utils/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 
-def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_coef):
+def start_rl_control(s, config):
+        n_batch = config.get('batch_size', 1)
         
         for i in range(n_batch):
             time.sleep(3)
             #logger.info(f'Starting batch simulation {i+1}')
             config = read_config_file()
+            
+            train_mode = config.get('train_model', False)
+            retrain = config.get('retrain', False)
+            model_retrain_path = config.get('retrain_path_model', "")
+            ent_coef = config.get('ent_coef', 0.0)
+
             model_path = get_save_path(config) if config['path_model'] == '' else config['path_model']
             sim_name = config['sim_name']
 
@@ -236,7 +243,7 @@ def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_co
                 
                 if retrain and model_retrain_path != "":
                     model = PPO.load(model_retrain_path, env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/retrained/", verbose = 0, device='cpu')
-                    logger.info("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
+                    logger.debug("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
                 else:
                     model = PPO("MlpPolicy", env_train, tensorboard_log = f"./board/ent_reg{ent_coef}/", ent_coef = ent_coef, verbose=0, device='cpu')
                 
@@ -245,7 +252,7 @@ def start_rl_control(s, n_batch, train_mode, retrain, model_retrain_path, ent_co
             
             try:
                 model = PPO.load(model_path, device='cpu')
-                logger.info("Model loaded successfully...")
+                logger.debug("Model loaded successfully...")
             
             except FileNotFoundError:
                 logger.error("Model not found, starting from scratch.")
@@ -310,7 +317,7 @@ def start_threshold_control(s, config):
     t_final = config['sim_time_test']
     G_star = config['init_G_star']
     
-    logger.info(f'Starting test simulation...')
+    logger.debug(f'Starting test simulation...')
     while current_t < t_final:
         state,  t = get_observation(s)
         current_t = t

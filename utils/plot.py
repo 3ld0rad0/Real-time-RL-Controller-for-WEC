@@ -790,4 +790,4 @@ if __name__ == '__main__':
     plot_comparative_rewards(src_path = './results/test/data/irregular/sea_state_mixed/', model = 'normal', save_path = f'./results/final/plot/reward_comparative_rl.png')
     plot_comparative_rewards(src_path = './results/test/data/irregular/sea_state_2.4_11.0/', model = 'ft', save_path = f'./results/final/plot/reward_comparative_rlft.png')
     
-    plt.show()
+    plt.close()

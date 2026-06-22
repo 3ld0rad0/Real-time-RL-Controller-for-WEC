@@ -36,17 +36,13 @@ def main():
                         help="Usa onde regolari (invece di quelle irregolari di default).")
     parser.add_argument("--sim-time", type=float, default=None,
                         help="Tempo di simulazione (ore per il train, secondi per il test).")
-    parser.add_argument("--show-results", action="store_true",
-                        help="Mostra i grafici dei risultati a fine simulazione.")
     parser.add_argument("--save", action="store_true",
                         help="Salva i risultati (csv, plot) a fine simulazione.")
     
     args = parser.parse_args()
 
-    # Se non vogliamo mostrare i risultati, forziamo il backend 'Agg' per matplotlib
-    # così da evitare crash in ambienti sprovvisti di librerie grafiche (es. Qt/X11).
-    if not args.show_results:
-        os.environ['MPLBACKEND'] = 'Agg'
+    # Forziamo il backend 'Agg' per matplotlib così da evitare crash in ambienti sprovvisti di librerie grafiche (es. Qt/X11).
+    os.environ['MPLBACKEND'] = 'Agg'
 
     # Legge l'attuale configurazione
     if not os.path.exists(CONFIG_PATH):
@@ -61,7 +57,7 @@ def main():
     config["control_mode"] = args.type
     config["mixed_sea_state"] = args.mixed
     config["regular"] = args.regular
-    config["show_results"] = args.show_results
+    config["show_results"] = False
     config["save_mode"] = args.save
     
     if args.mode == "train":
@@ -85,7 +81,6 @@ def main():
     table.add_row("Sea State", str(args.sea_state))
     table.add_row("Mixed Sea State", str(args.mixed))
     table.add_row("Regular Waves", str(args.regular))
-    table.add_row("Show Results", str(args.show_results))
     table.add_row("Save Mode", str(args.save))
     if args.sim_time is not None:
         table.add_row("Sim Time", str(args.sim_time))

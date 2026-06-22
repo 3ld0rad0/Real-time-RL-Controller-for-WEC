@@ -139,7 +139,7 @@ class WECEnv_Base(gym.Env):
                     except Exception as e:
                         logger.error("Errore nell'invio del messaggio... ", e)
                 
-                logger.info(f'Episode {self.n_ep} completed...')
+                logger.debug(f'Episode {self.n_ep} completed...')
 
         if self.current_time == self.t_final:
             self.save_reward()

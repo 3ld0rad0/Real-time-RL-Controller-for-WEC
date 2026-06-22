@@ -177,40 +177,34 @@ class Simulation:
         if not buff:
             return
             
-        # Estrai i dati dal buffer
-        data_to_write = []
-        
-        for entry in buff:
-            t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_arr, ss_arr = entry
-            
-            for t, x, v, fet, wave_t, damp, stif, pow_inst, u_latch, g_star, ss in zip(t_arr, x_arr, v_arr, fet_arr, wave_t_arr, damp_arr, stif_arr, pow_inst_arr, u_latch_arr, g_star_arr, ss_arr):
-                data_to_write.append({
-                    "time": t,
-                    "position": x,
-                    "velocity": v,
-                    "excitation_force": fet,
-                    "wave_t": wave_t,
-                    "damping_fpto": damp,
-                    "stifness_fpto": stif,
-                    "u_latching": u_latch,
-                    "G_star": g_star,
-                    "power_inst": pow_inst,
-                    "sea_state": ss
-                })
+        # Estrai i dati dal buffer in modo vettorizzato
+        t_list, x_list, v_list, fet_list, wave_list, damp_list, stif_list, pow_inst_list, u_list, g_list, ss_list = zip(*buff)
+
+        data_to_write = {
+            "time": np.concatenate(t_list),
+            "position": np.concatenate(x_list),
+            "velocity": np.concatenate(v_list),
+            "excitation_force": np.concatenate(fet_list),
+            "wave_t": np.concatenate(wave_list),
+            "damping_fpto": np.concatenate(damp_list),
+            "stifness_fpto": np.concatenate(stif_list),
+            "u_latching": np.concatenate(u_list),
+            "G_star": np.concatenate(g_list),
+            "power_inst": np.concatenate(pow_inst_list),
+            "sea_state": np.concatenate(ss_list)
+        }
         
         mean_energy = []
         
         # CONTROL ENERGY WAVE AND ETA
         #########################################
         if r > 0:
-            energy_abs = [x[1] for x in self.energy_buff]
-            energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
+            energy_abs = sum(x[1] for x in self.energy_buff) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
             eta = energy_abs / (energy_wave * (r / self.period))
 
         else:
-            energy_abs = [x[1] for x in self.energy_buff]
-            energy_abs = np.sum(energy_abs) ## energia catturata in una finestra di osservazione [J]
+            energy_abs = sum(x[1] for x in self.energy_buff) ## energia catturata in una finestra di osservazione [J]
             energy_wave = self.oscillator.get_wave_energy() ## energia dell'onda in un determinato sea state
             eta = energy_abs / (energy_wave * self.attention_win)
         
@@ -286,12 +280,7 @@ class Simulation:
             
             self.calculate_total_energy_absorbed()
 
-        if self.show_results:
-            plt.show()
-            logger.info("\nShow plots...\n")
-        
-        else:
-            plt.close()
+        plt.close()
 
     # pulisce i file csv se save_mode = 0
     def clear(self):
