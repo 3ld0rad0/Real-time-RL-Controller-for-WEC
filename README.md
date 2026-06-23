@@ -10,14 +10,21 @@ Proximal Policy Optimization algorithm is used to train the RL agent on differen
 
 The approach shows that RL control, achieved better performance in terms of Absorbed Power, compared to a classic approach based on [Threshold Control](https://www.researchgate.net/publication/245196134_Experimental_and_numerical_investigation_of_non-predictive_phase-control_strategies_for_a_point-absorbing_wave_energy_converter).
 
-Server-Client approach allows to create many Control scripts (in the **agent** folder) that you can run separately, without modify the Server logic.
+Server-Client approach allows to create many Control scripts (in the **src/control** folder) that you can run separately, without modifying the Server logic.
 
 # Instruction to run the program
 
-- Modify the **config.json** file in the utils folder;
-- Open two terminal windows, and navigate to the current project folder;
-- Run in the first windows the following command, to start the Server: **python -m simulation.server**;
-- Run in the second windows the following command to start the Client: **python -m agent.<your_controller>**;
+- The configuration file **config.json** is located in the **src/config** folder.
+- You can now launch the entire simulation natively using the provided runner script. From the root of the project, execute:
+  ```bash
+  python run.py
+  ```
+  This script will automatically start both the Server and the chosen Client, parse your arguments, and execute the simulation.
 
+- You can pass several arguments to customize the run directly from the command line without editing the JSON manually. For example:
+  ```bash
+  python run.py --mode train --control rl --type latching --sea-state 5 --save
+  ```
+  Use `python run.py --help` to see all available options.
 
 The program will save the results in the **results** folder.
