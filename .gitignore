@@ -74,3 +74,5 @@ models/
 results/
 board/
 AGENTS.md
+utils/config.json
+utils/warmup.json

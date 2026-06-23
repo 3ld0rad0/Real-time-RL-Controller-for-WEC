@@ -5,9 +5,9 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3 import PPO
-from agent.WEC_env import WECEnv_Linear, WECEnv_Latching
-from agent.client import UniversalClient, read_config_file, write_config_file, connection_handler
-from agent.base_controller import BaseController
+from src.control.WEC_env import WECEnv_Linear, WECEnv_Latching
+from src.network.client import UniversalClient, read_config_file, write_config_file, connection_handler
+from src.control.base_controller import BaseController
 import logging
 
 logger = logging.getLogger(__name__)
@@ -92,8 +92,7 @@ class RLController(BaseController):
         reward_path = f'{base_name}/{file_name}_reward.csv'
         
         c['n_episodes'] = episodes
-        write_config_file(c)
-
+        write_config_file(c, "./src/utils/config.json")
         warmup_values = self.receive_warmup_values(socket)
         
         # Dati base per l'ambiente
@@ -123,7 +122,7 @@ class RLController(BaseController):
         Sovrascrive il metodo train per lanciare PPO.learn.
         """
         # Rilegge il config in caso sia mutato
-        config = read_config_file()
+        config = read_config_file("./src/utils/config.json")
         retrain = config.get('retrain', False)
         model_retrain_path = config.get('retrain_path_model', "")
         ent_coef = config.get('ent_coef', 0.0)
@@ -154,7 +153,7 @@ class RLController(BaseController):
         """
         Sovrascrive il metodo test per lanciare PPO.predict tramite WECEnv.
         """
-        config = read_config_file()
+        config = read_config_file("./src/utils/config.json")
         sim_name = config.get('sim_name', "")
         
         model_path = self.get_save_path(config) if config['path_model'] == '' else config['path_model']
@@ -186,7 +185,7 @@ class RLController(BaseController):
         n_batch = config.get('batch_size', 1)
         
         for i in range(n_batch):
-            config = read_config_file()
+            config = read_config_file("./src/utils/config.json")
             
             if config.get('train_model', False):
                 self.train(socket, config)

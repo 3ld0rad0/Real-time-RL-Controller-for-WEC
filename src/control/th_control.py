@@ -3,8 +3,8 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from agent.client import UniversalClient
-from agent.base_controller import BaseController
+from src.network.client import UniversalClient
+from src.control.base_controller import BaseController
 
 class ThresholdController(BaseController):
     

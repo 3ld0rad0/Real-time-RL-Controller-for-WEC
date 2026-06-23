@@ -9,7 +9,7 @@ from rich.table import Table
 
 console = Console()
 
-CONFIG_PATH = os.path.join("utils", "config.json")
+CONFIG_PATH = os.path.join("src", "utils", "config.json")
 
 def load_config():
     with open(CONFIG_PATH, "r") as f:
@@ -88,11 +88,11 @@ def main():
     console.print(table)
 
     # Determina quale script del client usare
-    client_module = "agent.rl_control" if args.control == "rl" else "agent.th_control"
+    client_module = "src.control.rl_control" if args.control == "rl" else "src.control.th_control"
 
     # Avvia il Server
-    console.print(f"[bold blue][*] Avvio del Server (simulation.server)...[/bold blue]")
-    server_process = subprocess.Popen([sys.executable, "-m", "simulation.server"])
+    console.print(f"[bold blue][*] Avvio del Server (src.network.server)...[/bold blue]")
+    server_process = subprocess.Popen([sys.executable, "-m", "src.network.server"])
     
     # Attesa breve affinché il server apra il socket
     time.sleep(2)

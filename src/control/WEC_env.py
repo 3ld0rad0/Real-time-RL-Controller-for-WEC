@@ -24,7 +24,7 @@ class WECEnv_Base(gym.Env):
         self.current_time = 0.0
 
         # warmup values
-        with open('./utils/warmup.json', "r") as f:
+        with open('./src/utils/warmup.json', "r") as f:
             self.warmup_values = json.load(f)
 
         self.sea_state_values = list(range(0, 9))

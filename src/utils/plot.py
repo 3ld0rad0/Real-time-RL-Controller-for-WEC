@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import logging
-import utils.mpl_utils as mut
-from  utils.mpl_utils import linecolors
+import src.utils.mpl_utils as mut
+from src.utils.mpl_utils import linecolors
 mut.config_plots()
 
 

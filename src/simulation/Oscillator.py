@@ -4,13 +4,13 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.PM_Spectrum import PM_Spectrum
+from src.simulation.PM_Spectrum import PM_Spectrum
 import numpy as np
 from scipy.integrate import solve_ivp, trapezoid
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-import utils.mpl_utils as mut
-from  utils.mpl_utils import linecolors
+import src.utils.mpl_utils as mut
+from src.utils.mpl_utils import linecolors
 mut.config_plots()
 
 

@@ -5,8 +5,8 @@ import os
 import socket
 import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from simulation.Oscillator import Oscillator
-from simulation.Simulation import Simulation
+from src.simulation.Oscillator import Oscillator
+from src.simulation.Simulation import Simulation
 import logging
 import pandas as pd
 from rich.console import Console
@@ -73,7 +73,7 @@ def init_simulation(config):
     config["sim_name"] = sim_name
     
     # Salva di nuovo il file
-    with open("./utils/config.json", "w") as f:
+    with open("./src/utils/config.json", "w") as f:
         json.dump(config, f, indent=2)
     
     return sim_train, sim_test
@@ -232,14 +232,14 @@ def send_warmup_values(sim, conn):
         return False
     
 
-def read_config_file(file = "./utils/config.json"):
+def read_config_file(file = "./src/utils/config.json"):
     config = None
     with open(file, "r") as f:
         config = json.load(f)
 
     return config
 
-def write_config_file(data, file = "./utils/config.json"):
+def write_config_file(data, file = "./src/utils/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 

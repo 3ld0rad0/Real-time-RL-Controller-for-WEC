@@ -5,12 +5,12 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import matplotlib.pyplot as plt
-import utils.mpl_utils as mut
-from  utils.mpl_utils import linecolors
+import src.utils.mpl_utils as mut
+from src.utils.mpl_utils import linecolors
 mut.config_plots()
 
 
-from utils.plot import *
+from src.utils.plot import *
 import numpy as np
 from collections import deque
 import pandas as pd
@@ -134,7 +134,7 @@ class Simulation:
         }
 
 
-    def load_warmup_values(self, init_values, file_path = './utils/warmup.json'):
+    def load_warmup_values(self, init_values, file_path = './src/utils/warmup.json'):
         period, Hw = init_values
 
         with open(file_path, "r") as f:

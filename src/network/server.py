@@ -2,8 +2,8 @@ import socket
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.server_utilities import start_simulation_rl, read_config_file, write_config_file, start_simulation_baseline
-from utils.connection import JSONSocketWrapper
+from src.network.server_utilities import start_simulation_rl, read_config_file, write_config_file, start_simulation_baseline
+from src.network.connection import JSONSocketWrapper
 from rich.logging import RichHandler
 import logging
 

@@ -6,7 +6,7 @@ import json
 class PM_Spectrum:
     def __init__(self, seed):
         self.seed = seed
-        with open("./utils/config.json", "r") as f:
+        with open("./src/utils/config.json", "r") as f:
             config = json.load(f)
 
         self.Hs_tbl = config['wave_height_table']
