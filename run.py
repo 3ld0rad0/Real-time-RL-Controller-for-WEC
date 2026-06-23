@@ -9,7 +9,7 @@ from rich.table import Table
 
 console = Console()
 
-CONFIG_PATH = os.path.join("src", "utils", "config.json")
+CONFIG_PATH = os.path.join("src", "config", "config.json")
 
 def load_config():
     with open(CONFIG_PATH, "r") as f:

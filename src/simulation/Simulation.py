@@ -134,7 +134,7 @@ class Simulation:
         }
 
 
-    def load_warmup_values(self, init_values, file_path = './src/utils/warmup.json'):
+    def load_warmup_values(self, init_values, file_path = './src/config/warmup.json'):
         period, Hw = init_values
 
         with open(file_path, "r") as f:

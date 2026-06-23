@@ -20,12 +20,12 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-def read_config_file(file="./src/utils/config.json"):
+def read_config_file(file="./src/config/config.json"):
     with open(file, "r") as f:
         config = json.load(f)
     return config
 
-def write_config_file(data, file="./src/utils/config.json"):
+def write_config_file(data, file="./src/config/config.json"):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
 
@@ -67,7 +67,7 @@ class UniversalClient:
     Universal Client to handle socket connection and configuration.
     It completely decouples the network boilerplate from the algorithm logic.
     """
-    def __init__(self, config_file="./src/utils/config.json"):
+    def __init__(self, config_file="./src/config/config.json"):
         self.config = read_config_file(config_file)
         self.host = self.config.get('host', '127.0.0.1')
         self.port = self.config.get('port', 65432)

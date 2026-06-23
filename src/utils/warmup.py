@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def warmup(warmup_time, init_values, file_path='./src/utils/warmup.json', n_sim=100, adaptive_sampling=True):
+def warmup(warmup_time, init_values, file_path='./src/config/warmup.json', n_sim=100, adaptive_sampling=True):
     period, Hw, C, C_STAR, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS = init_values
     oscillator = Oscillator(C, C_STAR, K, G_STAR, regular, warmup_time, control_mode, d_t, nSS, seed_spectrum = 17)
 
@@ -107,7 +107,7 @@ def warmup(warmup_time, init_values, file_path='./src/utils/warmup.json', n_sim=
 
 if __name__ == "__main__":
     
-    with open('./src/utils/config.json', 'r') as f:
+    with open('./src/config/config.json', 'r') as f:
         config = json.load(f)
     
 
