@@ -36,7 +36,8 @@ class BaseController(ABC):
     def act(self, state, time):
         """
         Calcola l'azione in base allo stato attuale e al tempo.
-        Deve ritornare una tupla: (control_u, control_G_star)
+        Deve ritornare un dizionario contenente i parametri di controllo da inviare,
+        oppure una tupla (control_u, control_G_star) per retrocompatibilità.
         """
         pass
 
@@ -66,29 +67,31 @@ class BaseController(ABC):
     def get_observation(self, s):
         """
         Metodo interno. Richiede lo stato attuale al server.
+        Restituisce un dizionario generico con tutti i parametri ricevuti.
         """
         s.send_msg({"cmd": "get"})
         state_raw = s.recv_msg()
-        state = (
-            state_raw['position'], 
-            state_raw['velocity'], 
-            state_raw['excitation_force'], 
-            state_raw['f_pto_damp'], 
-            state_raw['G_star']
-        )
-        return state, state_raw['time']
+        time = state_raw.pop('time', 0)
+        return state_raw, time
 
     def send_action(self, s, control):
         """
         Metodo interno. Invia l'azione calcolata al server.
+        Accetta un dizionario con i parametri di controllo, o una tupla (u, G_star) per retrocompatibilità.
         """
-        control_u, control_G_star = control
+        if isinstance(control, tuple) and len(control) == 2:
+            params = {
+                "u": control[0],
+                "G_star": control[1]
+            }
+        elif isinstance(control, dict):
+            params = control
+        else:
+            raise ValueError("Il parametro control deve essere un dizionario di parametri o una tupla (u, G_star)")
+
         payload_control = {
             "cmd": "control",
-            "params": {
-                "u": control_u,
-                "G_star": control_G_star
-            }
+            "params": params
         }
         s.send_msg(payload_control)
 

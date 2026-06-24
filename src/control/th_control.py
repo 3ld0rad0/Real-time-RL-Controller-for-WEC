@@ -35,12 +35,16 @@ class ThresholdController(BaseController):
         se la posizione supera la soglia, abilita il latching (u=1).
         Altrimenti disabilitalo (u=0).
         """
-        position = state[0]
+        # Supportiamo sia il nuovo formato dizionario che il vecchio formato tupla/lista
+        if isinstance(state, dict):
+            position = state.get('position', 0)
+        else:
+            position = state[0]
         
         if position > self.th:
-            return (1, self.G_star)
+            return {"u": 1, "G_star": self.G_star}
         else:
-            return (0, self.G_star)
+            return {"u": 0, "G_star": self.G_star}
 
 if __name__ == '__main__':
     # 1. Istanzia la classe dell'algoritmo

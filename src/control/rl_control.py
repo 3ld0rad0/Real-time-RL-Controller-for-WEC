@@ -117,9 +117,9 @@ class RLController(BaseController):
 
         return env
 
-    def train(self, socket, config):
+    def _init_training(self, socket, config):
         """
-        Sovrascrive il metodo train per lanciare PPO.learn.
+        Inizializza l'ambiente e il modello per il training.
         """
         # Rilegge il config in caso sia mutato
         config = read_config_file("./src/config/config.json")
@@ -140,6 +140,14 @@ class RLController(BaseController):
             logger.debug("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
         else:
             self.model = PPO("MlpPolicy", env_train, tensorboard_log=f"./board/ent_reg{ent_coef}/", ent_coef=ent_coef, verbose=0, device='cpu')
+            
+        return env_train, timesteps, episodes, sim_name, model_path
+
+    def train(self, socket, config):
+        """
+        Sovrascrive il metodo train per lanciare PPO.learn.
+        """
+        env_train, timesteps, episodes, sim_name, model_path = self._init_training(socket, config)
         
         logger.debug(f'Starting train simulation...')
         self.model.learn(total_timesteps=timesteps, tb_log_name=f"simulation{sim_name}_PPO_log", callback=StopTrainingOnEpisodeCount(max_episodes=episodes, verbose=1))
