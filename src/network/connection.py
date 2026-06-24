@@ -4,6 +4,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        import numpy as np
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
 class JSONSocketWrapper:
     """
     A robust wrapper around a TCP socket to send and receive JSON messages 
@@ -20,7 +31,7 @@ class JSONSocketWrapper:
         """Serialize a dictionary to JSON and send it with a newline delimiter."""
         try:
             # We append newline to separate JSON objects
-            data = json.dumps(payload) + "\n"
+            data = json.dumps(payload, cls=NumpyEncoder) + "\n"
             self.sock.sendall(data.encode('utf-8'))
             return True
         except Exception as e:

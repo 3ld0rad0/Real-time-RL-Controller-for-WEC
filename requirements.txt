@@ -12,3 +12,5 @@ cycler
 tqdm
 google
 rich
+streamlit
+pywebview

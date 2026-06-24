@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn
 
 logger = logging.getLogger(__name__)
-console = Console()
+console = Console(force_terminal=True, force_interactive=True)
 
 def init_simulation(config):
     C = config['init_C']
@@ -77,6 +77,7 @@ def start_simulation(conn, sim, control):
         "•",
         TimeRemainingColumn(),
         transient=True,
+        console=console,
     ) as progress:
         task_desc = f"[cyan]Simulating ({sim.get_sim_mode()})..."
         task_id = progress.add_task(task_desc, total=t_final)
@@ -183,6 +184,13 @@ def send_warmup_values(sim, conn):
         return False
     
 def read_config_file(file="./src/config/config.json"):
+    import time
+    for _ in range(5):
+        try:
+            with open(file, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            time.sleep(0.1)
     with open(file, "r") as f:
         return json.load(f)
 

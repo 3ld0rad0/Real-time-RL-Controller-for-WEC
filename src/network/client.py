@@ -21,9 +21,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def read_config_file(file="./src/config/config.json"):
+    import time
+    for _ in range(5):
+        try:
+            with open(file, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            time.sleep(0.1)
     with open(file, "r") as f:
-        config = json.load(f)
-    return config
+        return json.load(f)
 
 def write_config_file(data, file="./src/config/config.json"):
     with open(file, "w") as f:
@@ -86,8 +92,10 @@ class UniversalClient:
                 # Execute the specific algorithm strategy
                 algorithm_func(wrapped_s, self.config)
 
-            except json.JSONDecodeError:
-                logger.error("Decode error in the response by the server...")
+            except json.JSONDecodeError as e:
+                import traceback
+                traceback.print_exc()
+                logger.error(f"Decode error in the response by the server... {e}")
 
             except Exception as e:
                 logger.error(f"Error during execution: {e}")
