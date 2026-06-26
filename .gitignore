@@ -76,3 +76,13 @@ board/
 AGENTS.md
 utils/config.json
 utils/warmup.json
+
+# UI
+src/ui/node_modules/
+src/ui/dist/
+src/ui/build/
+src/ui/.env
+src/ui/.env.local
+src/ui/.env.*.local
+src/ui/*.log
+src/ui/.vite/
