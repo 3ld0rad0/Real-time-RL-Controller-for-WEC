@@ -38,6 +38,10 @@ def main():
                         help="Tempo di simulazione (ore per il train, secondi per il test).")
     parser.add_argument("--save", action="store_true",
                         help="Salva i risultati (csv, plot) a fine simulazione.")
+    parser.add_argument("--retrain", action="store_true", help="Se vero, continua il training di un modello esistente.")
+    parser.add_argument("--model-path", type=str, default="", help="Percorso del modello da testare o retrainare.")
+    parser.add_argument("--batch-size", type=int, default=2048, help="Batch size per il PPO.")
+    parser.add_argument("--entropy-coef", type=float, default=0.01, help="Entropy coefficient per il PPO.")
     
     args = parser.parse_args()
 
@@ -59,6 +63,15 @@ def main():
     config["regular"] = args.regular
     config["show_results"] = False
     config["save_mode"] = args.save
+    config["retrain"] = args.retrain
+    config["batch_size"] = args.batch_size
+    config["ent_coef"] = args.entropy_coef
+    
+    if args.model_path:
+        if args.mode == "train" and args.retrain:
+            config["retrain_path_model"] = args.model_path
+        else:
+            config["path_model"] = args.model_path
     
     if args.mode == "train":
         config["init_SS_train"] = args.sea_state

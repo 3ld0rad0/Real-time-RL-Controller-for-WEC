@@ -59,6 +59,26 @@ export function TestPage() {
     api.getModels().then(setModels).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    let interval: number;
+    if (state === "running") {
+      interval = window.setInterval(async () => {
+        try {
+          const status = await api.getSimStatus();
+          if (!status.running) {
+            setState("completed");
+            setProgress(100);
+          } else {
+            setProgress(p => Math.min(p + 2, 95));
+          }
+        } catch (e) {
+          console.error("Polling error", e);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [state]);
+
   const handleStartTest = async () => {
     setState("running");
     setProgress(10);
@@ -74,10 +94,7 @@ export function TestPage() {
         model_id: selectedModel || undefined
       };
       
-      setProgress(50);
       await api.runSimulation(req);
-      setProgress(100);
-      setState("completed");
     } catch (e) {
       console.error(e);
       alert("Test simulation failed. Check console for details.");

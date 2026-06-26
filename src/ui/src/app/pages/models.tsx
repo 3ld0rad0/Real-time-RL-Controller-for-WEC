@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Brain, FileCode, Calendar, HardDrive, TestTube, Loader2 } from "lucide-react";
+import { ArrowLeft, Brain, FileCode, Calendar, HardDrive, TestTube, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../components/ui/collapsible";
 import { api, TrainedModel } from "../services/api";
 
 export function ModelsPage() {
@@ -31,81 +32,85 @@ export function ModelsPage() {
     navigate(`/test?model=${modelId}`);
   };
 
-  const ModelCard = ({ model }: { model: TrainedModel }) => (
-    <Card className="bg-white border-slate-200 hover:border-blue-500/50 transition-all shadow-sm">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-slate-900 text-lg">{model.name}</CardTitle>
-            <CardDescription className="text-slate-500">
-              Sea State {model.seaState} • Hw={model.waveHeight}m, T={model.period}s
-            </CardDescription>
-          </div>
-          <Badge
-            variant="outline"
-            className={`${
-              model.waveType === "irregular"
-                ? "border-blue-300 text-blue-700 bg-blue-50"
-                : "border-purple-300 text-purple-700 bg-purple-50"
-            }`}
-          >
-            {model.waveType}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* File Path */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <FileCode className="w-3 h-3" />
-            <span>Path</span>
-          </div>
-          <code className="block text-xs text-slate-700 bg-slate-50 p-2 rounded border border-slate-200 break-all font-mono">
-            {model.path}
-          </code>
-        </div>
+  const ModelCard = ({ model }: { model: TrainedModel }) => {
+    const [isOpen, setIsOpen] = useState(false);
 
-        <Separator className="bg-slate-200" />
-
-        {/* Metadata Grid */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-slate-500" />
-            <div>
-              <p className="text-xs text-slate-500">Size</p>
-              <p className="text-slate-900 font-medium">{model.size.toFixed(1)} MB</p>
+    return (
+      <Card className="bg-white border-slate-200 hover:border-blue-500/50 transition-all shadow-sm">
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CardHeader className="pb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1 flex-1 min-w-0">
+                <CardTitle className="text-slate-900 text-lg break-all" title={model.name}>
+                  {model.name}
+                </CardTitle>
+                <CardDescription className="text-slate-500">
+                  Sea State {model.seaState} • Hw={model.waveHeight}m, T={model.period}s
+                </CardDescription>
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <Badge
+                  variant="outline"
+                  className={`${
+                    model.waveType === "irregular"
+                      ? "border-blue-300 text-blue-700 bg-blue-50"
+                      : "border-purple-300 text-purple-700 bg-purple-50"
+                  }`}
+                >
+                  {model.waveType}
+                </Badge>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700">
+                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <div>
-              <p className="text-xs text-slate-500">Last Modified</p>
-              <p className="text-slate-900 font-medium">
-                {new Date(model.lastModified).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Action Button always visible */}
+            <Button
+              onClick={() => handleUseForTesting(model.id)}
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500"
+            >
+              <TestTube className="w-4 h-4 mr-2" />
+              Use for Testing
+            </Button>
 
-        {/* Entropy Coefficient */}
-        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Entropy Coefficient</span>
-            <span className="text-sm font-mono text-emerald-600">{model.entCoef}</span>
-          </div>
-        </div>
+            <CollapsibleContent className="space-y-4 pt-4 border-t border-slate-100">
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <p className="text-xs text-slate-500">Size</p>
+                    <p className="text-slate-900 font-medium">{model.size.toFixed(1)} MB</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <p className="text-xs text-slate-500">Last Modified</p>
+                    <p className="text-slate-900 font-medium">
+                      {new Date(model.lastModified).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        {/* Action Button */}
-        <Button
-          onClick={() => handleUseForTesting(model.id)}
-          className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500"
-        >
-          <TestTube className="w-4 h-4 mr-2" />
-          Use for Testing
-        </Button>
-      </CardContent>
-    </Card>
-  );
+              {/* Entropy Coefficient */}
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Entropy Coefficient</span>
+                  <span className="text-sm font-mono text-emerald-600">{model.entCoef}</span>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </CardContent>
+        </Collapsible>
+      </Card>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">

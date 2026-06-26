@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -18,6 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if os.path.exists("results"):
+    app.mount("/api/results_files", StaticFiles(directory="results"), name="results_files")
+
 class SimRequest(BaseModel):
     mode: str  # "train" or "test"
     control: str # "rl" or "baseline"
@@ -28,6 +32,14 @@ class SimRequest(BaseModel):
     sim_time: float | None = None
     save: bool = True
     model_id: str | None = None # Used to configure which model to load in test mode
+    retrain: bool = False
+    batch_size: int = 2048
+    entropy_coef: float = 0.01
+
+sim_status = {
+    "running": False,
+    "output": ""
+}
 
 @app.get("/api/models")
 def get_models():
@@ -41,7 +53,7 @@ def get_models():
             continue
         for root, dirs, files in os.walk(base_path):
             for file in files:
-                if file.endswith(".zip"):
+                if file.startswith("ppomodel"):
                     path = os.path.join(root, file)
                     stat = os.stat(path)
                     
@@ -85,39 +97,50 @@ def get_results():
         return results_list
         
     res_id = 1
-    for file in os.listdir("results"):
-        if file.endswith(".csv"):
-            path = os.path.join("results", file)
-            stat = os.stat(path)
-            mode = "train" if "train" in file.lower() else "test"
+    for path in glob.glob("results/**/*.csv", recursive=True):
+        stat = os.stat(path)
+        mode = "train" if "train" in path.lower() else "test"
+        
+        # Try to find corresponding plot
+        plot_path = path.replace(f"{os.sep}data{os.sep}", f"{os.sep}plot{os.sep}").replace(".csv", ".png")
+        if not os.path.exists(plot_path):
+            plot_path = path.replace(".csv", ".png")
             
-            try:
-                # Read a bit of data to get quick stats
-                df = pd.read_csv(path)
-                mean_power = df['Power (W)'].mean() if 'Power (W)' in df.columns else 0
-                max_disp = df['Position (m)'].abs().max() if 'Position (m)' in df.columns else 0
-                max_vel = df['Velocity (m/s)'].abs().max() if 'Velocity (m/s)' in df.columns else 0
-            except Exception:
-                mean_power = 0
-                max_disp = 0
-                max_vel = 0
+        plot_url = None
+        if os.path.exists(plot_path):
+            rel_plot = os.path.relpath(plot_path, "results").replace("\\", "/")
+            plot_url = f"http://localhost:8000/api/results_files/{rel_plot}"
             
-            results_list.append({
-                "id": str(res_id),
-                "filename": file,
-                "type": mode,
-                "timestamp": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "meanPower": float(mean_power),
-                "maxDisplacement": float(max_disp),
-                "maxVelocity": float(max_vel)
-            })
-            res_id += 1
+        try:
+            # Read a bit of data to get quick stats
+            df = pd.read_csv(path, nrows=100)
+            mean_power = df['Power (W)'].mean() if 'Power (W)' in df.columns else 0
+            max_disp = df['Position (m)'].abs().max() if 'Position (m)' in df.columns else 0
+            max_vel = df['Velocity (m/s)'].abs().max() if 'Velocity (m/s)' in df.columns else 0
+        except Exception:
+            mean_power = 0
+            max_disp = 0
+            max_vel = 0
+            
+        rel_path = os.path.relpath(path, "results").replace("\\", "/")
+        
+        results_list.append({
+            "id": str(res_id),
+            "filename": rel_path,
+            "type": mode,
+            "timestamp": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+            "meanPower": float(mean_power),
+            "maxDisplacement": float(max_disp),
+            "maxVelocity": float(max_vel),
+            "plotUrl": plot_url
+        })
+        res_id += 1
             
     # sort by timestamp desc
     results_list.sort(key=lambda x: x["timestamp"], reverse=True)
     return results_list
 
-@app.get("/api/results/{filename}")
+@app.get("/api/results/{filename:path}")
 def get_result_data(filename: str):
     path = os.path.join("results", filename)
     if not os.path.exists(path):
@@ -152,8 +175,36 @@ def get_result_data(filename: str):
 
     return df[['time', 'position', 'velocity', 'power_inst', 'excitation_force', 'control_signal']].to_dict(orient="records")
 
+@app.get("/api/simulate/status")
+def get_simulate_status():
+    return sim_status
+
+def background_simulation(cmd: list):
+    global sim_status
+    sim_status["running"] = True
+    sim_status["output"] = ""
+    try:
+        process = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        sim_status["output"] = process.stdout
+    except subprocess.CalledProcessError as e:
+        sim_status["output"] = e.stdout + "\n" + e.stderr
+    finally:
+        sim_status["running"] = False
+
 @app.post("/api/simulate")
-def run_simulation(req: SimRequest):
+def run_simulation(req: SimRequest, background_tasks: BackgroundTasks):
+    if sim_status["running"]:
+        raise HTTPException(status_code=400, detail="A simulation is already running")
+
+    # Resolve model path if model_id is provided
+    model_path = ""
+    if req.model_id:
+        models = get_models()
+        for m in models:
+            if m["id"] == req.model_id:
+                model_path = m["path"]
+                break
+
     # Prepare arguments for run.py
     cmd = [sys.executable, "run.py", "--mode", req.mode, "--control", req.control, "--type", req.type, "--sea-state", str(req.sea_state)]
     if req.mixed:
@@ -165,8 +216,13 @@ def run_simulation(req: SimRequest):
     if req.save:
         cmd.append("--save")
         
-    try:
-        process = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return {"status": "success", "output": process.stdout}
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Simulation failed:\n{e.stderr}\n{e.stdout}")
+    if req.retrain:
+        cmd.append("--retrain")
+    if model_path:
+        cmd.extend(["--model-path", model_path])
+        
+    cmd.extend(["--batch-size", str(req.batch_size)])
+    cmd.extend(["--entropy-coef", str(req.entropy_coef)])
+
+    background_tasks.add_task(background_simulation, cmd)
+    return {"status": "started"}

@@ -21,6 +21,7 @@ export interface SimulationResult {
   meanPower: number;
   maxDisplacement: number;
   maxVelocity: number;
+  plotUrl?: string;
 }
 
 export interface SimDataPoint {
@@ -42,6 +43,9 @@ export interface SimRequest {
   sim_time?: number;
   save?: boolean;
   model_id?: string;
+  retrain?: boolean;
+  batch_size?: number;
+  entropy_coef?: number;
 }
 
 export const api = {
@@ -63,7 +67,13 @@ export const api = {
     return res.json();
   },
 
-  runSimulation: async (req: SimRequest): Promise<{ status: string; output: string }> => {
+  getSimStatus: async (): Promise<{ running: boolean; output: string }> => {
+    const res = await fetch(`${API_URL}/simulate/status`);
+    if (!res.ok) throw new Error("Failed to fetch status");
+    return res.json();
+  },
+
+  runSimulation: async (req: SimRequest): Promise<{ status: string }> => {
     const res = await fetch(`${API_URL}/simulate`, {
       method: "POST",
       headers: {

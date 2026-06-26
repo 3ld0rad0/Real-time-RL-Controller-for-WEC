@@ -59,6 +59,26 @@ export function TrainPage() {
     api.getModels().then(setModels).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    let interval: number;
+    if (state === "running") {
+      interval = window.setInterval(async () => {
+        try {
+          const status = await api.getSimStatus();
+          if (!status.running) {
+            setState("completed");
+            setProgress(100);
+          } else {
+            setProgress(p => Math.min(p + 0.5, 95));
+          }
+        } catch (e) {
+          console.error("Polling error", e);
+        }
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [state]);
+
   const handleStartTraining = async () => {
     setState("running");
     setProgress(10); // Indicate start
@@ -72,13 +92,13 @@ export function TrainPage() {
         regular: regularWaves,
         sim_time: parseFloat(simTime),
         save: true,
-        model_id: retrain ? selectedModel : undefined
+        model_id: retrain ? selectedModel : undefined,
+        retrain,
+        batch_size: parseInt(batchSize),
+        entropy_coef: parseFloat(entropyCoef)
       };
-      // The API call blocks until complete, so we set progress to 90
-      setProgress(50);
+      
       await api.runSimulation(req);
-      setProgress(100);
-      setState("completed");
     } catch (e) {
       console.error(e);
       alert("Training simulation failed. Check console for details.");
