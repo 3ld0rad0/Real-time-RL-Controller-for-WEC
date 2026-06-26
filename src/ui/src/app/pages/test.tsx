@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, Play, StopCircle, CheckCircle, Upload } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -8,7 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "../components/ui/switch";
 import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
-import { SEA_STATES, CONTROLLERS, CONTROL_MODES, TRAINED_MODELS } from "../data/mock-data";
+import { api, TrainedModel, SimRequest } from "../services/api";
+
+const SEA_STATES = [
+  { id: 0, label: "SS 0 (Hw=0.8m, T=9.0s)" },
+  { id: 1, label: "SS 1 (Hw=1.2m, T=9.5s)" },
+  { id: 2, label: "SS 2 (Hw=1.6m, T=10.0s)" },
+  { id: 3, label: "SS 3 (Hw=2.0m, T=10.5s)" },
+  { id: 4, label: "SS 4 (Hw=2.5m, T=11.0s)" },
+  { id: 5, label: "SS 5 (Hw=3.0m, T=11.5s)" },
+  { id: 6, label: "SS 6 (Hw=3.5m, T=12.0s)" },
+  { id: 7, label: "SS 7 (Hw=4.0m, T=12.5s)" },
+  { id: 8, label: "SS 8 (Hw=4.5m, T=13.0s)" },
+];
+
+const CONTROLLERS = [
+  { id: "rl", name: "RL Control (PPO)" },
+  { id: "baseline", name: "Threshold Baseline" },
+];
+
+const CONTROL_MODES = [
+  { id: "latching", name: "Latching" },
+  { id: "linear", name: "Linear" },
+];
 
 type TestState = "idle" | "running" | "completed";
 
@@ -31,19 +53,36 @@ export function TestPage() {
 
   const isRLController = controller === "rl";
 
-  const handleStartTest = () => {
+  const [models, setModels] = useState<TrainedModel[]>([]);
+
+  useEffect(() => {
+    api.getModels().then(setModels).catch(console.error);
+  }, []);
+
+  const handleStartTest = async () => {
     setState("running");
-    // Simulate test progress
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.random() * 12;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        setState("completed");
-        clearInterval(interval);
-      }
-      setProgress(currentProgress);
-    }, 200);
+    setProgress(10);
+    try {
+      const req: SimRequest = {
+        mode: "test",
+        control: controller as any,
+        type: controlMode as any,
+        sea_state: parseInt(seaState),
+        regular: regularWaves,
+        sim_time: parseFloat(simTime),
+        save: saveResults,
+        model_id: selectedModel || undefined
+      };
+      
+      setProgress(50);
+      await api.runSimulation(req);
+      setProgress(100);
+      setState("completed");
+    } catch (e) {
+      console.error(e);
+      alert("Test simulation failed. Check console for details.");
+      setState("idle");
+    }
   };
 
   const handleStop = () => {
@@ -143,7 +182,7 @@ export function TestPage() {
                           <SelectValue placeholder="Select a trained model..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {TRAINED_MODELS.map((m) => (
+                          {models.map((m) => (
                             <SelectItem key={m.id} value={m.id}>
                               {m.name} - SS{m.seaState} ({m.waveType})
                             </SelectItem>
@@ -156,7 +195,7 @@ export function TestPage() {
                       <div className="p-3 rounded-md bg-white border border-slate-200">
                         <p className="text-xs text-slate-500 mb-1">Model Details</p>
                         <p className="text-sm text-slate-700 font-mono break-all">
-                          {TRAINED_MODELS.find(m => m.id === selectedModel)?.path}
+                          {models.find(m => m.id === selectedModel)?.path}
                         </p>
                       </div>
                     )}
@@ -311,18 +350,9 @@ export function TestPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Mean Power</p>
-                    <p className="text-2xl font-bold text-blue-600">127.4W</p>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Max Displacement</p>
-                    <p className="text-2xl font-bold text-orange-600">2.8m</p>
-                  </div>
-                  <div className="text-center p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Max Velocity</p>
-                    <p className="text-2xl font-bold text-purple-600">1.2m/s</p>
+                    <p className="text-slate-600 mb-1">Test completed. You can view the generated results in the Results page.</p>
                   </div>
                 </div>
 

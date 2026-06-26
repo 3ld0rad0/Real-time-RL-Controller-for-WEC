@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, Play, StopCircle, CheckCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -8,7 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "../components/ui/switch";
 import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
-import { SEA_STATES, CONTROLLERS, CONTROL_MODES, TRAINED_MODELS } from "../data/mock-data";
+import { api, TrainedModel, SimRequest } from "../services/api";
+
+const SEA_STATES = [
+  { id: 0, label: "SS 0 (Hw=0.8m, T=9.0s)" },
+  { id: 1, label: "SS 1 (Hw=1.2m, T=9.5s)" },
+  { id: 2, label: "SS 2 (Hw=1.6m, T=10.0s)" },
+  { id: 3, label: "SS 3 (Hw=2.0m, T=10.5s)" },
+  { id: 4, label: "SS 4 (Hw=2.5m, T=11.0s)" },
+  { id: 5, label: "SS 5 (Hw=3.0m, T=11.5s)" },
+  { id: 6, label: "SS 6 (Hw=3.5m, T=12.0s)" },
+  { id: 7, label: "SS 7 (Hw=4.0m, T=12.5s)" },
+  { id: 8, label: "SS 8 (Hw=4.5m, T=13.0s)" },
+];
+
+const CONTROLLERS = [
+  { id: "rl", name: "RL Control (PPO)" },
+  { id: "baseline", name: "Threshold Baseline" },
+];
+
+const CONTROL_MODES = [
+  { id: "latching", name: "Latching" },
+  { id: "linear", name: "Linear" },
+];
 
 type TrainingState = "idle" | "running" | "completed";
 
@@ -31,19 +53,37 @@ export function TrainPage() {
 
   const isRLController = controller === "rl";
 
-  const handleStartTraining = () => {
+  const [models, setModels] = useState<TrainedModel[]>([]);
+
+  useEffect(() => {
+    api.getModels().then(setModels).catch(console.error);
+  }, []);
+
+  const handleStartTraining = async () => {
     setState("running");
-    // Simulate training progress
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.random() * 8;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        setState("completed");
-        clearInterval(interval);
-      }
-      setProgress(currentProgress);
-    }, 300);
+    setProgress(10); // Indicate start
+    try {
+      const req: SimRequest = {
+        mode: "train",
+        control: controller as any,
+        type: controlMode as any,
+        sea_state: parseInt(seaState),
+        mixed: mixedSeaStates,
+        regular: regularWaves,
+        sim_time: parseFloat(simTime),
+        save: true,
+        model_id: retrain ? selectedModel : undefined
+      };
+      // The API call blocks until complete, so we set progress to 90
+      setProgress(50);
+      await api.runSimulation(req);
+      setProgress(100);
+      setState("completed");
+    } catch (e) {
+      console.error(e);
+      alert("Training simulation failed. Check console for details.");
+      setState("idle");
+    }
   };
 
   const handleStop = () => {
@@ -239,7 +279,7 @@ export function TrainPage() {
                             <SelectValue placeholder="Select a model..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {TRAINED_MODELS.map((m) => (
+                            {models.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.name}
                               </SelectItem>

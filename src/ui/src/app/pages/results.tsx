@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, TrendingUp, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, TrendingUp, FileText, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Label } from "../components/ui/label";
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Checkbox } from "../components/ui/checkbox";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../components/ui/collapsible";
-import { SIMULATION_RESULTS } from "../data/mock-data";
+import { api, SimulationResult, SimDataPoint } from "../services/api";
 
 type SignalType = "position" | "velocity" | "power_inst" | "excitation_force" | "control_signal";
 
@@ -24,13 +24,46 @@ const SIGNAL_CONFIG: Record<SignalType, { label: string; color: string; unit: st
 export function ResultsPage() {
   const navigate = useNavigate();
   const [resultType, setResultType] = useState<"test" | "train">("test");
-  const [selectedResultId, setSelectedResultId] = useState(SIMULATION_RESULTS[0].id);
+  const [selectedResultId, setSelectedResultId] = useState<string>("");
   const [visibleSignals, setVisibleSignals] = useState<SignalType[]>(["position", "velocity", "power_inst"]);
   const [showRawData, setShowRawData] = useState(false);
   const [showPlot, setShowPlot] = useState(false);
 
-  const filteredResults = SIMULATION_RESULTS.filter((r) => r.type === resultType);
-  const selectedResult = SIMULATION_RESULTS.find((r) => r.id === selectedResultId);
+  const [results, setResults] = useState<SimulationResult[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [selectedData, setSelectedData] = useState<SimDataPoint[] | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  useEffect(() => {
+    api.getResults().then((data) => {
+      setResults(data);
+      setIsLoadingList(false);
+      if (data.length > 0) {
+        setSelectedResultId(data[0].id);
+      }
+    }).catch(e => {
+      console.error(e);
+      setIsLoadingList(false);
+    });
+  }, []);
+
+  const selectedResult = results.find((r) => r.id === selectedResultId);
+  const filteredResults = results.filter((r) => r.type === resultType);
+
+  useEffect(() => {
+    if (selectedResult) {
+      setIsLoadingData(true);
+      api.getResultData(selectedResult.filename).then((data) => {
+        setSelectedData(data);
+        setIsLoadingData(false);
+      }).catch(e => {
+        console.error(e);
+        setIsLoadingData(false);
+      });
+    } else {
+      setSelectedData(null);
+    }
+  }, [selectedResult]);
 
   const toggleSignal = (signal: SignalType) => {
     setVisibleSignals((prev) =>
@@ -89,14 +122,14 @@ export function ResultsPage() {
                 <CardContent>
                   <div className="space-y-2">
                     <Label htmlFor="result-file" className="text-slate-700">Result File</Label>
-                    <Select value={selectedResultId} onValueChange={setSelectedResultId}>
+                    <Select value={selectedResultId} onValueChange={setSelectedResultId} disabled={isLoadingList || filteredResults.length === 0}>
                       <SelectTrigger id="result-file" className="bg-white border-slate-300 text-slate-900">
-                        <SelectValue />
+                        <SelectValue placeholder={isLoadingList ? "Loading results..." : "Select a result file"} />
                       </SelectTrigger>
                       <SelectContent>
                         {filteredResults.map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.filename} - {r.timestamp.toLocaleDateString()}
+                            {r.filename} - {new Date(r.timestamp).toLocaleDateString()}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -179,42 +212,51 @@ export function ResultsPage() {
                       </div>
 
                       {/* Chart */}
-                      <div className="w-full h-96 bg-white rounded-lg p-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={selectedResult.data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis
-                              dataKey="time"
-                              stroke="#64748b"
-                              label={{ value: "Time (s)", position: "insideBottom", offset: -5, fill: "#64748b" }}
-                            />
-                            <YAxis stroke="#64748b" />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "#ffffff",
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "8px",
-                                color: "#0f172a",
-                              }}
-                            />
-                            <Legend />
-                            {visibleSignals.map((signal) => (
-                              <Line
-                                key={signal}
-                                type="monotone"
-                                dataKey={signal}
-                                stroke={SIGNAL_CONFIG[signal].color}
-                                name={SIGNAL_CONFIG[signal].label}
-                                dot={false}
-                                strokeWidth={2}
+                      <div className="w-full h-96 bg-white rounded-lg p-4 flex items-center justify-center">
+                        {isLoadingData ? (
+                           <div className="flex flex-col items-center text-slate-500">
+                             <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                             <p>Loading result data...</p>
+                           </div>
+                        ) : selectedData ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={selectedData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis
+                                dataKey="time"
+                                stroke="#64748b"
+                                label={{ value: "Time (s)", position: "insideBottom", offset: -5, fill: "#64748b" }}
                               />
-                            ))}
-                          </LineChart>
-                        </ResponsiveContainer>
+                              <YAxis stroke="#64748b" />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: "#ffffff",
+                                  border: "1px solid #cbd5e1",
+                                  borderRadius: "8px",
+                                  color: "#0f172a",
+                                }}
+                              />
+                              <Legend />
+                              {visibleSignals.map((signal) => (
+                                <Line
+                                  key={signal}
+                                  type="monotone"
+                                  dataKey={signal}
+                                  stroke={SIGNAL_CONFIG[signal].color}
+                                  name={SIGNAL_CONFIG[signal].label}
+                                  dot={false}
+                                  strokeWidth={2}
+                                />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="text-slate-500">No data available</div>
+                        )}
                       </div>
 
                       <div className="text-xs text-slate-500 text-center">
-                        Data points: {selectedResult.data.length} | Auto-downsampled for performance
+                        {selectedData ? `Data points: ${selectedData.length} | Auto-downsampled for performance` : ""}
                       </div>
                     </CardContent>
                   </Card>
@@ -288,21 +330,21 @@ export function ResultsPage() {
                                   </tr>
                                 </thead>
                                 <tbody className="text-slate-600 bg-white">
-                                  {selectedResult.data.slice(0, 20).map((row, idx) => (
+                                  {selectedData?.slice(0, 20).map((row, idx) => (
                                     <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
-                                      <td className="px-4 py-2 font-mono">{row.time.toFixed(2)}</td>
-                                      <td className="px-4 py-2 font-mono">{row.position.toFixed(3)}</td>
-                                      <td className="px-4 py-2 font-mono">{row.velocity.toFixed(3)}</td>
-                                      <td className="px-4 py-2 font-mono">{row.power_inst.toFixed(2)}</td>
-                                      <td className="px-4 py-2 font-mono">{row.excitation_force.toFixed(2)}</td>
-                                      <td className="px-4 py-2 font-mono">{row.control_signal.toFixed(3)}</td>
+                                      <td className="px-4 py-2 font-mono">{row.time?.toFixed(2) || "0"}</td>
+                                      <td className="px-4 py-2 font-mono">{row.position?.toFixed(3) || "0"}</td>
+                                      <td className="px-4 py-2 font-mono">{row.velocity?.toFixed(3) || "0"}</td>
+                                      <td className="px-4 py-2 font-mono">{row.power_inst?.toFixed(2) || "0"}</td>
+                                      <td className="px-4 py-2 font-mono">{row.excitation_force?.toFixed(2) || "0"}</td>
+                                      <td className="px-4 py-2 font-mono">{row.control_signal?.toFixed(3) || "0"}</td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
-                              {selectedResult.data.length > 20 && (
+                              {(selectedData?.length || 0) > 20 && (
                                 <div className="text-center py-4 text-slate-500 text-xs bg-white">
-                                  Showing 20 of {selectedResult.data.length} rows
+                                  Showing 20 of {selectedData?.length} rows
                                 </div>
                               )}
                             </div>

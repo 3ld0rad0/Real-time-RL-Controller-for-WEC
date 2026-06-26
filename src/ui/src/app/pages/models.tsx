@@ -1,22 +1,37 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Brain, FileCode, Calendar, HardDrive, TestTube } from "lucide-react";
+import { ArrowLeft, Brain, FileCode, Calendar, HardDrive, TestTube, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
-import { TRAINED_MODELS } from "../data/mock-data";
+import { api, TrainedModel } from "../services/api";
 
 export function ModelsPage() {
   const navigate = useNavigate();
+  const [models, setModels] = useState<TrainedModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const irregularModels = TRAINED_MODELS.filter((m) => m.waveType === "irregular");
-  const regularModels = TRAINED_MODELS.filter((m) => m.waveType === "regular");
+  useEffect(() => {
+    api.getModels()
+      .then(data => {
+        setModels(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load models:", err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const irregularModels = models.filter((m) => m.waveType === "irregular");
+  const regularModels = models.filter((m) => m.waveType === "regular");
 
   const handleUseForTesting = (modelId: string) => {
     navigate(`/test?model=${modelId}`);
   };
 
-  const ModelCard = ({ model }: { model: typeof TRAINED_MODELS[0] }) => (
+  const ModelCard = ({ model }: { model: TrainedModel }) => (
     <Card className="bg-white border-slate-200 hover:border-blue-500/50 transition-all shadow-sm">
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -66,7 +81,7 @@ export function ModelsPage() {
             <div>
               <p className="text-xs text-slate-500">Last Modified</p>
               <p className="text-slate-900 font-medium">
-                {model.lastModified.toLocaleDateString()}
+                {new Date(model.lastModified).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -127,7 +142,7 @@ export function ModelsPage() {
                 <CardDescription className="text-blue-700">Total Models</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-900">{TRAINED_MODELS.length}</div>
+                <div className="text-3xl font-bold text-blue-900">{models.length}</div>
               </CardContent>
             </Card>
 
@@ -196,8 +211,16 @@ export function ModelsPage() {
             </div>
           )}
 
-          {/* Empty State */}
-          {TRAINED_MODELS.length === 0 && (
+          {/* Empty/Loading State */}
+          {isLoading ? (
+            <Card className="bg-white border-slate-200">
+              <CardContent className="py-12 text-center flex flex-col items-center">
+                <Loader2 className="w-16 h-16 text-blue-500 animate-spin mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Loading Models...</h3>
+                <p className="text-slate-500">Scanning model directories</p>
+              </CardContent>
+            </Card>
+          ) : models.length === 0 ? (
             <Card className="bg-white border-slate-200">
               <CardContent className="py-12 text-center">
                 <Brain className="w-16 h-16 text-slate-400 mx-auto mb-4" />
@@ -213,7 +236,7 @@ export function ModelsPage() {
                 </Button>
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

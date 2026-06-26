@@ -12,3 +12,6 @@ cycler
 tqdm
 google
 rich
+fastapi
+uvicorn
+pydantic
