@@ -1,18 +1,20 @@
-import { Home, Activity, PlaySquare, LineChart, Box, Waves } from 'lucide-react'
+import { Home, Activity, PlaySquare, LineChart, Box, Waves, Settings } from 'lucide-react'
 import type { Page } from '../App'
 
 interface SidebarProps {
   currentPage: Page
   navigateTo: (page: Page) => void
+  runningSim: 'train' | 'test' | null
 }
 
-export default function Sidebar({ currentPage, navigateTo }: SidebarProps) {
+export default function Sidebar({ currentPage, navigateTo, runningSim }: SidebarProps) {
   const navItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
     { id: 'train', label: 'Train Agent', icon: Activity },
     { id: 'test', label: 'Test Agent', icon: PlaySquare },
     { id: 'results', label: 'Results', icon: LineChart },
     { id: 'models', label: 'Models', icon: Box },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ] as const
 
   return (
@@ -31,6 +33,8 @@ export default function Sidebar({ currentPage, navigateTo }: SidebarProps) {
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = currentPage === item.id
+          const isSimRunning = runningSim === item.id
+
           return (
             <button
               key={item.id}
@@ -42,13 +46,23 @@ export default function Sidebar({ currentPage, navigateTo }: SidebarProps) {
               }`}
             >
               <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-500'}`} />
+                <Icon className={`w-5 h-5 ${
+                  isActive 
+                    ? 'text-indigo-600' 
+                    : isSimRunning 
+                      ? 'text-red-500 animate-pulse' 
+                      : 'text-slate-400 group-hover:text-indigo-500'
+                }`} />
               </div>
               {item.label}
               
-              {isActive && (
+              {isSimRunning ? (
+                <div className="absolute right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500 text-white animate-pulse border border-red-600 shadow-sm">
+                  RUNNING
+                </div>
+              ) : isActive ? (
                 <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-              )}
+              ) : null}
             </button>
           )
         })}

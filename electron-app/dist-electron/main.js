@@ -1,159 +1,154 @@
-import { BrowserWindow, app, ipcMain } from "electron";
-import path, { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import fs from "node:fs";
-import { spawn } from "node:child_process";
+import { BrowserWindow as e, app as t, dialog as n, ipcMain as r } from "electron";
+import i, { join as a } from "node:path";
+import { fileURLToPath as o } from "node:url";
+import s from "node:fs";
+import { spawn as c } from "node:child_process";
 //#region electron/main.ts
-app.disableHardwareAcceleration();
-var __dirname = path.dirname(fileURLToPath(import.meta.url));
-var processRoot = path.join(__dirname, "../../");
-var mainWindow = null;
-var currentSimulation = null;
-function createWindow() {
-	mainWindow = new BrowserWindow({
+t.disableHardwareAcceleration();
+var l = i.dirname(o(import.meta.url)), u = i.join(l, "../../"), d = null, f = null;
+function p() {
+	d = new e({
 		width: 1200,
 		height: 800,
 		webPreferences: {
-			preload: join(__dirname, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			webSecurity: false
+			preload: a(l, "preload.mjs"),
+			nodeIntegration: !1,
+			contextIsolation: !0,
+			webSecurity: !1
 		}
-	});
-	if (process.env.VITE_DEV_SERVER_URL) {
-		mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-		mainWindow.webContents.openDevTools();
-	} else mainWindow.loadFile(join(__dirname, "../dist/index.html"));
+	}), process.env.VITE_DEV_SERVER_URL ? (d.loadURL(process.env.VITE_DEV_SERVER_URL), d.webContents.openDevTools()) : d.loadFile(a(l, "../dist/index.html"));
 }
-app.whenReady().then(() => {
-	createWindow();
-	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+t.whenReady().then(() => {
+	p(), t.on("activate", () => {
+		e.getAllWindows().length === 0 && p();
 	});
-});
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") app.quit();
-});
-ipcMain.handle("get-models", async () => {
-	const modelsDir = path.join(processRoot, "models");
-	if (!fs.existsSync(modelsDir)) return [];
-	const files = fs.readdirSync(modelsDir, { recursive: true }).filter((f) => typeof f === "string" && f.includes("ppomodel"));
-	const models = [];
-	for (const file of files) {
-		const fullPath = path.join(modelsDir, file);
-		const stats = fs.statSync(fullPath);
-		if (stats.isFile()) {
-			const parts = file.split(path.sep);
-			let wave_type = "unknown";
-			let sea_state = "unknown";
-			let ent_coef = "unknown";
-			if (parts.length >= 3) {
-				wave_type = parts[0];
-				sea_state = parts[1];
-				ent_coef = parts[2].replace("simulation_", "");
-			}
-			models.push({
-				id: file.replace(/\\/g, "/"),
-				name: path.basename(file),
-				path: fullPath,
-				size: stats.size,
-				date: stats.mtime.toISOString(),
-				wave_type,
-				sea_state,
-				ent_coef
+}), t.on("window-all-closed", () => {
+	process.platform !== "darwin" && t.quit();
+}), r.handle("get-models", async () => {
+	let e = i.join(u, "models");
+	if (!s.existsSync(e)) return [];
+	let t = s.readdirSync(e, { recursive: !0 }).filter((e) => typeof e == "string" && e.includes("ppomodel")), n = [];
+	for (let r of t) {
+		let t = i.join(e, r), a = s.statSync(t);
+		if (a.isFile()) {
+			let e = r.split(i.sep), o = "unknown", s = "unknown", c = "unknown";
+			e.length >= 3 && (o = e[0], s = e[1], c = e[2].replace("simulation_", "")), n.push({
+				id: r.replace(/\\/g, "/"),
+				name: i.basename(r),
+				path: t,
+				size: a.size,
+				date: a.mtime.toISOString(),
+				wave_type: o,
+				sea_state: s,
+				ent_coef: c
 			});
 		}
 	}
-	return models;
-});
-ipcMain.handle("get-results", async () => {
-	const resultsDir = path.join(processRoot, "results");
-	if (!fs.existsSync(resultsDir)) return [];
-	const files = fs.readdirSync(resultsDir, { recursive: true }).filter((f) => typeof f === "string" && f.endsWith(".csv"));
-	const results = [];
-	for (const file of files) {
-		const fullPath = path.join(resultsDir, file);
-		const stats = fs.statSync(fullPath);
-		if (stats.isFile()) {
-			const mode = file.includes("train") ? "train" : file.includes("test") ? "test" : "final";
-			let plotPath = fullPath.replace(`${path.sep}data${path.sep}`, `${path.sep}plot${path.sep}`).replace(".csv", ".png");
-			if (!fs.existsSync(plotPath)) plotPath = fullPath.replace(".csv", ".png");
-			let plotUrl = null;
-			if (fs.existsSync(plotPath)) plotUrl = `file://${plotPath.replace(/\\/g, "/")}`;
-			results.push({
-				filename: file.replace(/\\/g, "/"),
-				date: stats.mtime.toISOString(),
-				mode,
-				plotUrl
-			});
-		}
+	return n;
+}), r.handle("get-results", async () => {
+	let e = i.join(u, "results");
+	if (!s.existsSync(e)) return [];
+	let t = s.readdirSync(e, { recursive: !0 }).filter((e) => typeof e == "string" && e.endsWith(".csv")), n = {};
+	for (let r of t) {
+		let t = r.replace(/\\/g, "/"), a = i.join(e, r), o = s.statSync(a);
+		if (!o.isFile()) continue;
+		let c = t, l = "main";
+		t.endsWith("_energy_absorbed.csv") ? (c = t.replace("_energy_absorbed.csv", ""), l = "energy") : t.endsWith("_reward.csv") ? (c = t.replace("_reward.csv", ""), l = "reward") : t.endsWith(".csv") && (c = t.replace(".csv", ""), l = "main"), n[c] || (n[c] = {
+			id: c,
+			displayName: i.basename(c),
+			date: o.mtime.toISOString(),
+			mode: c.includes("train") ? "train" : c.includes("test") ? "test" : "final",
+			plotUrl: null,
+			files: {}
+		}), n[c].files[l] = t, l === "main" && (n[c].date = o.mtime.toISOString());
 	}
-	results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-	return results;
-});
-ipcMain.handle("read-csv", async (_, filename) => {
-	const fullPath = path.join(processRoot, "results", filename);
-	if (!fs.existsSync(fullPath)) throw new Error("File not found");
-	return fs.readFileSync(fullPath, "utf-8");
-});
-ipcMain.handle("run-simulation", async (event, args) => {
-	if (currentSimulation) throw new Error("Simulation already running");
-	return new Promise((resolve, reject) => {
-		const venvPath = path.join(processRoot, ".venv", process.platform === "win32" ? "Scripts" : "bin", process.platform === "win32" ? "python.exe" : "python");
-		const pythonExe = fs.existsSync(venvPath) ? venvPath : process.platform === "win32" ? "python" : "python3";
-		const cmdArgs = [
+	let r = [];
+	for (let t of Object.keys(n)) {
+		let a = n[t], o = i.join(e, `${t}.png`);
+		s.existsSync(o) || (o = i.join(e, t.replace("/data/", "/plot/") + ".png")), s.existsSync(o) && (a.plotUrl = `file://${o.replace(/\\/g, "/")}`), a.files.main && r.push(a);
+	}
+	return r.sort((e, t) => new Date(t.date).getTime() - new Date(e.date).getTime()), r;
+}), r.handle("download-result-file", async (e, t) => {
+	let r = i.join(u, "results", t);
+	if (!s.existsSync(r)) throw Error("Source file not found");
+	let a = i.basename(t), o = await n.showSaveDialog(d, {
+		title: "Save Result CSV File",
+		defaultPath: a,
+		filters: [{
+			name: "CSV File (.csv)",
+			extensions: ["csv"]
+		}]
+	});
+	return o.canceled || !o.filePath ? !1 : (s.copyFileSync(r, o.filePath), !0);
+}), r.handle("read-csv", async (e, t) => {
+	let n = i.join(u, "results", t);
+	if (!s.existsSync(n)) throw Error("File not found");
+	return s.readFileSync(n, "utf-8");
+}), r.handle("run-simulation", async (e, t) => {
+	if (f) throw Error("Simulation already running");
+	return new Promise((e, n) => {
+		let r = i.join(u, ".venv", process.platform === "win32" ? "Scripts" : "bin", process.platform === "win32" ? "python.exe" : "python"), a = s.existsSync(r) ? r : process.platform === "win32" ? "python" : "python3", o = t.type === "sim" ? "rl" : "baseline", l = "latching";
+		t.control === "reactive" ? l = "linear" : (t.control === "latching" || t.control === "none") && (l = "latching");
+		let p = [
 			"run.py",
 			"--mode",
-			args.mode,
+			t.mode,
 			"--control",
-			args.control,
+			o,
 			"--type",
-			args.type,
+			l,
 			"--sea-state",
-			args.sea_state.toString()
+			t.sea_state.toString()
 		];
-		if (args.mixed) cmdArgs.push("--mixed");
-		if (args.regular) cmdArgs.push("--regular");
-		if (args.sim_time) cmdArgs.push("--sim-time", args.sim_time.toString());
-		if (args.save) cmdArgs.push("--save");
-		if (args.retrain) cmdArgs.push("--retrain");
-		if (args.model_id) {
-			const modelPath = path.join(processRoot, "models", args.model_id);
-			cmdArgs.push("--model-path", modelPath);
+		if (t.mixed && p.push("--mixed"), t.regular && p.push("--regular"), t.sim_time && p.push("--sim-time", t.sim_time.toString()), t.save && p.push("--save"), t.retrain && p.push("--retrain"), t.model_id) {
+			let e = i.isAbsolute(t.model_id) ? t.model_id : i.join(u, "models", t.model_id);
+			p.push("--model-path", e);
 		}
-		if (args.batch_size) cmdArgs.push("--batch-size", args.batch_size.toString());
-		if (args.entropy_coef) cmdArgs.push("--entropy-coef", args.entropy_coef.toString());
-		currentSimulation = spawn(pythonExe, cmdArgs, {
-			cwd: processRoot,
+		t.batch_size && p.push("--batch-size", t.batch_size.toString()), t.entropy_coef && p.push("--entropy-coef", t.entropy_coef.toString()), f = c(a, p, {
+			cwd: u,
 			env: {
 				...process.env,
 				MPLBACKEND: "Agg"
 			}
-		});
-		currentSimulation.stdout?.on("data", (data) => {
-			mainWindow?.webContents.send("simulation-log", data.toString());
-		});
-		currentSimulation.stderr?.on("data", (data) => {
-			mainWindow?.webContents.send("simulation-log", `ERROR: ${data.toString()}`);
-		});
-		currentSimulation.on("close", (code) => {
-			currentSimulation = null;
-			mainWindow?.webContents.send("simulation-done", code);
-			resolve(code);
-		});
-		currentSimulation.on("error", (err) => {
-			currentSimulation = null;
-			reject(err);
+		}), f.stdout?.on("data", (e) => {
+			let t = e.toString().split("\n"), n = [];
+			for (let e of t) {
+				let t = e.match(/\[PROGRESS\]\s+(\d+)/);
+				if (t) {
+					let e = parseInt(t[1], 10);
+					d?.webContents.send("simulation-progress", e);
+				} else n.push(e);
+			}
+			n.length > 0 && d?.webContents.send("simulation-log", n.join("\n"));
+		}), f.stderr?.on("data", (e) => {
+			d?.webContents.send("simulation-log", `ERROR: ${e.toString()}`);
+		}), f.on("close", (t) => {
+			f = null, d?.webContents.send("simulation-done", t), e(t);
+		}), f.on("error", (e) => {
+			f = null, n(e);
 		});
 	});
-});
-ipcMain.handle("kill-simulation", async () => {
-	if (currentSimulation) {
-		currentSimulation.kill();
-		currentSimulation = null;
-		return true;
-	}
-	return false;
+}), r.handle("kill-simulation", async () => f ? (f.kill(), f = null, !0) : !1), r.handle("get-config", async () => {
+	let e = i.join(u, "src", "config", "config.json");
+	if (!s.existsSync(e)) throw Error("Config file not found");
+	let t = s.readFileSync(e, "utf-8");
+	return JSON.parse(t);
+}), r.handle("save-config", async (e, t) => {
+	let n = i.join(u, "src", "config", "config.json");
+	return s.writeFileSync(n, JSON.stringify(t, null, 2), "utf-8"), !0;
+}), r.handle("select-model-file", async () => {
+	let e = await n.showOpenDialog(d, {
+		title: "Select PPO Model File",
+		properties: ["openFile"],
+		filters: [{
+			name: "PPO Model (.zip)",
+			extensions: ["zip"]
+		}, {
+			name: "All Files",
+			extensions: ["*"]
+		}]
+	});
+	return e.canceled || e.filePaths.length === 0 ? null : e.filePaths[0];
 });
 //#endregion
 export {};

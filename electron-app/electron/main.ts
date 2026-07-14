@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
@@ -57,7 +57,7 @@ ipcMain.handle('get-models', async () => {
 
   const files = fs.readdirSync(modelsDir, { recursive: true })
     .filter((f): f is string => typeof f === 'string' && f.includes('ppomodel'))
-  
+
   const models = []
 
   for (const file of files) {
@@ -97,31 +97,67 @@ ipcMain.handle('get-results', async () => {
   const files = fs.readdirSync(resultsDir, { recursive: true })
     .filter((f): f is string => typeof f === 'string' && f.endsWith('.csv'))
 
-  const results = []
+  const runsMap: Record<string, any> = {}
 
   for (const file of files) {
+    const relativePath = file.replace(/\\/g, '/')
     const fullPath = path.join(resultsDir, file)
     const stats = fs.statSync(fullPath)
-    if (stats.isFile()) {
-      const mode = file.includes('train') ? 'train' : file.includes('test') ? 'test' : 'final'
-      
-      // Determine plot URL (local file protocol)
-      let plotPath = fullPath.replace(`${path.sep}data${path.sep}`, `${path.sep}plot${path.sep}`).replace('.csv', '.png')
-      if (!fs.existsSync(plotPath)) {
-        plotPath = fullPath.replace('.csv', '.png')
-      }
-      
-      let plotUrl = null
-      if (fs.existsSync(plotPath)) {
-        plotUrl = `file://${plotPath.replace(/\\/g, '/')}`
-      }
+    
+    if (!stats.isFile()) continue
 
-      results.push({
-        filename: file.replace(/\\/g, '/'),
+    let base = relativePath
+    let fileType: 'main' | 'energy' | 'reward' = 'main'
+
+    if (relativePath.endsWith('_energy_absorbed.csv')) {
+      base = relativePath.replace('_energy_absorbed.csv', '')
+      fileType = 'energy'
+    } else if (relativePath.endsWith('_reward.csv')) {
+      base = relativePath.replace('_reward.csv', '')
+      fileType = 'reward'
+    } else if (relativePath.endsWith('.csv')) {
+      base = relativePath.replace('.csv', '')
+      fileType = 'main'
+    }
+
+    if (!runsMap[base]) {
+      runsMap[base] = {
+        id: base,
+        displayName: path.basename(base),
         date: stats.mtime.toISOString(),
-        mode,
-        plotUrl
-      })
+        mode: base.includes('train') ? 'train' : base.includes('test') ? 'test' : 'final',
+        plotUrl: null,
+        files: {}
+      }
+    }
+
+    runsMap[base].files[fileType] = relativePath
+
+    // If it's the main file, use its modified date as the primary timestamp
+    if (fileType === 'main') {
+      runsMap[base].date = stats.mtime.toISOString()
+    }
+  }
+
+  const results = []
+
+  for (const base of Object.keys(runsMap)) {
+    const run = runsMap[base]
+
+    // Verify if static plot image (.png) exists for this base
+    let plotPath = path.join(resultsDir, `${base}.png`)
+    if (!fs.existsSync(plotPath)) {
+      // Check in sibling folders like data/ -> plot/
+      plotPath = path.join(resultsDir, base.replace('/data/', '/plot/') + '.png')
+    }
+
+    if (fs.existsSync(plotPath)) {
+      run.plotUrl = `file://${plotPath.replace(/\\/g, '/')}`
+    }
+
+    // Only include runs that have at least a main CSV file
+    if (run.files.main) {
+      results.push(run)
     }
   }
   
@@ -129,10 +165,31 @@ ipcMain.handle('get-results', async () => {
   return results
 })
 
+ipcMain.handle('download-result-file', async (_, filename) => {
+  const sourcePath = path.join(processRoot, 'results', filename)
+  if (!fs.existsSync(sourcePath)) throw new Error('Source file not found')
+
+  const defaultName = path.basename(filename)
+  const result = await dialog.showSaveDialog(mainWindow!, {
+    title: 'Save Result CSV File',
+    defaultPath: defaultName,
+    filters: [
+      { name: 'CSV File (.csv)', extensions: ['csv'] }
+    ]
+  })
+
+  if (result.canceled || !result.filePath) {
+    return false
+  }
+
+  fs.copyFileSync(sourcePath, result.filePath)
+  return true
+})
+
 ipcMain.handle('read-csv', async (_, filename) => {
   const fullPath = path.join(processRoot, 'results', filename)
   if (!fs.existsSync(fullPath)) throw new Error('File not found')
-  
+
   const content = fs.readFileSync(fullPath, 'utf-8')
   return content
 })
@@ -147,16 +204,30 @@ ipcMain.handle('run-simulation', async (event, args) => {
     const venvPath = path.join(processRoot, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python')
     const pythonExe = fs.existsSync(venvPath) ? venvPath : (process.platform === 'win32' ? 'python' : 'python3')
 
-    const cmdArgs = ['run.py', '--mode', args.mode, '--control', args.control, '--type', args.type, '--sea-state', args.sea_state.toString()]
-    
+    // Map UI inputs (control/type) to python runner CLI args
+    const controlArg = args.type === 'sim' ? 'rl' : 'baseline';
+
+    let typeArg = 'latching';
+    if (args.control === 'reactive') {
+      typeArg = 'linear';
+    } else if (args.control === 'latching') {
+      typeArg = 'latching';
+    } else if (args.control === 'none') {
+      typeArg = 'latching'; // Default fallback
+    }
+
+    const cmdArgs = ['run.py', '--mode', args.mode, '--control', controlArg, '--type', typeArg, '--sea-state', args.sea_state.toString()]
+
     if (args.mixed) cmdArgs.push('--mixed')
     if (args.regular) cmdArgs.push('--regular')
     if (args.sim_time) cmdArgs.push('--sim-time', args.sim_time.toString())
     if (args.save) cmdArgs.push('--save')
     if (args.retrain) cmdArgs.push('--retrain')
-    
+
     if (args.model_id) {
-      const modelPath = path.join(processRoot, 'models', args.model_id)
+      const modelPath = path.isAbsolute(args.model_id)
+        ? args.model_id
+        : path.join(processRoot, 'models', args.model_id)
       cmdArgs.push('--model-path', modelPath)
     }
 
@@ -169,7 +240,23 @@ ipcMain.handle('run-simulation', async (event, args) => {
     })
 
     currentSimulation.stdout?.on('data', (data) => {
-      mainWindow?.webContents.send('simulation-log', data.toString())
+      const output = data.toString()
+      const lines = output.split('\n')
+      const filteredLines: string[] = []
+
+      for (const line of lines) {
+        const progressMatch = line.match(/\[PROGRESS\]\s+(\d+)/)
+        if (progressMatch) {
+          const percent = parseInt(progressMatch[1], 10)
+          mainWindow?.webContents.send('simulation-progress', percent)
+        } else {
+          filteredLines.push(line)
+        }
+      }
+
+      if (filteredLines.length > 0) {
+        mainWindow?.webContents.send('simulation-log', filteredLines.join('\n'))
+      }
     })
 
     currentSimulation.stderr?.on('data', (data) => {
@@ -196,4 +283,34 @@ ipcMain.handle('kill-simulation', async () => {
     return true
   }
   return false
+})
+
+ipcMain.handle('get-config', async () => {
+  const configPath = path.join(processRoot, 'src', 'config', 'config.json')
+  if (!fs.existsSync(configPath)) {
+    throw new Error('Config file not found')
+  }
+  const content = fs.readFileSync(configPath, 'utf-8')
+  return JSON.parse(content)
+})
+
+ipcMain.handle('save-config', async (_, newConfig) => {
+  const configPath = path.join(processRoot, 'src', 'config', 'config.json')
+  fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  return true
+})
+
+ipcMain.handle('select-model-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Select PPO Model File',
+    properties: ['openFile'],
+    filters: [
+      { name: 'PPO Model (.zip)', extensions: ['zip'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+  return result.filePaths[0]
 })

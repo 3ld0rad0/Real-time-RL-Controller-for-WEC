@@ -14,19 +14,22 @@ interface Model {
 
 interface ModelsProps {
   onTestModel: (id: string) => void
+  active?: boolean
 }
 
-export default function Models({ onTestModel }: ModelsProps) {
+export default function Models({ onTestModel, active }: ModelsProps) {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
-    window.api.getModels().then((data) => {
-      setModels(data)
-      setLoading(false)
-    }).catch(console.error)
-  }, [])
+    if (active) {
+      window.api.getModels().then((data) => {
+        setModels(data)
+        setLoading(false)
+      }).catch(console.error)
+    }
+  }, [active])
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B'

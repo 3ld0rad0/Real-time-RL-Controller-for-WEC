@@ -5,14 +5,20 @@ import Train from './pages/Train'
 import Test from './pages/Test'
 import Results from './pages/Results'
 import Models from './pages/Models'
+import Settings from './pages/Settings'
 
-export type Page = 'home' | 'train' | 'test' | 'results' | 'models'
+export type Page = 'home' | 'train' | 'test' | 'results' | 'models' | 'settings'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home')
   const [testModelId, setTestModelId] = useState<string | null>(null)
+  const [runningSim, setRunningSim] = useState<'train' | 'test' | null>(null)
+  const [autoExpandLatest, setAutoExpandLatest] = useState(false)
 
-  const navigateTo = (page: Page) => setCurrentPage(page)
+  const navigateTo = (page: Page, autoExpand = false) => {
+    setCurrentPage(page)
+    setAutoExpandLatest(autoExpand)
+  }
 
   const handleTestModel = (modelId: string) => {
     setTestModelId(modelId)
@@ -21,7 +27,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      <Sidebar currentPage={currentPage} navigateTo={navigateTo} />
+      <Sidebar currentPage={currentPage} navigateTo={navigateTo} runningSim={runningSim} />
       
       {/* Main Content Area with subtle background pattern */}
       <main className="flex-1 overflow-auto bg-slate-50/50 relative">
@@ -29,11 +35,18 @@ function App() {
         <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none"></div>
         
         <div className="relative z-10 h-full">
-          {currentPage === 'home' && <Home navigateTo={navigateTo} />}
-          {currentPage === 'train' && <Train navigateTo={navigateTo} />}
-          {currentPage === 'test' && <Test navigateTo={navigateTo} initialModelId={testModelId} />}
-          {currentPage === 'results' && <Results />}
-          {currentPage === 'models' && <Models onTestModel={handleTestModel} />}
+          <div className={currentPage === 'home' ? 'h-full' : 'hidden'}><Home navigateTo={navigateTo} /></div>
+          <div className={currentPage === 'train' ? 'h-full' : 'hidden'}><Train navigateTo={navigateTo} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'train'} /></div>
+          <div className={currentPage === 'test' ? 'h-full' : 'hidden'}><Test navigateTo={navigateTo} initialModelId={testModelId} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'test'} /></div>
+          <div className={currentPage === 'results' ? 'h-full' : 'hidden'}>
+            <Results 
+              active={currentPage === 'results'} 
+              autoExpandLatest={autoExpandLatest}
+              onClearAutoExpand={() => setAutoExpandLatest(false)}
+            />
+          </div>
+          <div className={currentPage === 'models' ? 'h-full' : 'hidden'}><Models onTestModel={handleTestModel} active={currentPage === 'models'} /></div>
+          <div className={currentPage === 'settings' ? 'h-full' : 'hidden'}><Settings active={currentPage === 'settings'} runningSim={runningSim} /></div>
         </div>
       </main>
     </div>
