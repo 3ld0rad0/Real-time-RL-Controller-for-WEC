@@ -4,10 +4,26 @@ import subprocess
 import time
 import sys
 import os
+import signal
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
+active_processes = []
+
+def signal_handler(sig, frame):
+    console.print("\n[bold red][!] Segnale di interruzione ricevuto. Termino i processi...[/bold red]")
+    for p in active_processes:
+        try:
+            p.terminate()
+        except Exception:
+            pass
+    sys.exit(sig)
+
+# Registra gli handler per SIGINT e SIGTERM
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 CONFIG_PATH = os.path.join("src", "config", "config.json")
 
@@ -38,6 +54,14 @@ def main():
                         help="Tempo di simulazione (ore per il train, secondi per il test).")
     parser.add_argument("--save", action="store_true",
                         help="Salva i risultati (csv, plot) a fine simulazione.")
+    parser.add_argument("--retrain", action="store_true",
+                        help="Abilita il fine-tuning/retrain del modello esistente.")
+    parser.add_argument("--model-path", type=str, default=None,
+                        help="Percorso del modello PPO da caricare.")
+    parser.add_argument("--batch-size", type=int, default=None,
+                        help="Dimensione del batch per il training.")
+    parser.add_argument("--entropy-coef", type=float, default=None,
+                        help="Coefficiente di entropia per il training.")
     
     args = parser.parse_args()
 
@@ -59,6 +83,17 @@ def main():
     config["regular"] = args.regular
     config["show_results"] = False
     config["save_mode"] = args.save
+    config["retrain"] = args.retrain
+    
+    if args.model_path is not None:
+        config["path_model"] = args.model_path
+        config["retrain_path_model"] = args.model_path
+        
+    if args.batch_size is not None:
+        config["batch_size"] = args.batch_size
+        
+    if args.entropy_coef is not None:
+        config["ent_coef"] = args.entropy_coef
     
     if args.mode == "train":
         config["init_SS_train"] = args.sea_state
@@ -93,6 +128,7 @@ def main():
     # Avvia il Server
     console.print(f"[bold blue][*] Avvio del Server (src.network.server)...[/bold blue]")
     server_process = subprocess.Popen([sys.executable, "-m", "src.network.server"])
+    active_processes.append(server_process)
     
     # Attesa breve affinché il server apra il socket
     time.sleep(2)
@@ -104,6 +140,7 @@ def main():
     # Avvia il Client
     console.print(f"[bold blue][*] Avvio del Client ({client_module})...[/bold blue]")
     client_process = subprocess.Popen([sys.executable, "-m", client_module])
+    active_processes.append(client_process)
 
     try:
         client_process.wait()

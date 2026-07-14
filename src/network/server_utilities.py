@@ -81,10 +81,17 @@ def start_simulation(conn, sim, control):
         task_desc = f"[cyan]Simulating ({sim.get_sim_mode()})..."
         task_id = progress.add_task(task_desc, total=t_final)
         
+        last_percent = -1
         while sim.get_current_time() < t_final:
             try:
                 simulation_step(conn, sim)
                 progress.update(task_id, completed=sim.get_current_time())
+                
+                if t_final > 0:
+                    percent = int((sim.get_current_time() / t_final) * 100)
+                    if percent > last_percent:
+                        print(f"[PROGRESS] {percent}", flush=True)
+                        last_percent = percent
             except socket.timeout:
                 logger.error("Timeout: nessun comando ricevuto dal client.")
                 exit(1)
@@ -183,12 +190,21 @@ def send_warmup_values(sim, conn):
         return False
     
 def read_config_file(file="./src/config/config.json"):
-    with open(file, "r") as f:
-        return json.load(f)
+    import time
+    for attempt in range(10):
+        try:
+            with open(file, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, PermissionError) as e:
+            if attempt < 9:
+                time.sleep(0.05)
+            else:
+                raise e
 
 def write_config_file(data, file="./src/config/config.json"):
+    from src.network.connection import NumPyEncoder
     with open(file, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, cls=NumPyEncoder)
 
 
 def _log_sim_start(sim_name, mode, config, period, hw):

@@ -21,13 +21,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def read_config_file(file="./src/config/config.json"):
-    with open(file, "r") as f:
-        config = json.load(f)
-    return config
+    import time
+    for attempt in range(10):
+        try:
+            with open(file, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, PermissionError) as e:
+            if attempt < 9:
+                time.sleep(0.05)
+            else:
+                raise e
 
 def write_config_file(data, file="./src/config/config.json"):
+    from src.network.connection import NumPyEncoder
     with open(file, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, cls=NumPyEncoder)
 
 def wait_close_message(socket):
     try:
@@ -38,6 +46,9 @@ def wait_close_message(socket):
 
         cmd = request.get("cmd")
         if cmd == "close":
+            energy_abs = request.get("energy_abs")
+            if energy_abs is not None:
+                print(f"[TEST_RESULT] energy={energy_abs:.6f}", flush=True)
             return True
         else:
             logger.error(f"Comando sconosciuto ricevuto: {cmd}")

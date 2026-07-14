@@ -4,6 +4,7 @@ import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import PPO
 from src.control.WEC_env import WECEnv_Linear, WECEnv_Latching
 from src.network.client import UniversalClient, read_config_file, write_config_file, connection_handler
@@ -20,7 +21,21 @@ class StopTrainingOnEpisodeCount(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.locals.get("dones") is not None:
-            self.episode_counter += sum(self.locals["dones"])
+            num_dones = sum(self.locals["dones"])
+            if num_dones > 0:
+                self.episode_counter += num_dones
+                
+                # 1. Retrieve cumulative reward from ep_info_buffer
+                reward = 0.0
+                if len(self.model.ep_info_buffer) > 0:
+                    reward = float(np.mean([ep_info['r'] for ep_info in self.model.ep_info_buffer]))
+                
+                # 2. Retrieve loss from name_to_value logger dictionary
+                loss = float(self.logger.name_to_value.get("train/loss", 0.0))
+                
+                # Print directly to stdout for clean parsing by the frontend
+                print(f"[METRICS] step={self.num_timesteps} episode={self.episode_counter} reward={reward:.6f} loss={loss:.6f}", flush=True)
+                
         if self.episode_counter >= self.max_episodes:
             if self.verbose:
                 logger.info(f"Stopping training after {self.episode_counter} episodes")
@@ -132,14 +147,36 @@ class RLController(BaseController):
         self.model_path = model_path
         
         env_train = self.init_env(config, socket, mode='train')
+        
+        # Reload configuration to get synchronized episodes and timesteps
+        config = read_config_file("./src/config/config.json")
         episodes = config['n_episodes']
         timesteps = config['n_steps']
         
+        # Calculate steps per episode to use as rollout buffer size n_steps in PPO.
+        # This triggers updates and loss calculations at the end of each episode done boundary.
+        n_steps_ppo = int(timesteps // episodes)
+        if n_steps_ppo < 32:
+            n_steps_ppo = 32
+            
+        # Find a batch size that is an exact factor of n_steps_ppo, closest to 64
+        possible_batch_sizes = [b for b in range(16, 257) if n_steps_ppo % b == 0]
+        if possible_batch_sizes:
+            batch_size_ppo = min(possible_batch_sizes, key=lambda x: abs(x - 64))
+        else:
+            batch_size_ppo = 64
+            
+        monitored_env = Monitor(env_train)
+        
         if retrain and model_retrain_path != "":
-            self.model = PPO.load(model_retrain_path, env_train, tensorboard_log=f"./board/ent_reg{ent_coef}/retrained/", verbose=0, device='cpu')
+            self.model = PPO.load(model_retrain_path, monitored_env, tensorboard_log=f"./board/ent_reg{ent_coef}/retrained/", verbose=0, device='cpu')
+            self.model.n_steps = n_steps_ppo
+            self.model.batch_size = batch_size_ppo
+            self.model.rollout_buffer.buffer_size = n_steps_ppo
+            self.model.rollout_buffer.reset()
             logger.debug("Model loaded successfully and ready for the fine tuning on a specified sea_state...")
         else:
-            self.model = PPO("MlpPolicy", env_train, tensorboard_log=f"./board/ent_reg{ent_coef}/", ent_coef=ent_coef, verbose=0, device='cpu')
+            self.model = PPO("MlpPolicy", monitored_env, n_steps=n_steps_ppo, batch_size=batch_size_ppo, tensorboard_log=f"./board/ent_reg{ent_coef}/", ent_coef=ent_coef, verbose=0, device='cpu')
             
         return env_train, timesteps, episodes, sim_name, model_path
 
@@ -149,7 +186,7 @@ class RLController(BaseController):
         """
         env_train, timesteps, episodes, sim_name, model_path = self._init_training(socket, config)
         
-        logger.debug(f'Starting train simulation...')
+        logger.info(f'Starting train simulation...')
         self.model.learn(total_timesteps=timesteps, tb_log_name=f"simulation{sim_name}_PPO_log", callback=StopTrainingOnEpisodeCount(max_episodes=episodes, verbose=1))
         
         self.model.save(model_path)
@@ -168,7 +205,7 @@ class RLController(BaseController):
         
         try:
             self.model = PPO.load(model_path, device='cpu')
-            logger.debug("Model loaded successfully...")
+            logger.info("Model loaded successfully...")
         except FileNotFoundError:
             logger.error("Model not found, starting from scratch.")
             exit(1)
@@ -178,7 +215,7 @@ class RLController(BaseController):
         obs, info = env_test.reset()
         truncated = False
 
-        logger.debug(f'Starting test simulation...')
+        logger.info(f'Starting test simulation...')
             
         while not truncated:
             action, _states = self.model.predict(obs)
