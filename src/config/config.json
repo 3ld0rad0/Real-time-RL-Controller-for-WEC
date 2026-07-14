@@ -1,6 +1,6 @@
 {
   "control_mode": "latching",
-  "rl_control": true,
+  "rl_control": false,
   "regular": false,
   "mixed_sea_state": false,
   "save_mode": false,

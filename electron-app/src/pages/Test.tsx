@@ -1,210 +1,206 @@
-import { useState, useEffect, useRef } from 'react'
-import { PlaySquare, Play, StopCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Play, Square, Settings, Activity, Terminal, ShieldAlert } from 'lucide-react'
 import type { Page } from '../App'
-
-type State = 'idle' | 'running' | 'completed'
 
 interface TestProps {
   navigateTo: (page: Page) => void
-  initialModelId: string | null
+  initialModelId?: string | null
 }
 
-export default function Test({ navigateTo, initialModelId }: TestProps) {
-  const [state, setState] = useState<State>('idle')
+export default function Test({ navigateTo: _navigateTo, initialModelId }: TestProps) {
+  const [running, setRunning] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
-  
-  const [controller, setController] = useState('rl')
-  const [controlMode, setControlMode] = useState('latching')
-  const [seaState, setSeaState] = useState('5')
-  const [regular, setRegular] = useState(false)
-  const [simTime, setSimTime] = useState('300') // seconds
-  const [saveResults, setSaveResults] = useState(true)
-  const [selectedModel, setSelectedModel] = useState(initialModelId || '')
-  const [availableModels, setAvailableModels] = useState<any[]>([])
+  const logsEndRef = useRef<HTMLDivElement>(null)
 
-  const logEndRef = useRef<HTMLDivElement>(null)
+  // Form State
+  const [control, setControl] = useState('latching')
+  const [type, setType] = useState('sim')
+  const [waveType, setWaveType] = useState('irregular')
+  const [seaState, setSeaState] = useState('2')
+  const [simTime, setSimTime] = useState('60')
+  const [modelId, setModelId] = useState(initialModelId || '')
 
   useEffect(() => {
-    window.api.getModels().then(setAvailableModels).catch(console.error)
+    const unsubscribeLog = window.api.onSimulationLog((data: string) => {
+      setLogs(prev => [...prev, data.trim()])
+    })
+    const unsubscribeDone = window.api.onSimulationDone((code: number) => {
+      setRunning(false)
+      setLogs(prev => [...prev, `\n--- Simulation exited with code ${code} ---`])
+    })
+
+    return () => {
+      unsubscribeLog()
+      unsubscribeDone()
+    }
   }, [])
 
   useEffect(() => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  const handleStart = async () => {
-    setState('running')
-    setLogs(['Starting test simulation...'])
-
-    const unSubLog = window.api.onSimulationLog((log) => {
-      setLogs((prev) => [...prev, log])
-    })
-
-    const unSubDone = window.api.onSimulationDone((code) => {
-      unSubLog()
-      unSubDone()
-      setLogs((prev) => [...prev, `Simulation process exited with code ${code}`])
-      setState(code === 0 ? 'completed' : 'idle')
-    })
+  const handleStart = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLogs(['Initializing testing environment...'])
+    setRunning(true)
 
     try {
       await window.api.runSimulation({
         mode: 'test',
-        control: controller,
-        type: controlMode,
+        control,
+        type,
+        mixed: waveType === 'mixed',
+        regular: waveType === 'regular',
         sea_state: parseInt(seaState),
-        regular,
         sim_time: parseFloat(simTime),
-        save: saveResults,
-        model_id: selectedModel || undefined,
+        save: true,
+        model_id: modelId || undefined
       })
-    } catch (e: any) {
-      setLogs((prev) => [...prev, `Failed to start: ${e.message}`])
-      setState('idle')
+    } catch (err: any) {
+      setLogs(prev => [...prev, `ERROR: ${err.message}`])
+      setRunning(false)
     }
   }
 
   const handleStop = async () => {
     await window.api.killSimulation()
-    setState('idle')
-    setLogs((prev) => [...prev, 'Simulation stopped manually.'])
+    setRunning(false)
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigateTo('home')}
-          className="text-emerald-600 hover:text-emerald-800 flex items-center gap-2 font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-          <PlaySquare className="w-8 h-8 text-emerald-600" />
-          Test Agent
-        </h1>
-        <p className="text-slate-600 mt-2">Evaluate a trained agent or baseline against specific sea states.</p>
-      </div>
-
-      {state === 'idle' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Controller</label>
-              <select value={controller} onChange={(e) => setController(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2">
-                <option value="rl">RL Control (PPO)</option>
-                <option value="baseline">Threshold Baseline</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Control Mode</label>
-              <select value={controlMode} onChange={(e) => setControlMode(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2">
-                <option value="latching">Latching</option>
-                <option value="linear">Linear</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Sea State</label>
-              <select value={seaState} onChange={(e) => setSeaState(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2">
-                <option value="0">SS 0 (Hw=0.8m, T=9.0s)</option>
-                <option value="1">SS 1 (Hw=1.2m, T=9.5s)</option>
-                <option value="2">SS 2 (Hw=1.6m, T=10.0s)</option>
-                <option value="3">SS 3 (Hw=2.0m, T=10.5s)</option>
-                <option value="4">SS 4 (Hw=2.5m, T=11.0s)</option>
-                <option value="5">SS 5 (Hw=3.0m, T=11.5s)</option>
-                <option value="6">SS 6 (Hw=3.5m, T=12.0s)</option>
-                <option value="7">SS 7 (Hw=4.0m, T=12.5s)</option>
-                <option value="8">SS 8 (Hw=4.5m, T=13.0s)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Simulation Time (seconds)</label>
-              <input type="number" value={simTime} onChange={(e) => setSimTime(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2" />
-            </div>
-          </div>
-
-          <div className="flex gap-6 mb-6 pb-6 border-b border-slate-200">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={regular} onChange={(e) => setRegular(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
-              <span className="text-slate-700 font-medium">Regular Waves</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={saveResults} onChange={(e) => setSaveResults(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded" />
-              <span className="text-slate-700 font-medium">Save Results (CSV/PNG)</span>
-            </label>
-          </div>
-
-          {controller === 'rl' && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Model to Test</label>
-              <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2">
-                <option value="" disabled>Select a model...</option>
-                {availableModels.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          <button
-            onClick={handleStart}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
-          >
-            <Play className="w-5 h-5" /> Start Testing
-          </button>
+    <div className="p-10 max-w-7xl mx-auto h-full flex flex-col">
+      <div className="mb-10 flex justify-between items-end shrink-0">
+        <div>
+          <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Test Agent</h1>
+          <p className="text-lg text-slate-500 font-medium">Evaluate trained PPO models or baseline controllers.</p>
         </div>
-      )}
+      </div>
 
-      {state === 'running' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping absolute"></div>
-                <div className="w-3 h-3 bg-emerald-600 rounded-full relative"></div>
+      <div className="flex gap-8 flex-1 min-h-0 pb-10">
+        {/* Form Panel */}
+        <div className="w-[400px] glass-card rounded-3xl p-8 flex flex-col shadow-sm shrink-0 overflow-y-auto">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Settings className="w-5 h-5" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Configuration</h2>
+          </div>
+          
+          <form onSubmit={handleStart} className="space-y-6 flex-1 flex flex-col">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Control Mode</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                  value={control} onChange={e => setControl(e.target.value)} disabled={running}
+                >
+                  <option value="latching">Latching</option>
+                  <option value="reactive">Reactive</option>
+                  <option value="none">No Control</option>
+                </select>
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Testing in Progress</h2>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Agent Type</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                  value={type} onChange={e => setType(e.target.value)} disabled={running}
+                >
+                  <option value="sim">RL Agent (PPO)</option>
+                  <option value="pi">Baseline (PI Control)</option>
+                </select>
+              </div>
+
+              {type === 'sim' && (
+                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                  <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Model Path (Optional)</label>
+                  <input 
+                    type="text" placeholder="e.g. irregular/sea_state_2/..."
+                    className="w-full bg-white border border-emerald-200 text-slate-900 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                    value={modelId} onChange={e => setModelId(e.target.value)} disabled={running}
+                  />
+                  {!modelId && (
+                    <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3" /> Latest model will be used
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wave Type</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                  value={waveType} onChange={e => setWaveType(e.target.value)} disabled={running}
+                >
+                  <option value="irregular">Irregular</option>
+                  <option value="regular">Regular</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sea State</label>
+                  <input 
+                    type="number" min="1" max="5" 
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                    value={seaState} onChange={e => setSeaState(e.target.value)} disabled={running}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Duration (s)</label>
+                  <input 
+                    type="number" step="10"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
+                    value={simTime} onChange={e => setSimTime(e.target.value)} disabled={running}
+                  />
+                </div>
+              </div>
             </div>
-            <button
-              onClick={handleStop}
-              className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 font-medium rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <StopCircle className="w-4 h-4" /> Stop Simulation
-            </button>
-          </div>
 
-          <div className="bg-slate-900 text-slate-300 font-mono text-sm p-4 rounded-lg h-96 overflow-y-auto whitespace-pre-wrap">
-            {logs.map((log, i) => <div key={i}>{log}</div>)}
-            <div ref={logEndRef} />
+            <div className="pt-6 mt-auto">
+              {!running ? (
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-emerald-600/20 flex justify-center items-center gap-2 group">
+                  <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" /> Run Test
+                </button>
+              ) : (
+                <button type="button" onClick={handleStop} className="w-full bg-red-500 hover:bg-red-600 text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-red-500/20 flex justify-center items-center gap-2 group">
+                  <Square className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" /> Stop Simulation
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Console Panel */}
+        <div className="flex-1 bg-slate-900 rounded-3xl overflow-hidden flex flex-col shadow-xl shadow-slate-900/10 border border-slate-800">
+          <div className="px-6 py-4 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between backdrop-blur-sm">
+            <div className="flex items-center gap-3 text-slate-300">
+              <Terminal className="w-5 h-5 text-emerald-400" />
+              <span className="font-semibold text-sm tracking-wide">Live Output Log</span>
+            </div>
+            {running && (
+              <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-400/20">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div> Running
+              </div>
+            )}
+          </div>
+          <div className="flex-1 p-6 overflow-y-auto font-mono text-sm text-slate-300 bg-slate-900 leading-relaxed selection:bg-emerald-500/30">
+            {logs.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-600">
+                <Activity className="w-12 h-12 mb-4 opacity-20" />
+                <p>Output logs will appear here</p>
+              </div>
+            ) : (
+              logs.map((log, i) => (
+                <div key={i} className="whitespace-pre-wrap break-words">{log}</div>
+              ))
+            )}
+            <div ref={logsEndRef} />
           </div>
         </div>
-      )}
-
-      {state === 'completed' && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center shadow-sm">
-          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Testing Completed!</h2>
-          <p className="text-slate-600 mb-6">The simulation finished successfully. Check the results page for data.</p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => navigateTo('results')}
-              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
-            >
-              View Results
-            </button>
-            <button
-              onClick={() => { setState('idle'); setLogs([]) }}
-              className="px-6 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-lg transition-colors"
-            >
-              New Test
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
-

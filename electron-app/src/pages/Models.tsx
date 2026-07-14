@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, ChevronDown, ChevronRight, PlaySquare } from 'lucide-react'
+import { Box, Play, ChevronDown, ChevronUp, Clock, HardDrive, Waves, Thermometer, BrainCircuit } from 'lucide-react'
 
 interface Model {
   id: string
@@ -12,7 +12,11 @@ interface Model {
   ent_coef: string
 }
 
-export default function Models({ onTestModel }: { onTestModel: (id: string) => void }) {
+interface ModelsProps {
+  onTestModel: (id: string) => void
+}
+
+export default function Models({ onTestModel }: ModelsProps) {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -24,107 +28,104 @@ export default function Models({ onTestModel }: { onTestModel: (id: string) => v
     }).catch(console.error)
   }, [])
 
-  if (loading) {
-    return (
-      <div className="p-8 flex justify-center items-center h-full">
-        <div className="animate-pulse flex items-center gap-2 text-slate-500">
-          <Box className="w-5 h-5" />
-          <span>Loading models...</span>
-        </div>
-      </div>
-    )
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <Box className="w-8 h-8 text-amber-600" />
-            Trained Models
-          </h1>
-          <p className="text-slate-600 mt-2">Manage and test your trained PPO agents.</p>
-        </div>
-        <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg font-medium">
-          Total: {models.length}
-        </div>
+    <div className="p-10 max-w-6xl mx-auto h-full overflow-y-auto">
+      <div className="mb-10">
+        <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Trained Models</h1>
+        <p className="text-lg text-slate-500 font-medium">Browse your reinforcement learning agents and their configurations.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {models.map((model) => {
-          const isExpanded = expandedId === model.id
-          return (
-            <div 
-              key={model.id}
-              className={`border border-slate-200 rounded-xl bg-white overflow-hidden transition-all ${isExpanded ? 'ring-2 ring-amber-500 shadow-md' : 'hover:border-slate-300 hover:shadow-sm'}`}
-            >
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-indigo-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-b-indigo-600 mb-4"></div>
+          <p className="font-semibold text-indigo-900">Loading models...</p>
+        </div>
+      ) : models.length === 0 ? (
+        <div className="glass-card flex flex-col items-center justify-center py-24 rounded-3xl text-slate-400">
+          <Box className="w-20 h-20 mb-6 text-slate-200" />
+          <p className="text-xl font-medium text-slate-900 mb-2">No Models Found</p>
+          <p>Run a training simulation to generate models.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+          {models.map(model => (
+            <div key={model.id} className="glass-card rounded-2xl overflow-hidden group">
               <div 
-                className="p-4 flex items-start gap-3 cursor-pointer select-none"
-                onClick={() => setExpandedId(isExpanded ? null : model.id)}
+                className="p-6 cursor-pointer"
+                onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
               >
-                <div className="mt-1 text-slate-400">
-                  {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 uppercase tracking-wider">
-                      {model.wave_type}
-                    </span>
-                    <span className="text-xs font-medium text-slate-500">
-                      Sea State: {model.sea_state}
-                    </span>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                    <BrainCircuit className="w-6 h-6" />
                   </div>
-                  <h3 className="font-medium text-slate-900 break-all leading-tight">
-                    {model.name}
-                  </h3>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onTestModel(model.id) }}
+                    className="p-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2"
+                    title="Test this model"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                  </button>
+                </div>
+                
+                <h3 className="font-bold text-lg text-slate-900 mb-1 truncate pr-2" title={model.name}>
+                  {model.name}
+                </h3>
+                
+                <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mt-4">
+                  <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md text-slate-700">
+                    <HardDrive className="w-3.5 h-3.5 text-slate-400" /> {formatSize(model.size)}
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md text-slate-700">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(model.date).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
 
-              {isExpanded && (
-                <div className="px-4 pb-4 pt-2 border-t border-slate-100 bg-slate-50 text-sm">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
-                    <div>
-                      <span className="block text-slate-500 text-xs uppercase tracking-wider mb-0.5">Entropy Coef</span>
-                      <span className="font-medium text-slate-900">{model.ent_coef}</span>
+              {/* Expandable Details Area */}
+              <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${expandedId === model.id ? 'max-h-64' : 'max-h-0'}`}>
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Waves className="w-3 h-3" /> Wave Type
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{model.wave_type}</p>
                     </div>
-                    <div>
-                      <span className="block text-slate-500 text-xs uppercase tracking-wider mb-0.5">Size</span>
-                      <span className="font-medium text-slate-900">{(model.size / 1024 / 1024).toFixed(2)} MB</span>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Thermometer className="w-3 h-3" /> Sea State
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{model.sea_state.replace(/_/g, ' ')}</p>
                     </div>
-                    <div className="col-span-2">
-                      <span className="block text-slate-500 text-xs uppercase tracking-wider mb-0.5">Last Modified</span>
-                      <span className="font-medium text-slate-900">{new Date(model.date).toLocaleString()}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="block text-slate-500 text-xs uppercase tracking-wider mb-0.5">Path</span>
-                      <span className="font-mono text-xs text-slate-600 break-all">{model.path}</span>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <BrainCircuit className="w-3 h-3" /> Entropy Coef
+                      </p>
+                      <p className="text-sm font-semibold text-slate-800">{model.ent_coef}</p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onTestModel(model.id)
-                    }}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
-                  >
-                    <PlaySquare className="w-4 h-4" />
-                    Use for Testing
-                  </button>
                 </div>
-              )}
+              </div>
+              
+              {/* Toggle handle */}
+              <div 
+                className="py-2 bg-slate-50 flex justify-center items-center text-slate-400 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
+              >
+                {expandedId === model.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </div>
             </div>
-          )
-        })}
-
-        {models.length === 0 && !loading && (
-          <div className="col-span-full p-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
-            <Box className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">No models found in the models directory.</p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
-

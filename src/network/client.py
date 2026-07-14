@@ -76,11 +76,30 @@ class UniversalClient:
         """
         Connect to the server and pass the wrapped socket and config to the algorithm.
         """
+        import time
+        max_retries = 10
+        retry_delay = 1.0
+        connected = False
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            for attempt in range(max_retries):
+                try:
+                    s.connect((self.host, self.port))
+                    logger.info(f"Connected to server at {self.host}:{self.port}...")
+                    connected = True
+                    break
+                except (ConnectionRefusedError, socket.error) as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Connection failed ({e}). Retrying in {retry_delay}s (Attempt {attempt+1}/{max_retries})...")
+                        time.sleep(retry_delay)
+                    else:
+                        logger.error(f"Failed to connect after {max_retries} attempts.")
+            
+            if not connected:
+                logger.info("Close Client.")
+                return
+
             try:
-                s.connect((self.host, self.port))
-                logger.info(f"Connected to server at {self.host}:{self.port}...")
-                
                 wrapped_s = JSONSocketWrapper(s)
 
                 # Execute the specific algorithm strategy
