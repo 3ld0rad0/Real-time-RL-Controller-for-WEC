@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, LineChart, AlertCircle, FolderOpen } from 'lucide-react'
 import type { Page } from '../App'
+import Dropdown from '../components/Dropdown'
 
 interface TrainingMetric {
   step: number
@@ -49,6 +50,14 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
   const [warnings, setWarnings] = useState<string[]>([])
   const [latestMetric, setLatestMetric] = useState<TrainingMetric | null>(null)
   const [energyAbsorbed, setEnergyAbsorbed] = useState<number | null>(null)
+
+  const modelOptions = [
+    { value: '', label: '-- Choose a Model --' },
+    ...models.map((m: any) => ({ value: m.id, label: m.name }))
+  ]
+  if (selectedModelId && !models.some((m: any) => m.id === selectedModelId)) {
+    modelOptions.push({ value: selectedModelId, label: selectedModelId })
+  }
 
   const getSeaStateString = (indexStr: string, isMixed: boolean) => {
     if (isMixed) return 'sea_state_mixed'
@@ -288,26 +297,34 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Control Mode</label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
-                    value={control} onChange={e => setControl(e.target.value)} disabled={running}
-                  >
-                    <option value="latching">Latching</option>
-                    <option value="reactive">Linear</option>
-                  </select>
+                  <Dropdown
+                    value={control}
+                    onChange={(val) => setControl(val)}
+                    options={[
+                      { value: 'latching', label: 'Latching' },
+                      { value: 'reactive', label: 'Linear' }
+                    ]}
+                    disabled={running}
+                    themeColor="indigo"
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wave Mode</label>
-                    <select
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
-                      value={waveType} onChange={e => setWaveType(e.target.value)} disabled={running}
-                    >
-                      <option value="irregular">Irregular</option>
-                      <option value="regular">Regular</option>
-                      <option value="mixed">Mixed</option>
-                    </select>
+                    <Dropdown
+                      value={waveType}
+                      onChange={(val) => setWaveType(val)}
+                      options={[
+                        { value: 'irregular', label: 'Irregular' },
+                        { value: 'regular', label: 'Regular' },
+                        { value: 'mixed', label: 'Mixed' }
+                      ]}
+                      disabled={running}
+                      themeColor="indigo"
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
@@ -315,26 +332,28 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
                     {waveType === 'mixed' ? (
                       <input
                         type="text"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 outline-none transition-all font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 outline-none transition-all font-medium text-sm"
                         value="N/A (Mixed)"
                         disabled
                       />
                     ) : (
-                      <select
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
+                      <Dropdown
                         value={seaState}
-                        onChange={e => setSeaState(e.target.value)}
+                        onChange={(val) => setSeaState(val)}
+                        options={[
+                          { value: '0', label: 'State 0: Hs = 0.8m, Tp = 9.0s' },
+                          { value: '1', label: 'State 1: Hs = 1.4m, Tp = 9.7s' },
+                          { value: '2', label: 'State 2: Hs = 2.0m, Tp = 10.5s' },
+                          { value: '3', label: 'State 3: Hs = 2.9m, Tp = 11.5s' },
+                          { value: '4', label: 'State 4: Hs = 4.0m, Tp = 12.7s' },
+                          { value: '5', label: 'State 5: Hs = 5.4m, Tp = 14.0s' },
+                          { value: '6', label: 'State 6: Hs = 7.0m, Tp = 15.5s' },
+                          { value: '7', label: 'State 7: Hs = 8.8m, Tp = 17.2s' }
+                        ]}
                         disabled={running}
-                      >
-                        <option value="0">State 0: Hs = 0.8m, Tp = 9.0s</option>
-                        <option value="1">State 1: Hs = 1.4m, Tp = 9.7s</option>
-                        <option value="2">State 2: Hs = 2.0m, Tp = 10.5s</option>
-                        <option value="3">State 3: Hs = 2.9m, Tp = 11.5s</option>
-                        <option value="4">State 4: Hs = 4.0m, Tp = 12.7s</option>
-                        <option value="5">State 5: Hs = 5.4m, Tp = 14.0s</option>
-                        <option value="6">State 6: Hs = 7.0m, Tp = 15.5s</option>
-                        <option value="7">State 7: Hs = 8.8m, Tp = 17.2s</option>
-                      </select>
+                        themeColor="indigo"
+                        className="w-full"
+                      />
                     )}
                   </div>
                 </div>
@@ -372,23 +391,15 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
                     <div className="space-y-2 animate-fade-in">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select Model</label>
                       <div className="flex gap-2 min-w-0">
-                        <select
-                          required
-                          className="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium text-sm text-ellipsis overflow-hidden"
+                        <Dropdown
                           value={selectedModelId}
-                          onChange={e => setSelectedModelId(e.target.value)}
+                          onChange={(val) => setSelectedModelId(val)}
+                          options={modelOptions}
                           disabled={running}
-                        >
-                          <option value="">-- Choose a Model --</option>
-                          {models.map(m => (
-                            <option key={m.id} value={m.id}>
-                              {m.name}
-                            </option>
-                          ))}
-                          {selectedModelId && !models.some(m => m.id === selectedModelId) && (
-                            <option value={selectedModelId}>{selectedModelId}</option>
-                          )}
-                        </select>
+                          themeColor="indigo"
+                          className="flex-1 min-w-0"
+                          placeholder="-- Choose a Model --"
+                        />
                         <button
                           type="button"
                           onClick={handleBrowseModel}

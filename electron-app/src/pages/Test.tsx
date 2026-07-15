@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, LineChart, FolderOpen, AlertCircle } from 'lucide-react'
 import type { Page } from '../App'
+import Dropdown from '../components/Dropdown'
 
 function getRelativeModelPath(filePath: string): string {
   if (!filePath) return '';
@@ -75,6 +76,14 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [modelId, setModelId] = useState(getRelativeModelPath(initialModelId || ''))
   const [models, setModels] = useState<any[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
+
+  const modelOptions = [
+    { value: '', label: '-- Choose a Model --' },
+    ...models.map((m: any) => ({ value: m.id, label: m.name }))
+  ]
+  if (modelId && !models.some((m: any) => m.id === modelId)) {
+    modelOptions.push({ value: modelId, label: modelId })
+  }
 
   const handleBrowseModel = async () => {
     try {
@@ -263,37 +272,49 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Control Mode</label>
-                  <select 
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
-                    value={control} onChange={e => setControl(e.target.value)} disabled={running}
-                  >
-                    <option value="latching">Latching</option>
-                    <option value="reactive">Linear</option>
-                  </select>
+                  <Dropdown
+                    value={control}
+                    onChange={(val) => setControl(val)}
+                    options={[
+                      { value: 'latching', label: 'Latching' },
+                      { value: 'reactive', label: 'Linear' }
+                    ]}
+                    disabled={running}
+                    themeColor="emerald"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Agent Type</label>
-                  <select 
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium"
-                    value={type} onChange={e => setType(e.target.value)} disabled={running}
-                  >
-                    <option value="sim">RL Agent (PPO)</option>
-                    <option value="real">Baseline (Threshold Control)</option>
-                  </select>
+                  <Dropdown
+                    value={type}
+                    onChange={(val) => setType(val)}
+                    options={[
+                      { value: 'sim', label: 'RL Agent (PPO)' },
+                      { value: 'real', label: 'Baseline (Threshold Control)' }
+                    ]}
+                    disabled={running}
+                    themeColor="emerald"
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wave Mode</label>
-                    <select 
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-sm"
-                      value={waveType} onChange={e => setWaveType(e.target.value)} disabled={running}
-                    >
-                      <option value="irregular">Irregular</option>
-                      <option value="regular">Regular</option>
-                      <option value="mixed">Mixed</option>
-                    </select>
+                    <Dropdown
+                      value={waveType}
+                      onChange={(val) => setWaveType(val)}
+                      options={[
+                        { value: 'irregular', label: 'Irregular' },
+                        { value: 'regular', label: 'Regular' },
+                        { value: 'mixed', label: 'Mixed' }
+                      ]}
+                      disabled={running}
+                      themeColor="emerald"
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
@@ -306,21 +327,23 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
                         disabled
                       />
                     ) : (
-                      <select
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-sm"
+                      <Dropdown
                         value={seaState}
-                        onChange={e => setSeaState(e.target.value)}
+                        onChange={(val) => setSeaState(val)}
+                        options={[
+                          { value: '0', label: 'State 0: Hs = 0.8m, Tp = 9.0s' },
+                          { value: '1', label: 'State 1: Hs = 1.4m, Tp = 9.7s' },
+                          { value: '2', label: 'State 2: Hs = 2.0m, Tp = 10.5s' },
+                          { value: '3', label: 'State 3: Hs = 2.9m, Tp = 11.5s' },
+                          { value: '4', label: 'State 4: Hs = 4.0m, Tp = 12.7s' },
+                          { value: '5', label: 'State 5: Hs = 5.4m, Tp = 14.0s' },
+                          { value: '6', label: 'State 6: Hs = 7.0m, Tp = 15.5s' },
+                          { value: '7', label: 'State 7: Hs = 8.8m, Tp = 17.2s' }
+                        ]}
                         disabled={running}
-                      >
-                        <option value="0">State 0: Hs = 0.8m, Tp = 9.0s</option>
-                        <option value="1">State 1: Hs = 1.4m, Tp = 9.7s</option>
-                        <option value="2">State 2: Hs = 2.0m, Tp = 10.5s</option>
-                        <option value="3">State 3: Hs = 2.9m, Tp = 11.5s</option>
-                        <option value="4">State 4: Hs = 4.0m, Tp = 12.7s</option>
-                        <option value="5">State 5: Hs = 5.4m, Tp = 14.0s</option>
-                        <option value="6">State 6: Hs = 7.0m, Tp = 15.5s</option>
-                        <option value="7">State 7: Hs = 8.8m, Tp = 17.2s</option>
-                      </select>
+                        themeColor="emerald"
+                        className="w-full"
+                      />
                     )}
                   </div>
                 </div>
@@ -338,19 +361,15 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Target PPO Model</label>
                     <div className="flex gap-2 min-w-0">
-                      <select 
-                        required
-                        className="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-sm text-ellipsis overflow-hidden"
-                        value={modelId} onChange={e => setModelId(e.target.value)} disabled={running}
-                      >
-                        <option value="">-- Choose a Model --</option>
-                        {models.map(m => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                        {modelId && !models.some(m => m.id === modelId) && (
-                          <option value={modelId}>{modelId}</option>
-                        )}
-                      </select>
+                      <Dropdown
+                        value={modelId}
+                        onChange={(val) => setModelId(val)}
+                        options={modelOptions}
+                        disabled={running}
+                        themeColor="emerald"
+                        className="flex-1 min-w-0"
+                        placeholder="-- Choose a Model --"
+                      />
                       <button
                         type="button"
                         onClick={handleBrowseModel}

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import Papa from 'papaparse'
+import Dropdown from '../components/Dropdown'
 
 interface ResultFile {
   id: string
@@ -424,44 +425,47 @@ export default function Results({
               
               <div className="flex flex-wrap gap-3">
                 {/* 1) Train/Test Filter */}
-                <select
+                <Dropdown
                   value={modeFilter}
-                  onChange={(e) => setModeFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Modes</option>
-                  <option value="train">Training</option>
-                  <option value="test">Testing</option>
-                </select>
+                  onChange={(val) => setModeFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All Modes' },
+                    { value: 'train', label: 'Training' },
+                    { value: 'test', label: 'Testing' }
+                  ]}
+                  themeColor="indigo"
+                />
 
                 {/* 2) Sea State Filter */}
-                <select
+                <Dropdown
                   value={seaStateFilter}
-                  onChange={(e) => setSeaStateFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Sea States</option>
-                  <option value="Hs: 0.8m">Hs=0.8m, Tp=9.0s</option>
-                  <option value="Hs: 1.4m">Hs=1.4m, Tp=9.7s</option>
-                  <option value="Hs: 2.0m">Hs=2.0m, Tp=10.5s</option>
-                  <option value="Hs: 2.9m">Hs=2.9m, Tp=11.5s</option>
-                  <option value="Hs: 4.0m">Hs=4.0m, Tp=12.7s</option>
-                  <option value="Hs: 5.4m">Hs=5.4m, Tp=14.0s</option>
-                  <option value="Hs: 7.0m">Hs=7.0m, Tp=15.5s</option>
-                  <option value="Hs: 8.8m">Hs=8.8m, Tp=17.2s</option>
-                  <option value="Mixed Sea State">Mixed Sea State</option>
-                </select>
+                  onChange={(val) => setSeaStateFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All Sea States' },
+                    { value: 'Hs: 0.8m', label: 'Hs=0.8m, Tp=9.0s' },
+                    { value: 'Hs: 1.4m', label: 'Hs=1.4m, Tp=9.7s' },
+                    { value: 'Hs: 2.0m', label: 'Hs=2.0m, Tp=10.5s' },
+                    { value: 'Hs: 2.9m', label: 'Hs=2.9m, Tp=11.5s' },
+                    { value: 'Hs: 4.0m', label: 'Hs=4.0m, Tp=12.7s' },
+                    { value: 'Hs: 5.4m', label: 'Hs=5.4m, Tp=14.0s' },
+                    { value: 'Hs: 7.0m', label: 'Hs=7.0m, Tp=15.5s' },
+                    { value: 'Hs: 8.8m', label: 'Hs=8.8m, Tp=17.2s' },
+                    { value: 'Mixed Sea State', label: 'Mixed Sea State' }
+                  ]}
+                  themeColor="indigo"
+                />
 
                 {/* 3) Control Method Filter */}
-                <select
+                <Dropdown
                   value={controlFilter}
-                  onChange={(e) => setControlFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Control Methods</option>
-                  <option value="RL (Latching)">RL (Latching)</option>
-                  <option value="Baseline (Threshold)">Baseline (Threshold)</option>
-                </select>
+                  onChange={(val) => setControlFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All Control Methods' },
+                    { value: 'RL (Latching)', label: 'RL (Latching)' },
+                    { value: 'Baseline (Threshold)', label: 'Baseline (Threshold)' }
+                  ]}
+                  themeColor="indigo"
+                />
               </div>
             </div>
 

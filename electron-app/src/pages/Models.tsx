@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Box, Play, Clock, Waves, BrainCircuit, Upload } from 'lucide-react'
+import Dropdown from '../components/Dropdown'
 
 interface Model {
   id: string
@@ -162,15 +163,16 @@ export default function Models({ onTestModel, active }: ModelsProps) {
               
               <div className="flex flex-wrap gap-3">
                 {/* Fine Tuning Filter */}
-                <select
+                <Dropdown
                   value={fineTuningFilter}
-                  onChange={(e) => setFineTuningFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-650 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Model Types</option>
-                  <option value="fine-tuned">Fine-Tuning Models</option>
-                  <option value="regular">Regular Models</option>
-                </select>
+                  onChange={(val) => setFineTuningFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All Model Types' },
+                    { value: 'fine-tuned', label: 'Fine-Tuning Models' },
+                    { value: 'regular', label: 'Regular Models' }
+                  ]}
+                  themeColor="indigo"
+                />
               </div>
             </div>
 
