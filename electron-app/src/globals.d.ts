@@ -20,6 +20,14 @@ declare global {
       maximizeWindow: () => void
       closeWindow: () => void
       onWindowMaximized: (callback: (isMaximized: boolean) => void) => () => void
+      copyModelFile: (filePath: string) => Promise<{ success: boolean; fileName: string } | null>
+      getHomeDir: () => Promise<string>
+      listDirectory: (dirPath: string) => Promise<{
+        currentPath: string
+        parentPath: string | null
+        directories: Array<{ name: string; path: string; isDirectory: boolean }>
+        files: Array<{ name: string; path: string; size: number; isDirectory: boolean }>
+      } | null>
     }
   }
 }

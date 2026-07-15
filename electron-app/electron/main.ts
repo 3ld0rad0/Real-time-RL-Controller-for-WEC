@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, ChildProcess } from 'node:child_process'
+import os from 'node:os'
 
 // Disable hardware acceleration for VM/headless compatibility
 app.disableHardwareAcceleration()
@@ -379,3 +380,79 @@ ipcMain.handle('upload-model', async () => {
     fileName: path.basename(targetPath)
   }
 })
+
+ipcMain.handle('copy-model-file', async (event, sourcePath) => {
+  if (!fs.existsSync(sourcePath)) {
+    return null
+  }
+  const modelsDir = path.join(processRoot, 'models')
+  
+  const timestamp = Date.now()
+  const baseName = path.basename(sourcePath, '.zip')
+  const targetSubdir = path.join(modelsDir, 'uploaded', 'sea_state_unknown', `simulation_uploaded_${baseName}_${timestamp}`)
+  
+  if (!fs.existsSync(targetSubdir)) {
+    fs.mkdirSync(targetSubdir, { recursive: true })
+  }
+
+  const targetPath = path.join(targetSubdir, `ppomodel_${baseName}.zip`)
+  fs.copyFileSync(sourcePath, targetPath)
+
+  return {
+    success: true,
+    fileName: path.basename(targetPath)
+  }
+})
+
+ipcMain.handle('get-home-dir', () => os.homedir())
+
+ipcMain.handle('list-directory', async (event, targetPath) => {
+  try {
+    const resolvedPath = targetPath ? path.resolve(targetPath) : os.homedir()
+    const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true })
+    
+    const directories = []
+    const files = []
+    
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      
+      const fullPath = path.join(resolvedPath, entry.name)
+      try {
+        const stats = await fs.promises.stat(fullPath)
+        
+        if (entry.isDirectory()) {
+          directories.push({
+            name: entry.name,
+            path: fullPath,
+            isDirectory: true
+          })
+        } else if (entry.isFile() && entry.name.endsWith('.zip')) {
+          files.push({
+            name: entry.name,
+            path: fullPath,
+            size: stats.size,
+            isDirectory: false
+          })
+        }
+      } catch {
+        // Skip entry if permission denied
+      }
+    }
+    
+    directories.sort((a, b) => a.name.localeCompare(b.name))
+    files.sort((a, b) => a.name.localeCompare(b.name))
+    
+    return {
+      currentPath: resolvedPath,
+      parentPath: resolvedPath === '/' || resolvedPath === path.parse(resolvedPath).root ? null : path.dirname(resolvedPath),
+      directories,
+      files
+    }
+  } catch (err) {
+    console.error('Failed to list directory:', err)
+    return null
+  }
+})
+
+

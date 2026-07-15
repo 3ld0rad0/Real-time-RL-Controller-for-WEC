@@ -33,5 +33,8 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_event: any, isMaximized: boolean) => callback(isMaximized)
     ipcRenderer.on('window-maximized-state', handler)
     return () => ipcRenderer.off('window-maximized-state', handler)
-  }
+  },
+  copyModelFile: (filePath: string) => ipcRenderer.invoke('copy-model-file', filePath),
+  getHomeDir: () => ipcRenderer.invoke('get-home-dir'),
+  listDirectory: (dirPath: string) => ipcRenderer.invoke('list-directory', dirPath)
 })

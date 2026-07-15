@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, LineChart, FolderOpen, AlertCircle } from 'lucide-react'
 import type { Page } from '../App'
 import Dropdown from '../components/Dropdown'
+import FileBrowserModal from '../components/FileBrowserModal'
 
 function getRelativeModelPath(filePath: string): string {
   if (!filePath) return '';
@@ -76,6 +77,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [modelId, setModelId] = useState(getRelativeModelPath(initialModelId || ''))
   const [models, setModels] = useState<any[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
+  const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
 
   const modelOptions = [
     { value: '', label: '-- Choose a Model --' },
@@ -85,15 +87,8 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
     modelOptions.push({ value: modelId, label: modelId })
   }
 
-  const handleBrowseModel = async () => {
-    try {
-      const filePath = await window.api.selectModelFile()
-      if (filePath) {
-        setModelId(getRelativeModelPath(filePath))
-      }
-    } catch (err) {
-      console.error('Failed to open file dialog:', err)
-    }
+  const handleBrowseModel = () => {
+    setIsFileBrowserOpen(true)
   }
 
   // Sync initialModelId and configuration parameters from config.json when tab becomes active
@@ -567,6 +562,13 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
             )}
           </div>
         )}
+      <FileBrowserModal
+        isOpen={isFileBrowserOpen}
+        onClose={() => setIsFileBrowserOpen(false)}
+        onSelectFile={(filePath) => setModelId(getRelativeModelPath(filePath))}
+        title="Select Target PPO Model"
+        themeColor="emerald"
+      />
       </div>
     </div>
   )

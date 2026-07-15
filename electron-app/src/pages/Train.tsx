@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, LineChart, AlertCircle, FolderOpen } from 'lucide-react'
 import type { Page } from '../App'
 import Dropdown from '../components/Dropdown'
+import FileBrowserModal from '../components/FileBrowserModal'
 
 interface TrainingMetric {
   step: number
@@ -50,6 +51,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
   const [warnings, setWarnings] = useState<string[]>([])
   const [latestMetric, setLatestMetric] = useState<TrainingMetric | null>(null)
   const [energyAbsorbed, setEnergyAbsorbed] = useState<number | null>(null)
+  const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
 
   const modelOptions = [
     { value: '', label: '-- Choose a Model --' },
@@ -249,15 +251,8 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
     setStep(1)
   }
 
-  const handleBrowseModel = async () => {
-    try {
-      const filePath = await window.api.selectModelFile()
-      if (filePath) {
-        setSelectedModelId(filePath)
-      }
-    } catch (err) {
-      console.error('Failed to open file dialog:', err)
-    }
+  const handleBrowseModel = () => {
+    setIsFileBrowserOpen(true)
   }
 
   return (
@@ -654,6 +649,13 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
             )}
           </div>
         )}
+      <FileBrowserModal
+        isOpen={isFileBrowserOpen}
+        onClose={() => setIsFileBrowserOpen(false)}
+        onSelectFile={(filePath) => setSelectedModelId(filePath)}
+        title="Select Base Model Zip"
+        themeColor="indigo"
+      />
       </div>
     </div>
   )

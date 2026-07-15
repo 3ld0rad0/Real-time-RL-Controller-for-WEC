@@ -3,46 +3,47 @@ import a, { join as o } from "node:path";
 import { fileURLToPath as s } from "node:url";
 import c from "node:fs";
 import { spawn as l } from "node:child_process";
+import u from "node:os";
 //#region electron/main.ts
 t.disableHardwareAcceleration();
-var u = a.dirname(s(import.meta.url)), d = a.join(u, "../../"), f = null, p = null, m = !1, h = null;
-function g() {
-	f = new e({
+var d = a.dirname(s(import.meta.url)), f = a.join(d, "../../"), p = null, m = null, h = !1, g = null;
+function _() {
+	p = new e({
 		width: 1200,
 		height: 800,
 		frame: !1,
 		webPreferences: {
-			preload: o(u, "preload.mjs"),
+			preload: o(d, "preload.mjs"),
 			nodeIntegration: !1,
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), process.env.VITE_DEV_SERVER_URL ? (f.loadURL(process.env.VITE_DEV_SERVER_URL), f.webContents.openDevTools()) : f.loadFile(o(u, "../dist/index.html"));
+	}), process.env.VITE_DEV_SERVER_URL ? (p.loadURL(process.env.VITE_DEV_SERVER_URL), p.webContents.openDevTools()) : p.loadFile(o(d, "../dist/index.html"));
 }
 t.whenReady().then(() => {
-	g(), t.on("activate", () => {
-		e.getAllWindows().length === 0 && g();
+	_(), t.on("activate", () => {
+		e.getAllWindows().length === 0 && _();
 	});
 }), t.on("window-all-closed", () => {
 	process.platform !== "darwin" && t.quit();
 }), r.on("window-minimize", () => {
-	f?.minimize();
+	p?.minimize();
 }), r.on("window-maximize", () => {
-	if (f) if (m) h ? f.setBounds(h) : (f.setSize(1200, 800), f.center()), m = !1, f.webContents.send("window-maximized-state", !1);
+	if (p) if (h) g ? p.setBounds(g) : (p.setSize(1200, 800), p.center()), h = !1, p.webContents.send("window-maximized-state", !1);
 	else {
-		h = f.getBounds();
+		g = p.getBounds();
 		let { x: e, y: t, width: n, height: r } = i.getPrimaryDisplay().workArea;
-		f.setBounds({
+		p.setBounds({
 			x: e,
 			y: t,
 			width: n,
 			height: r
-		}), m = !0, f.webContents.send("window-maximized-state", !0);
+		}), h = !0, p.webContents.send("window-maximized-state", !0);
 	}
 }), r.on("window-close", () => {
-	f?.close();
+	p?.close();
 }), r.handle("get-models", async () => {
-	let e = a.join(d, "models");
+	let e = a.join(f, "models");
 	if (!c.existsSync(e)) return [];
 	let t = c.readdirSync(e, { recursive: !0 }).filter((e) => typeof e == "string" && e.includes("ppomodel")), n = [];
 	for (let r of t) {
@@ -63,7 +64,7 @@ t.whenReady().then(() => {
 	}
 	return n;
 }), r.handle("get-results", async () => {
-	let e = a.join(d, "results");
+	let e = a.join(f, "results");
 	if (!c.existsSync(e)) return [];
 	let t = c.readdirSync(e, { recursive: !0 }).filter((e) => typeof e == "string" && e.endsWith(".csv")), n = {};
 	for (let r of t) {
@@ -86,9 +87,9 @@ t.whenReady().then(() => {
 	}
 	return r.sort((e, t) => new Date(t.date).getTime() - new Date(e.date).getTime()), r;
 }), r.handle("download-result-file", async (e, t) => {
-	let r = a.join(d, "results", t);
+	let r = a.join(f, "results", t);
 	if (!c.existsSync(r)) throw Error("Source file not found");
-	let i = a.basename(t), o = await n.showSaveDialog(f, {
+	let i = a.basename(t), o = await n.showSaveDialog(p, {
 		title: "Save Result CSV File",
 		defaultPath: i,
 		filters: [{
@@ -98,13 +99,13 @@ t.whenReady().then(() => {
 	});
 	return o.canceled || !o.filePath ? !1 : (c.copyFileSync(r, o.filePath), !0);
 }), r.handle("read-csv", async (e, t) => {
-	let n = a.join(d, "results", t);
+	let n = a.join(f, "results", t);
 	if (!c.existsSync(n)) throw Error("File not found");
 	return c.readFileSync(n, "utf-8");
 }), r.handle("run-simulation", async (e, t) => {
-	if (p) throw Error("Simulation already running");
+	if (m) throw Error("Simulation already running");
 	return new Promise((e, n) => {
-		let r = a.join(d, ".venv", process.platform === "win32" ? "Scripts" : "bin", process.platform === "win32" ? "python.exe" : "python"), i = c.existsSync(r) ? r : process.platform === "win32" ? "python" : "python3", o = t.type === "sim" ? "rl" : "baseline", s = "latching";
+		let r = a.join(f, ".venv", process.platform === "win32" ? "Scripts" : "bin", process.platform === "win32" ? "python.exe" : "python"), i = c.existsSync(r) ? r : process.platform === "win32" ? "python" : "python3", o = t.type === "sim" ? "rl" : "baseline", s = "latching";
 		t.control === "reactive" ? s = "linear" : (t.control === "latching" || t.control === "none") && (s = "latching");
 		let u = [
 			"run.py",
@@ -118,43 +119,43 @@ t.whenReady().then(() => {
 			t.sea_state.toString()
 		];
 		if (t.mixed && u.push("--mixed"), t.regular && u.push("--regular"), t.sim_time && u.push("--sim-time", t.sim_time.toString()), t.save && u.push("--save"), t.retrain && u.push("--retrain"), t.model_id) {
-			let e = a.isAbsolute(t.model_id) ? t.model_id : a.join(d, "models", t.model_id);
+			let e = a.isAbsolute(t.model_id) ? t.model_id : a.join(f, "models", t.model_id);
 			u.push("--model-path", e);
 		}
-		t.batch_size && u.push("--batch-size", t.batch_size.toString()), t.entropy_coef && u.push("--entropy-coef", t.entropy_coef.toString()), p = l(i, u, {
-			cwd: d,
+		t.batch_size && u.push("--batch-size", t.batch_size.toString()), t.entropy_coef && u.push("--entropy-coef", t.entropy_coef.toString()), m = l(i, u, {
+			cwd: f,
 			env: {
 				...process.env,
 				MPLBACKEND: "Agg"
 			}
-		}), p.stdout?.on("data", (e) => {
+		}), m.stdout?.on("data", (e) => {
 			let t = e.toString().split("\n"), n = [];
 			for (let e of t) {
 				let t = e.match(/\[PROGRESS\]\s+(\d+)/);
 				if (t) {
 					let e = parseInt(t[1], 10);
-					f?.webContents.send("simulation-progress", e);
+					p?.webContents.send("simulation-progress", e);
 				} else n.push(e);
 			}
-			n.length > 0 && f?.webContents.send("simulation-log", n.join("\n"));
-		}), p.stderr?.on("data", (e) => {
-			f?.webContents.send("simulation-log", `ERROR: ${e.toString()}`);
-		}), p.on("close", (t) => {
-			p = null, f?.webContents.send("simulation-done", t), e(t);
-		}), p.on("error", (e) => {
-			p = null, n(e);
+			n.length > 0 && p?.webContents.send("simulation-log", n.join("\n"));
+		}), m.stderr?.on("data", (e) => {
+			p?.webContents.send("simulation-log", `ERROR: ${e.toString()}`);
+		}), m.on("close", (t) => {
+			m = null, p?.webContents.send("simulation-done", t), e(t);
+		}), m.on("error", (e) => {
+			m = null, n(e);
 		});
 	});
-}), r.handle("kill-simulation", async () => p ? (p.kill(), p = null, !0) : !1), r.handle("get-config", async () => {
-	let e = a.join(d, "src", "config", "config.json");
+}), r.handle("kill-simulation", async () => m ? (m.kill(), m = null, !0) : !1), r.handle("get-config", async () => {
+	let e = a.join(f, "src", "config", "config.json");
 	if (!c.existsSync(e)) throw Error("Config file not found");
 	let t = c.readFileSync(e, "utf-8");
 	return JSON.parse(t);
 }), r.handle("save-config", async (e, t) => {
-	let n = a.join(d, "src", "config", "config.json");
+	let n = a.join(f, "src", "config", "config.json");
 	return c.writeFileSync(n, JSON.stringify(t, null, 2), "utf-8"), !0;
 }), r.handle("select-model-file", async () => {
-	let e = await n.showOpenDialog(f, {
+	let e = await n.showOpenDialog(p, {
 		title: "Select PPO Model File",
 		properties: ["openFile"],
 		filters: [{
@@ -167,7 +168,7 @@ t.whenReady().then(() => {
 	});
 	return e.canceled || e.filePaths.length === 0 ? null : e.filePaths[0];
 }), r.handle("upload-model", async () => {
-	let e = await n.showOpenDialog(f, {
+	let e = await n.showOpenDialog(p, {
 		title: "Upload External PPO Model File",
 		properties: ["openFile"],
 		filters: [{
@@ -176,13 +177,51 @@ t.whenReady().then(() => {
 		}]
 	});
 	if (e.canceled || e.filePaths.length === 0) return null;
-	let t = e.filePaths[0], r = a.join(d, "models"), i = Date.now(), o = a.basename(t, ".zip"), s = a.join(r, "uploaded", "sea_state_unknown", `simulation_uploaded_${o}_${i}`);
+	let t = e.filePaths[0], r = a.join(f, "models"), i = Date.now(), o = a.basename(t, ".zip"), s = a.join(r, "uploaded", "sea_state_unknown", `simulation_uploaded_${o}_${i}`);
 	c.existsSync(s) || c.mkdirSync(s, { recursive: !0 });
 	let l = a.join(s, `ppomodel_${o}.zip`);
 	return c.copyFileSync(t, l), {
 		success: !0,
 		fileName: a.basename(l)
 	};
+}), r.handle("copy-model-file", async (e, t) => {
+	if (!c.existsSync(t)) return null;
+	let n = a.join(f, "models"), r = Date.now(), i = a.basename(t, ".zip"), o = a.join(n, "uploaded", "sea_state_unknown", `simulation_uploaded_${i}_${r}`);
+	c.existsSync(o) || c.mkdirSync(o, { recursive: !0 });
+	let s = a.join(o, `ppomodel_${i}.zip`);
+	return c.copyFileSync(t, s), {
+		success: !0,
+		fileName: a.basename(s)
+	};
+}), r.handle("get-home-dir", () => u.homedir()), r.handle("list-directory", async (e, t) => {
+	try {
+		let e = t ? a.resolve(t) : u.homedir(), n = await c.promises.readdir(e, { withFileTypes: !0 }), r = [], i = [];
+		for (let t of n) {
+			if (t.name.startsWith(".")) continue;
+			let n = a.join(e, t.name);
+			try {
+				let e = await c.promises.stat(n);
+				t.isDirectory() ? r.push({
+					name: t.name,
+					path: n,
+					isDirectory: !0
+				}) : t.isFile() && t.name.endsWith(".zip") && i.push({
+					name: t.name,
+					path: n,
+					size: e.size,
+					isDirectory: !1
+				});
+			} catch {}
+		}
+		return r.sort((e, t) => e.name.localeCompare(t.name)), i.sort((e, t) => e.name.localeCompare(t.name)), {
+			currentPath: e,
+			parentPath: e === "/" || e === a.parse(e).root ? null : a.dirname(e),
+			directories: r,
+			files: i
+		};
+	} catch (e) {
+		return console.error("Failed to list directory:", e), null;
+	}
 });
 //#endregion
 export {};

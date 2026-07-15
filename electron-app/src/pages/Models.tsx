@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Box, Play, Clock, Waves, BrainCircuit, Upload } from 'lucide-react'
+import { Box, Play, Clock, Waves, BrainCircuit, Upload, X, UploadCloud, FileArchive, Check, AlertCircle, Loader2 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
+import FileBrowserModal from '../components/FileBrowserModal'
 
 interface Model {
   id: string
@@ -88,14 +89,82 @@ export default function Models({ onTestModel, active }: ModelsProps) {
     }
   }, [active])
 
-  const handleUploadModel = async () => {
+  // Custom Upload Modal State
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [uploadFile, setUploadFile] = useState<{ name: string; path: string; size: number } | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isFileBrowserOpen, setIsFileBrowserOpen] = useState(false)
+
+  const handleFileSelectedFromBrowser = (filePath: string) => {
+    const separator = filePath.includes('\\') ? '\\' : '/'
+    const name = filePath.substring(filePath.lastIndexOf(separator) + 1)
+    setUploadFile({
+      name,
+      path: filePath,
+      size: 0
+    })
+    setUploadError(null)
+  }
+
+  const handleUploadModelClick = () => {
+    setUploadFile(null)
+    setUploadSuccess(false)
+    setUploadError(null)
+    setIsUploading(false)
+    setShowUploadModal(true)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      if (!file.name.endsWith('.zip')) {
+        setUploadError('Only .zip files are supported.')
+        return
+      }
+      setUploadError(null)
+      setUploadFile({
+        name: file.name,
+        path: (file as any).path || '',
+        size: file.size
+      })
+    }
+  }
+
+
+  const handleConfirmUpload = async () => {
+    if (!uploadFile) return
+    setIsUploading(true)
+    setUploadError(null)
     try {
-      const result = await window.api.uploadModel()
+      const result = await window.api.copyModelFile(uploadFile.path)
       if (result && result.success) {
-        loadModelsList()
+        setUploadSuccess(true)
+        setTimeout(() => {
+          setShowUploadModal(false)
+          loadModelsList()
+        }, 1500)
+      } else {
+        setUploadError('Failed to copy the model file. Make sure the file exists and is valid.')
       }
     } catch (err) {
-      console.error('Failed to upload model:', err)
+      console.error(err)
+      setUploadError('An error occurred during file upload.')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -115,7 +184,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
           <p className="text-lg text-slate-500 font-medium">Browse your reinforcement learning agents and their configurations.</p>
         </div>
         <button
-          onClick={handleUploadModel}
+          onClick={handleUploadModelClick}
           className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer text-sm shrink-0 border border-indigo-700/10"
         >
           <Upload className="w-4 h-4" /> Upload Model
@@ -290,6 +359,117 @@ export default function Models({ onTestModel, active }: ModelsProps) {
           </div>
         )
       })()}
+
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full mx-4 border border-slate-200/50 shadow-2xl relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowUploadModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold font-display text-slate-900 mb-1">Upload PPO Model</h3>
+              <p className="text-sm text-slate-500 font-medium">Import a zip file containing the model parameters.</p>
+            </div>
+
+            {/* Success state */}
+            {uploadSuccess ? (
+              <div className="flex flex-col items-center justify-center py-10 animate-scale-in">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-4">
+                  <Check className="w-8 h-8" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-900 mb-1">Upload Completed!</h4>
+                <p className="text-sm text-slate-500">The model has been imported into the catalog.</p>
+              </div>
+            ) : (
+              <>
+                {/* Drag and Drop Zone */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => setIsFileBrowserOpen(true)}
+                  className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer select-none text-center
+                    ${isDragging 
+                      ? 'border-indigo-500 bg-indigo-50/30' 
+                      : 'border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-slate-50'}`}
+                >
+                  <UploadCloud className={`w-12 h-12 mb-3 transition-colors ${isDragging ? 'text-indigo-500' : 'text-slate-400'}`} />
+                  <p className="text-sm font-semibold text-slate-700 mb-1">
+                    Drag & drop your PPO model .zip here
+                  </p>
+                  <p className="text-xs font-semibold text-slate-400">
+                    or click to browse local files
+                  </p>
+                </div>
+
+                {/* Selected File Details */}
+                {uploadFile && (
+                  <div className="mt-5 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 animate-fade-in">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <FileArchive className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{uploadFile.name}</p>
+                        <p className="text-xs font-semibold text-slate-400">{formatSize(uploadFile.size)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error message */}
+                {uploadError && (
+                  <div className="mt-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl p-3 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-8 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadModal(false)}
+                    disabled={isUploading}
+                    className="px-4 py-2.5 text-sm font-semibold text-slate-550 hover:text-slate-750 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmUpload}
+                    disabled={!uploadFile || isUploading}
+                    className="px-5 py-2.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      'Upload Model'
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <FileBrowserModal
+        isOpen={isFileBrowserOpen}
+        onClose={() => setIsFileBrowserOpen(false)}
+        onSelectFile={handleFileSelectedFromBrowser}
+        title="Select Model Zip Package"
+        themeColor="indigo"
+      />
     </div>
   )
 }
