@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, Play, ChevronDown, ChevronUp, Clock, Waves, BrainCircuit, Upload } from 'lucide-react'
+import { Box, Play, Clock, Waves, BrainCircuit, Upload } from 'lucide-react'
 
 interface Model {
   id: string
@@ -67,14 +67,12 @@ function parseModelInfo(model: Model) {
 export default function Models({ onTestModel, active }: ModelsProps) {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const loadModelsList = () => {
     setLoading(true)
     window.api.getModels().then((data) => {
       setModels(data)
       setLoading(false)
-      setExpandedIndex(null)
     }).catch((err) => {
       console.error(err)
       setLoading(false)
@@ -134,111 +132,90 @@ export default function Models({ onTestModel, active }: ModelsProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-          {models.map((model, index) => {
+          {models.map(model => {
             const info = parseModelInfo(model);
-            const isExpanded = expandedIndex === index;
             return (
-              <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between">
-                <div 
-                  className="p-6 cursor-pointer flex-1 flex flex-col justify-between"
-                  onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                >
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                        <BrainCircuit className="w-6 h-6" />
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onTestModel(model.id) }}
-                        className="p-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-                        title="Test this model"
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                      </button>
+              <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between p-6">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                      <BrainCircuit className="w-6 h-6" />
                     </div>
-                    
-                    <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
-                      {model.name}
-                    </h3>
-                    
-                    {/* Main Identifiers Section */}
-                    <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                          <Waves className="w-3.5 h-3.5 text-slate-400" /> Sea State
-                        </span>
-                        <span className="font-semibold text-slate-700 capitalize">{info.seaState}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-455 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" /> Duration
-                        </span>
-                        <span className="font-semibold text-slate-700">{info.duration}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-455 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                          <BrainCircuit className="w-3.5 h-3.5 text-slate-400" /> Control Mode
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
-                          info.control.includes('RL') 
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-150/40' 
-                            : 'bg-slate-100 text-slate-750 border border-slate-200'
-                        }`}>
-                          {info.control}
-                        </span>
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => onTestModel(model.id)}
+                      className="p-2.5 bg-slate-900 hover:bg-indigo-650 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
+                      title="Test this model"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                    </button>
                   </div>
-                </div>
+                  
+                  <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
+                    {model.name}
+                  </h3>
 
-                {/* Expandable Details Area */}
-                <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[320px]' : 'max-h-0'}`}>
-                  <div className="p-6 space-y-4 text-xs">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Wave Type
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800 capitalize">{info.waveType}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          File Size
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800">{formatSize(model.size)}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Creation Date
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800">
-                          {new Date(model.date).toLocaleDateString()} {new Date(model.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Entropy Coef
-                        </p>
-                        <p className="text-sm font-semibold text-slate-800">{model.ent_coef}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">
-                          Relative Path ID
-                        </p>
-                        <p className="text-[10px] font-semibold text-slate-500 break-all select-all font-mono mt-0.5">
-                          {model.id}
-                        </p>
-                      </div>
+                  {/* Environment & Simulation Configuration */}
+                  <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80 mb-3 text-xs">
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Configuration</h4>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold flex items-center gap-1.5">
+                        <Waves className="w-3.5 h-3.5 text-slate-400" /> Sea State
+                      </span>
+                      <span className="font-bold text-slate-750 capitalize">{info.seaState}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold flex items-center gap-1.5">
+                        <Waves className="w-3.5 h-3.5 text-slate-400" /> Wave Type
+                      </span>
+                      <span className="font-bold text-slate-750 capitalize">{info.waveType}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" /> Duration
+                      </span>
+                      <span className="font-bold text-slate-750">{info.duration}</span>
                     </div>
                   </div>
-                </div>
-                
-                {/* Toggle handle */}
-                <div 
-                  className="py-2.5 bg-slate-50/80 flex justify-center items-center text-slate-400 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-t border-slate-100"
-                  onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                >
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+
+                  {/* Model Hyperparameters & Specs */}
+                  <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80 text-xs">
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Agent Details</h4>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold flex items-center gap-1.5">
+                        <BrainCircuit className="w-3.5 h-3.5 text-slate-400" /> Control Mode
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
+                        info.control.includes('RL') 
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-150/40' 
+                          : 'bg-slate-100 text-slate-750 border border-slate-200'
+                      }`}>
+                        {info.control}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold flex items-center gap-1.5">
+                        <BrainCircuit className="w-3.5 h-3.5 text-slate-400" /> Entropy Coef
+                      </span>
+                      <span className="font-bold text-slate-750">{model.ent_coef}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold">File Size</span>
+                      <span className="font-bold text-slate-750">{formatSize(model.size)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-550 font-semibold">Date Created</span>
+                      <span className="font-bold text-slate-750">
+                        {new Date(model.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )
