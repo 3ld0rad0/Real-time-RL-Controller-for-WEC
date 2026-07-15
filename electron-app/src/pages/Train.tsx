@@ -3,6 +3,7 @@ import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, Lin
 import type { Page } from '../App'
 import Dropdown from '../components/Dropdown'
 import FileBrowserModal from '../components/FileBrowserModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 interface TrainingMetric {
   step: number
@@ -27,6 +28,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
   const [showLogs, setShowLogs] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [latestRunId, setLatestRunId] = useState<string | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const runningSimRef = useRef(runningSim)
@@ -247,12 +249,19 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
     }
   }
 
-  const handleStop = async () => {
-    const confirm = window.confirm("Sei sicuro di voler interrompere la simulazione di training?")
-    if (!confirm) return
+  const handleStop = () => {
+    setIsConfirmOpen(true)
+  }
+
+  const handleConfirmStop = async () => {
+    setIsConfirmOpen(false)
     await window.api.killSimulation()
     setRunningSim(null)
     setStep(1)
+  }
+
+  const handleCancelStop = () => {
+    setIsConfirmOpen(false)
   }
 
   const handleBrowseModel = () => {
@@ -660,6 +669,15 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
         onSelectFile={(filePath) => setSelectedModelId(filePath)}
         title="Select Base Model Zip"
         themeColor="indigo"
+      />
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Interrompi Simulazione"
+        message="Sei sicuro di voler interrompere la simulazione di training? I dati non salvati andranno perduti."
+        confirmLabel="Interrompi"
+        cancelLabel="Annulla"
+        onConfirm={handleConfirmStop}
+        onCancel={handleCancelStop}
       />
       </div>
     </div>

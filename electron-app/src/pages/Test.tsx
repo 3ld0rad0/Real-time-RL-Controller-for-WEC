@@ -3,6 +3,7 @@ import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, Lin
 import type { Page } from '../App'
 import Dropdown from '../components/Dropdown'
 import FileBrowserModal from '../components/FileBrowserModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 function getRelativeModelPath(filePath: string): string {
   if (!filePath) return '';
@@ -34,6 +35,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [step, setStep] = useState<1 | 2>(1)
   const [energyAbsorbed, setEnergyAbsorbed] = useState<number | null>(null)
   const [latestRunId, setLatestRunId] = useState<string | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const runningSimRef = useRef(runningSim)
@@ -226,12 +228,19 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
     }
   }
 
-  const handleStop = async () => {
-    const confirm = window.confirm("Sei sicuro di voler interrompere la simulazione di test?")
-    if (!confirm) return
+  const handleStop = () => {
+    setIsConfirmOpen(true)
+  }
+
+  const handleConfirmStop = async () => {
+    setIsConfirmOpen(false)
     await window.api.killSimulation()
     setRunningSim(null)
     setStep(1)
+  }
+
+  const handleCancelStop = () => {
+    setIsConfirmOpen(false)
   }
 
   return (
@@ -573,6 +582,15 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
         onSelectFile={(filePath) => setModelId(getRelativeModelPath(filePath))}
         title="Select Target PPO Model"
         themeColor="emerald"
+      />
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Interrompi Simulazione"
+        message="Sei sicuro di voler interrompere la simulazione di test? I dati non salvati andranno perduti."
+        confirmLabel="Interrompi"
+        cancelLabel="Annulla"
+        onConfirm={handleConfirmStop}
+        onCancel={handleCancelStop}
       />
       </div>
     </div>
