@@ -19,7 +19,7 @@ function getRelativeModelPath(filePath: string): string {
 }
 
 interface TestProps {
-  navigateTo: (page: Page, autoExpand?: boolean) => void
+  navigateTo: (page: Page, autoExpand?: boolean, runId?: string | null) => void
   initialModelId?: string | null
   runningSim: 'train' | 'test' | null
   setRunningSim: (sim: 'train' | 'test' | null) => void
@@ -33,6 +33,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [showLogs, setShowLogs] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [energyAbsorbed, setEnergyAbsorbed] = useState<number | null>(null)
+  const [latestRunId, setLatestRunId] = useState<string | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const runningSimRef = useRef(runningSim)
@@ -205,7 +206,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
     setEnergyAbsorbed(null)
 
     try {
-      await window.api.runSimulation({
+      const result = await window.api.runSimulation({
         mode: 'test',
         control,
         type,
@@ -216,6 +217,9 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
         save: true,
         model_id: modelId || undefined
       })
+      if (result && typeof result === 'object' && result.latestRunId) {
+        setLatestRunId(result.latestRunId)
+      }
     } catch (err: any) {
       setLogs(prev => [...prev, `ERROR: ${err.message}`])
       setRunningSim(null)
@@ -496,7 +500,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
                   <div className="flex gap-4 w-full">
                     <button 
                       type="button" 
-                      onClick={() => navigateTo('results', true)}
+                      onClick={() => navigateTo('results', true, latestRunId)}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-emerald-600/20 flex justify-center items-center gap-2 cursor-pointer font-bold text-sm"
                     >
                       <LineChart className="w-5 h-5" /> View Results
@@ -507,6 +511,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
                         setStep(1)
                         setProgress(0)
                         setLogs([])
+                        setLatestRunId(null)
                       }}
                       className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-4 px-4 font-bold transition-colors border border-slate-200 flex justify-center items-center gap-2 cursor-pointer font-bold text-sm"
                     >

@@ -12,7 +12,7 @@ interface TrainingMetric {
 }
 
 interface TrainProps {
-  navigateTo: (page: Page, autoExpand?: boolean) => void
+  navigateTo: (page: Page, autoExpand?: boolean, runId?: string | null) => void
   runningSim: 'train' | 'test' | null
   setRunningSim: (sim: 'train' | 'test' | null) => void
   active: boolean
@@ -26,6 +26,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
   const [phase, setPhase] = useState<'training' | 'testing'>('training')
   const [showLogs, setShowLogs] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
+  const [latestRunId, setLatestRunId] = useState<string | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   const runningSimRef = useRef(runningSim)
@@ -223,7 +224,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
     setEnergyAbsorbed(null)
 
     try {
-      await window.api.runSimulation({
+      const result = await window.api.runSimulation({
         mode: 'train',
         control,
         type,
@@ -237,6 +238,9 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
         retrain: retrain,
         model_id: retrain && selectedModelId ? selectedModelId : undefined
       })
+      if (result && typeof result === 'object' && result.latestRunId) {
+        setLatestRunId(result.latestRunId)
+      }
     } catch (err: any) {
       setLogs(prev => [...prev, `ERROR: ${err.message}`])
       setRunningSim(null)
@@ -581,7 +585,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
                   <div className="flex gap-4 w-full">
                     <button
                       type="button"
-                      onClick={() => navigateTo('results', true)}
+                      onClick={() => navigateTo('results', true, latestRunId)}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-indigo-600/20 flex justify-center items-center gap-2 cursor-pointer font-bold text-sm"
                     >
                       <LineChart className="w-5 h-5" /> View Results
@@ -594,6 +598,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
                         setTestProgress(0)
                         setPhase('training')
                         setLogs([])
+                        setLatestRunId(null)
                       }}
                       className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-4 px-4 font-bold transition-colors border border-slate-200 flex justify-center items-center gap-2 cursor-pointer font-bold text-sm"
                     >

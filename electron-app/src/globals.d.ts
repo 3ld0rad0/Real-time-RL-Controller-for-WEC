@@ -6,7 +6,7 @@ declare global {
       getModels: () => Promise<any[]>
       getResults: () => Promise<any[]>
       readCSV: (filename: string) => Promise<string>
-      runSimulation: (args: any) => Promise<number>
+      runSimulation: (args: any) => Promise<{ code: number; latestRunId: string | null }>
       killSimulation: () => Promise<boolean>
       getConfig: () => Promise<any>
       saveConfig: (newConfig: any) => Promise<boolean>

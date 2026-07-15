@@ -123,7 +123,7 @@ ipcMain.handle('get-models', async () => {
   return models
 })
 
-ipcMain.handle('get-results', async () => {
+async function getResultsInternal() {
   const resultsDir = path.join(processRoot, 'results')
   if (!fs.existsSync(resultsDir)) return []
 
@@ -196,6 +196,10 @@ ipcMain.handle('get-results', async () => {
   
   results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   return results
+}
+
+ipcMain.handle('get-results', async () => {
+  return getResultsInternal()
 })
 
 ipcMain.handle('download-result-file', async (_, filename) => {
@@ -296,10 +300,21 @@ ipcMain.handle('run-simulation', async (event, args) => {
       mainWindow?.webContents.send('simulation-log', `ERROR: ${data.toString()}`)
     })
 
-    currentSimulation.on('close', (code) => {
+    currentSimulation.on('close', async (code) => {
       currentSimulation = null
       mainWindow?.webContents.send('simulation-done', code)
-      resolve(code)
+      
+      let latestRunId: string | null = null
+      try {
+        const results = await getResultsInternal()
+        if (results.length > 0) {
+          latestRunId = results[0].id
+        }
+      } catch (err) {
+        console.error("Error finding latest run ID after simulation close", err)
+      }
+      
+      resolve({ code, latestRunId })
     })
 
     currentSimulation.on('error', (err) => {
