@@ -149,6 +149,23 @@ t.whenReady().then(() => {
 		}]
 	});
 	return e.canceled || e.filePaths.length === 0 ? null : e.filePaths[0];
+}), r.handle("upload-model", async () => {
+	let e = await n.showOpenDialog(d, {
+		title: "Upload External PPO Model File",
+		properties: ["openFile"],
+		filters: [{
+			name: "PPO Model (.zip)",
+			extensions: ["zip"]
+		}]
+	});
+	if (e.canceled || e.filePaths.length === 0) return null;
+	let t = e.filePaths[0], r = i.join(u, "models"), a = Date.now(), o = i.basename(t, ".zip"), c = i.join(r, "uploaded", "sea_state_unknown", `simulation_uploaded_${o}_${a}`);
+	s.existsSync(c) || s.mkdirSync(c, { recursive: !0 });
+	let l = i.join(c, `ppomodel_${o}.zip`);
+	return s.copyFileSync(t, l), {
+		success: !0,
+		fileName: i.basename(l)
+	};
 });
 //#endregion
 export {};

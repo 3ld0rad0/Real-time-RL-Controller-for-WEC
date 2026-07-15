@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, Play, ChevronDown, ChevronUp, Clock, HardDrive, Waves, Thermometer, BrainCircuit } from 'lucide-react'
+import { Box, Play, ChevronDown, ChevronUp, Clock, HardDrive, Waves, Thermometer, BrainCircuit, Upload } from 'lucide-react'
 
 interface Model {
   id: string
@@ -22,14 +22,33 @@ export default function Models({ onTestModel, active }: ModelsProps) {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  const loadModelsList = () => {
+    setLoading(true)
+    window.api.getModels().then((data) => {
+      setModels(data)
+      setLoading(false)
+    }).catch((err) => {
+      console.error(err)
+      setLoading(false)
+    })
+  }
+
   useEffect(() => {
     if (active) {
-      window.api.getModels().then((data) => {
-        setModels(data)
-        setLoading(false)
-      }).catch(console.error)
+      loadModelsList()
     }
   }, [active])
+
+  const handleUploadModel = async () => {
+    try {
+      const result = await window.api.uploadModel()
+      if (result && result.success) {
+        loadModelsList()
+      }
+    } catch (err) {
+      console.error('Failed to upload model:', err)
+    }
+  }
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B'
@@ -41,9 +60,17 @@ export default function Models({ onTestModel, active }: ModelsProps) {
 
   return (
     <div className="p-10 max-w-6xl mx-auto h-full overflow-y-auto">
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Trained Models</h1>
-        <p className="text-lg text-slate-500 font-medium">Browse your reinforcement learning agents and their configurations.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4">
+        <div>
+          <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Trained Models</h1>
+          <p className="text-lg text-slate-500 font-medium">Browse your reinforcement learning agents and their configurations.</p>
+        </div>
+        <button
+          onClick={handleUploadModel}
+          className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer text-sm shrink-0 border border-indigo-700/10"
+        >
+          <Upload className="w-4 h-4" /> Upload Model
+        </button>
       </div>
 
       {loading ? (

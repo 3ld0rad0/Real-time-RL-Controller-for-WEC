@@ -11,6 +11,7 @@ declare global {
       getConfig: () => Promise<any>
       saveConfig: (newConfig: any) => Promise<boolean>
       selectModelFile: () => Promise<string | null>
+      uploadModel: () => Promise<{ success: boolean; fileName: string } | null>
       downloadResultFile: (filename: string) => Promise<boolean>
       onSimulationLog: (callback: (log: string) => void) => () => void
       onSimulationDone: (callback: (code: number) => void) => () => void

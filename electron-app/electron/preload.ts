@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (newConfig: any) => ipcRenderer.invoke('save-config', newConfig),
   selectModelFile: () => ipcRenderer.invoke('select-model-file'),
+  uploadModel: () => ipcRenderer.invoke('upload-model'),
   downloadResultFile: (filename: string) => ipcRenderer.invoke('download-result-file', filename),
   onSimulationLog: (callback: (log: string) => void) => {
     const handler = (_event: any, log: string) => callback(log)

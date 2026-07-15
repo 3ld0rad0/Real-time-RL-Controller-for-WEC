@@ -314,3 +314,36 @@ ipcMain.handle('select-model-file', async () => {
   }
   return result.filePaths[0]
 })
+
+ipcMain.handle('upload-model', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Upload External PPO Model File',
+    properties: ['openFile'],
+    filters: [
+      { name: 'PPO Model (.zip)', extensions: ['zip'] }
+    ]
+  })
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  const sourcePath = result.filePaths[0]
+  const modelsDir = path.join(processRoot, 'models')
+  
+  const timestamp = Date.now()
+  const baseName = path.basename(sourcePath, '.zip')
+  // We place it in models/uploaded/sea_state_unknown/simulation_uploaded_[name]_[timestamp]
+  const targetSubdir = path.join(modelsDir, 'uploaded', 'sea_state_unknown', `simulation_uploaded_${baseName}_${timestamp}`)
+  
+  if (!fs.existsSync(targetSubdir)) {
+    fs.mkdirSync(targetSubdir, { recursive: true })
+  }
+
+  const targetPath = path.join(targetSubdir, `ppomodel_${baseName}.zip`)
+  fs.copyFileSync(sourcePath, targetPath)
+
+  return {
+    success: true,
+    fileName: path.basename(targetPath)
+  }
+})
