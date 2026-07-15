@@ -596,6 +596,9 @@ export default function Results({
               return csvData.filter((d) => d.time >= startTime);
             }
             const filteredData = getFilteredCsvData();
+            const totalDuration = csvData.length > 0
+              ? (Number(csvData[csvData.length - 1]?.time || 0) - Number(csvData[0]?.time || 0))
+              : 0;
 
             return (
               <>
@@ -619,19 +622,25 @@ export default function Results({
                           { id: 900, label: 'Last 15m' },
                           { id: 180, label: 'Last 3m' },
                           { id: 60, label: 'Last 60s' }
-                        ].map((win) => (
-                          <button
-                            key={win.id}
-                            onClick={() => setTimeWindow(win.id as any)}
-                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                              timeWindow === win.id 
-                                ? 'bg-white text-indigo-650 shadow-sm border border-slate-200/40 font-extrabold' 
-                                : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                          >
-                            {win.label}
-                          </button>
-                        ))}
+                        ].map((win) => {
+                          const isDisabled = win.id !== 'all' && totalDuration < (win.id as number);
+                          return (
+                            <button
+                              key={win.id}
+                              disabled={isDisabled}
+                              onClick={() => setTimeWindow(win.id as any)}
+                              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                isDisabled
+                                  ? 'text-slate-400/50 bg-transparent cursor-not-allowed'
+                                  : timeWindow === win.id 
+                                    ? 'bg-white text-indigo-650 shadow-sm border border-slate-200/40 font-extrabold cursor-pointer' 
+                                    : 'text-slate-500 hover:text-slate-800 cursor-pointer'
+                              }`}
+                            >
+                              {win.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Activity, PlaySquare, LineChart, Box, Zap, ArrowRight, Clock, Calendar, ChevronRight, TrendingUp } from 'lucide-react'
+import { Activity, Dumbbell, FlaskConical, LineChart, Box, Zap, ArrowRight, Clock, Calendar, ChevronRight, TrendingUp } from 'lucide-react'
 import { ResponsiveContainer, LineChart as SparklineChart, Line } from 'recharts'
 import type { Page } from '../App'
 
@@ -358,9 +358,9 @@ export default function Home({ navigateTo }: HomeProps) {
               <ArrowRight className="w-4 h-4 text-indigo-400" />
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-3 shadow-inner group-hover:scale-105 transition-transform duration-300">
-              <Activity className="w-5 h-5" />
+              <Dumbbell className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold font-display text-slate-900 mb-1">Train Agent</h3>
+            <h3 className="text-base font-bold font-display text-slate-900 mb-1">Train</h3>
             <p className="text-slate-500 text-xs leading-relaxed font-medium">Configure deep learning parameters and run a new PPO training simulation.</p>
           </button>
 
@@ -372,9 +372,9 @@ export default function Home({ navigateTo }: HomeProps) {
               <ArrowRight className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center mb-3 shadow-inner group-hover:scale-105 transition-transform duration-300">
-              <PlaySquare className="w-5 h-5" />
+              <FlaskConical className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold font-display text-slate-900 mb-1">Test Agent</h3>
+            <h3 className="text-base font-bold font-display text-slate-900 mb-1">Simulation Test</h3>
             <p className="text-slate-500 text-xs leading-relaxed font-medium">Evaluate a trained agent or baseline logic against specific wave conditions.</p>
           </button>
 

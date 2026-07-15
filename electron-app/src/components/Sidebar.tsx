@@ -1,4 +1,4 @@
-import { Home, Activity, PlaySquare, LineChart, Box, Waves, Settings } from 'lucide-react'
+import { Home, Dumbbell, FlaskConical, LineChart, Box, Waves, Settings } from 'lucide-react'
 import type { Page } from '../App'
 
 interface SidebarProps {
@@ -10,8 +10,8 @@ interface SidebarProps {
 export default function Sidebar({ currentPage, navigateTo, runningSim }: SidebarProps) {
   const navItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
-    { id: 'train', label: 'Train Agent', icon: Activity },
-    { id: 'test', label: 'Test Agent', icon: PlaySquare },
+    { id: 'train', label: 'Train', icon: Dumbbell },
+    { id: 'test', label: 'Simulation Test', icon: FlaskConical },
     { id: 'results', label: 'Results', icon: LineChart },
     { id: 'models', label: 'Models', icon: Box },
     { id: 'settings', label: 'Settings', icon: Settings },
