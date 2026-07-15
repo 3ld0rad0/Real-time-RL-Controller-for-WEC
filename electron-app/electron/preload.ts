@@ -25,5 +25,13 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_event: any, percent: number) => callback(percent)
     ipcRenderer.on('simulation-progress', handler)
     return () => ipcRenderer.off('simulation-progress', handler)
+  },
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  maximizeWindow: () => ipcRenderer.send('window-maximize'),
+  closeWindow: () => ipcRenderer.send('window-close'),
+  onWindowMaximized: (callback: (isMaximized: boolean) => void) => {
+    const handler = (_event: any, isMaximized: boolean) => callback(isMaximized)
+    ipcRenderer.on('window-maximized-state', handler)
+    return () => ipcRenderer.off('window-maximized-state', handler)
   }
 })

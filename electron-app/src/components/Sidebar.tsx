@@ -20,7 +20,7 @@ export default function Sidebar({ currentPage, navigateTo, runningSim }: Sidebar
   return (
     <div className="w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/80 flex flex-col h-full shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20">
       <div className="p-8 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
           <Waves className="w-6 h-6 text-white" />
         </div>
         <div>

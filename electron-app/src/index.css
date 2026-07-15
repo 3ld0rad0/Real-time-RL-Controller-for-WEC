@@ -4,6 +4,57 @@
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Outfit', system-ui, sans-serif;
+
+  /* --- PRIMARY ACTIONS / TRAINING (Originally Indigo) -> DEEP SEA TEAL --- */
+  --color-indigo-50: #f0fdfa; /* teal-50 */
+  --color-indigo-100: #ccfbf1; /* teal-100 */
+  --color-indigo-150: #99f6e4; /* teal-200 / custom border */
+  --color-indigo-200: #99f6e4; /* teal-200 */
+  --color-indigo-300: #5eead4; /* teal-300 */
+  --color-indigo-400: #2dd4bf; /* teal-400 */
+  --color-indigo-500: #14b8a6; /* teal-500 */
+  --color-indigo-600: #0d9488; /* teal-600 */
+  --color-indigo-650: #0f766e; /* teal-700 / hover */
+  --color-indigo-655: #0f766e; /* teal-700 */
+  --color-indigo-700: #0f766e; /* teal-700 */
+  --color-indigo-750: #115e59; /* teal-800 */
+  --color-indigo-755: #115e59; /* teal-800 */
+  --color-indigo-800: #115e59; /* teal-800 */
+  --color-indigo-850: #115e59; /* teal-800 */
+  --color-indigo-900: #134e4a; /* teal-900 */
+  --color-indigo-950: #042f2e; /* teal-950 */
+
+  /* --- TESTING / SUCCESS / METRICS (Originally Emerald) -> CYAN / AQUA BLUE --- */
+  --color-emerald-50: #ecfeff; /* cyan-50 */
+  --color-emerald-100: #cffafe; /* cyan-100 */
+  --color-emerald-150: #a5f3fc; /* cyan-200 */
+  --color-emerald-200: #a5f3fc; /* cyan-200 */
+  --color-emerald-250: #67e8f9; /* cyan-300 */
+  --color-emerald-400: #22d3ee; /* cyan-400 */
+  --color-emerald-500: #06b6d4; /* cyan-500 */
+  --color-emerald-600: #0891b2; /* cyan-600 */
+  --color-emerald-650: #0e7490; /* cyan-700 */
+  --color-emerald-655: #0e7490; /* cyan-700 */
+  --color-emerald-700: #0e7490; /* cyan-700 */
+  --color-emerald-755: #155e75; /* cyan-800 */
+  --color-emerald-800: #155e75; /* cyan-800 */
+  --color-emerald-900: #164e63; /* cyan-900 */
+  --color-emerald-950: #083344; /* cyan-950 */
+
+  /* --- SECONDARY TABS / PLOTS / POWER (Originally Purple) -> OCEAN BLUE --- */
+  --color-purple-50: #f0f9ff; /* sky-50 */
+  --color-purple-100: #e0f2fe; /* sky-100 */
+  --color-purple-200: #bae6fd; /* sky-200 */
+  --color-purple-300: #7dd3fc; /* sky-300 */
+  --color-purple-400: #38bdf8; /* sky-400 */
+  --color-purple-500: #0ea5e9; /* sky-500 */
+  --color-purple-550: #0ea5e9; /* sky-500 */
+  --color-purple-505: #0ea5e9; /* sky-500 */
+  --color-purple-600: #0284c7; /* sky-600 */
+  --color-purple-650: #0369a1; /* sky-700 */
+  --color-purple-700: #0369a1; /* sky-700 */
+  --color-purple-800: #075985; /* sky-800 */
+  --color-purple-900: #0c4a6e; /* sky-900 */
 }
 
 body {

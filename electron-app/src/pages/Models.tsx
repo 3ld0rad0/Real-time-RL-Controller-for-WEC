@@ -69,7 +69,6 @@ export default function Models({ onTestModel, active }: ModelsProps) {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [fineTuningFilter, setFineTuningFilter] = useState('all')
-  const [waveFilter, setWaveFilter] = useState('all')
 
   const loadModelsList = () => {
     setLoading(true)
@@ -135,7 +134,6 @@ export default function Models({ onTestModel, active }: ModelsProps) {
         </div>
       ) : (() => {
         const filteredModels = models.filter((model) => {
-          const info = parseModelInfo(model)
           const isFineTuning = model.id.toLowerCase().includes('fine_tuning') || model.name.toLowerCase().includes('fine_tuning')
           
           const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -143,12 +141,8 @@ export default function Models({ onTestModel, active }: ModelsProps) {
           const matchesFineTuning = fineTuningFilter === 'all' || 
             (fineTuningFilter === 'fine-tuned' && isFineTuning) || 
             (fineTuningFilter === 'regular' && !isFineTuning)
-            
-          const matchesWave = waveFilter === 'all' || 
-            (waveFilter === 'Uploaded' && info.waveType.toLowerCase() === 'uploaded') ||
-            info.waveType.toLowerCase() === waveFilter.toLowerCase()
 
-          return matchesSearch && matchesFineTuning && matchesWave
+          return matchesSearch && matchesFineTuning
         })
 
         return (
@@ -176,19 +170,6 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                   <option value="all">All Model Types</option>
                   <option value="fine-tuned">Fine-Tuning Models</option>
                   <option value="regular">Regular Models</option>
-                </select>
-
-                {/* Wave Type Filter */}
-                <select
-                  value={waveFilter}
-                  onChange={(e) => setWaveFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-650 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Wave Types</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Irregular">Irregular</option>
-                  <option value="Mixed">Mixed</option>
-                  <option value="Uploaded">Uploaded</option>
                 </select>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Sidebar from './components/Sidebar'
+import TitleBar from './components/TitleBar'
 import Home from './pages/Home'
 import Train from './pages/Train'
 import Test from './pages/Test'
@@ -28,30 +29,34 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      <Sidebar currentPage={currentPage} navigateTo={navigateTo} runningSim={runningSim} />
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
+      <TitleBar />
       
-      {/* Main Content Area with subtle background pattern */}
-      <main className="flex-1 overflow-auto bg-slate-50/50 relative">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none"></div>
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar currentPage={currentPage} navigateTo={navigateTo} runningSim={runningSim} />
         
-        <div className="relative z-10 h-full">
-          <div className={currentPage === 'home' ? 'h-full' : 'hidden'}><Home navigateTo={navigateTo} /></div>
-          <div className={currentPage === 'train' ? 'h-full' : 'hidden'}><Train navigateTo={navigateTo} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'train'} /></div>
-          <div className={currentPage === 'test' ? 'h-full' : 'hidden'}><Test navigateTo={navigateTo} initialModelId={testModelId} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'test'} /></div>
-          <div className={currentPage === 'results' ? 'h-full' : 'hidden'}>
-            <Results 
-              active={currentPage === 'results'} 
-              autoExpandLatest={autoExpandLatest}
-              onClearAutoExpand={() => setAutoExpandLatest(false)}
-              selectedRunId={selectedRunId}
-            />
+        {/* Main Content Area with subtle background pattern */}
+        <main className="flex-1 overflow-auto bg-slate-50/50 relative">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+          <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none"></div>
+          
+          <div className="relative z-10 h-full">
+            <div className={currentPage === 'home' ? 'h-full' : 'hidden'}><Home navigateTo={navigateTo} /></div>
+            <div className={currentPage === 'train' ? 'h-full' : 'hidden'}><Train navigateTo={navigateTo} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'train'} /></div>
+            <div className={currentPage === 'test' ? 'h-full' : 'hidden'}><Test navigateTo={navigateTo} initialModelId={testModelId} runningSim={runningSim} setRunningSim={setRunningSim} active={currentPage === 'test'} /></div>
+            <div className={currentPage === 'results' ? 'h-full' : 'hidden'}>
+              <Results 
+                active={currentPage === 'results'} 
+                autoExpandLatest={autoExpandLatest}
+                onClearAutoExpand={() => setAutoExpandLatest(false)}
+                selectedRunId={selectedRunId}
+              />
+            </div>
+            <div className={currentPage === 'models' ? 'h-full' : 'hidden'}><Models onTestModel={handleTestModel} active={currentPage === 'models'} /></div>
+            <div className={currentPage === 'settings' ? 'h-full' : 'hidden'}><Settings active={currentPage === 'settings'} runningSim={runningSim} /></div>
           </div>
-          <div className={currentPage === 'models' ? 'h-full' : 'hidden'}><Models onTestModel={handleTestModel} active={currentPage === 'models'} /></div>
-          <div className={currentPage === 'settings' ? 'h-full' : 'hidden'}><Settings active={currentPage === 'settings'} runningSim={runningSim} /></div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

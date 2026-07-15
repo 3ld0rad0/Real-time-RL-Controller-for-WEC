@@ -16,6 +16,10 @@ declare global {
       onSimulationLog: (callback: (log: string) => void) => () => void
       onSimulationDone: (callback: (code: number) => void) => () => void
       onSimulationProgress: (callback: (percent: number) => void) => () => void
+      minimizeWindow: () => void
+      maximizeWindow: () => void
+      closeWindow: () => void
+      onWindowMaximized: (callback: (isMaximized: boolean) => void) => () => void
     }
   }
 }

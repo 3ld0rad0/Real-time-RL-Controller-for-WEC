@@ -5,7 +5,7 @@
   "mixed_sea_state": false,
   "save_mode": true,
   "show_results": false,
-  "train_model": true,
+  "train_model": false,
   "retrain": false,
   "init_C": 0,
   "init_C_star": 0.5,

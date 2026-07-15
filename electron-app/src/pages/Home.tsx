@@ -52,6 +52,9 @@ function parseRunName(displayName: string) {
 
   if (displayName.includes('baseline')) {
     controlType = 'Baseline';
+    if (controlMode === 'Latching') {
+      controlMode = 'Threshold';
+    }
   } else if (displayName.includes('rl')) {
     controlType = 'RL';
   }
@@ -225,7 +228,7 @@ function RecentRunCard({ run, onClick }: { run: ResultFile; onClick: () => void 
                   <Line 
                     type="monotone" 
                     dataKey="value" 
-                    stroke={run.mode === 'train' ? '#6366f1' : '#10b981'} 
+                    stroke={run.mode === 'train' ? '#0d9488' : '#06b6d4'} 
                     strokeWidth={1.75} 
                     dot={false} 
                   />
@@ -363,7 +366,7 @@ export default function Home({ navigateTo }: HomeProps) {
 
           <button
             onClick={() => navigateTo('test')}
-            className="glass-card p-5 rounded-xl flex flex-col items-start text-left group relative overflow-hidden bg-white hover:border-emerald-450"
+            className="glass-card p-5 rounded-xl flex flex-col items-start text-left group relative overflow-hidden bg-white hover:border-emerald-400"
           >
             <div className="absolute top-0 right-0 p-5 opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
               <ArrowRight className="w-4 h-4 text-emerald-400" />

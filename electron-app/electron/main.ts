@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, screen } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
@@ -13,11 +13,14 @@ const processRoot = path.join(__dirname, '../../') // Root of Real-time-RL-Contr
 
 let mainWindow: BrowserWindow | null = null
 let currentSimulation: ChildProcess | null = null
+let isMaximized = false
+let previousBounds: { x: number; y: number; width: number; height: number } | null = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false,
     webPreferences: {
       preload: join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
@@ -50,7 +53,36 @@ app.on('window-all-closed', () => {
   }
 })
 
-// IPC Handlers
+// IPC Handlers for Custom Title Bar Window Controls (Manual layout setting for Linux support)
+ipcMain.on('window-minimize', () => {
+  mainWindow?.minimize()
+})
+
+ipcMain.on('window-maximize', () => {
+  if (!mainWindow) return
+  if (isMaximized) {
+    if (previousBounds) {
+      mainWindow.setBounds(previousBounds)
+    } else {
+      mainWindow.setSize(1200, 800)
+      mainWindow.center()
+    }
+    isMaximized = false
+    mainWindow.webContents.send('window-maximized-state', false)
+  } else {
+    previousBounds = mainWindow.getBounds()
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const { x, y, width, height } = primaryDisplay.workArea
+    mainWindow.setBounds({ x, y, width, height })
+    isMaximized = true
+    mainWindow.webContents.send('window-maximized-state', true)
+  }
+})
+
+ipcMain.on('window-close', () => {
+  mainWindow?.close()
+})
+
 ipcMain.handle('get-models', async () => {
   const modelsDir = path.join(processRoot, 'models')
   if (!fs.existsSync(modelsDir)) return []

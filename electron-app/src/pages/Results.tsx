@@ -66,6 +66,9 @@ function parseRunName(displayName: string) {
 
   if (displayName.includes('baseline')) {
     controlType = 'Baseline';
+    if (controlMode === 'Latching') {
+      controlMode = 'Threshold';
+    }
   } else if (displayName.includes('rl')) {
     controlType = 'RL';
   }
@@ -457,8 +460,7 @@ export default function Results({
                 >
                   <option value="all">All Control Methods</option>
                   <option value="RL (Latching)">RL (Latching)</option>
-                  <option value="Baseline (Latching)">Baseline (Latching)</option>
-                  <option value="Baseline (Reactive)">Baseline (Reactive)</option>
+                  <option value="Baseline (Threshold)">Baseline (Threshold)</option>
                 </select>
               </div>
             </div>
@@ -655,7 +657,7 @@ export default function Results({
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
                             <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
-                            <Line type="monotone" dataKey="position" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="position" stroke="#0ea5e9" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -687,7 +689,7 @@ export default function Results({
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
                             <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
-                            <Line type="monotone" dataKey="velocity" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="velocity" stroke="#06b6d4" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -719,7 +721,7 @@ export default function Results({
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
                             <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
-                            <Line type="monotone" dataKey="power_inst" stroke="#a855f7" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="power_inst" stroke="#0d9488" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
