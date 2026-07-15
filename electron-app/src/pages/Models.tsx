@@ -134,20 +134,32 @@ export default function Models({ onTestModel, active }: ModelsProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
           {models.map(model => {
             const info = parseModelInfo(model);
+            const isFineTuning = model.id.toLowerCase().includes('fine_tuning') || model.name.toLowerCase().includes('fine_tuning');
             return (
               <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between p-6">
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner ${
+                      isFineTuning 
+                        ? 'bg-amber-50 text-amber-600' 
+                        : 'bg-indigo-50 text-indigo-600'
+                    }`}>
                       <BrainCircuit className="w-6 h-6" />
                     </div>
-                    <button
-                      onClick={() => onTestModel(model.id)}
-                      className="p-2.5 bg-slate-900 hover:bg-indigo-650 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-                      title="Test this model"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isFineTuning && (
+                        <span className="text-[9px] font-black bg-amber-50 text-amber-700 border border-amber-200/50 px-2 py-1 rounded-md uppercase tracking-wider">
+                          Fine-Tuning
+                        </span>
+                      )}
+                      <button
+                        onClick={() => onTestModel(model.id)}
+                        className="p-2.5 bg-slate-900 hover:bg-indigo-650 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
+                        title="Test this model"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
                   </div>
                   
                   <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
