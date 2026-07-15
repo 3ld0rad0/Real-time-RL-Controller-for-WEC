@@ -2,6 +2,20 @@ import { useState, useRef, useEffect } from 'react'
 import { Play, Square, Settings, Activity, Terminal, ShieldAlert, ChevronUp, LineChart, FolderOpen, AlertCircle } from 'lucide-react'
 import type { Page } from '../App'
 
+function getRelativeModelPath(filePath: string): string {
+  if (!filePath) return '';
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const modelsIndex = normalizedPath.indexOf('/models/');
+  if (modelsIndex !== -1) {
+    return normalizedPath.substring(modelsIndex + 8);
+  } else if (normalizedPath.startsWith('models/')) {
+    return normalizedPath.substring(7);
+  } else if (normalizedPath.startsWith('./models/')) {
+    return normalizedPath.substring(9);
+  }
+  return filePath;
+}
+
 interface TestProps {
   navigateTo: (page: Page, autoExpand?: boolean) => void
   initialModelId?: string | null
@@ -58,7 +72,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [waveType, setWaveType] = useState('irregular')
   const [seaState, setSeaState] = useState('2')
   const [simTime, setSimTime] = useState('60')
-  const [modelId, setModelId] = useState(initialModelId || '')
+  const [modelId, setModelId] = useState(getRelativeModelPath(initialModelId || ''))
   const [models, setModels] = useState<any[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
 
@@ -66,7 +80,7 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
     try {
       const filePath = await window.api.selectModelFile()
       if (filePath) {
-        setModelId(filePath)
+        setModelId(getRelativeModelPath(filePath))
       }
     } catch (err) {
       console.error('Failed to open file dialog:', err)
@@ -92,10 +106,9 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
         setSimTime((data.sim_time_test ?? 60).toString())
 
         if (initialModelId) {
-          setModelId(initialModelId)
+          setModelId(getRelativeModelPath(initialModelId))
         } else if (data.path_model) {
-          const relPath = data.path_model.replace(/^\.\/models\//, '').replace(/^models\//, '')
-          setModelId(relPath)
+          setModelId(getRelativeModelPath(data.path_model))
         }
       }).catch(console.error)
 
