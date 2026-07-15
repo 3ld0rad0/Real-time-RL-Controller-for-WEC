@@ -8,7 +8,8 @@ import {
   Loader2, 
   ChevronLeft, 
   Download,
-  Check
+  Check,
+  TrendingUp
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import Papa from 'papaparse'
@@ -31,6 +32,188 @@ interface ResultsProps {
   autoExpandLatest?: boolean
   onClearAutoExpand?: () => void
   selectedRunId?: string | null
+}
+
+function parseRunName(displayName: string) {
+  let seaState = 'Unknown Sea State';
+  let waveType = 'Irregular';
+  let controlMode = 'Latching';
+  let controlType = 'RL';
+  let duration = '';
+
+  const durationMatch = displayName.match(/_(\d+(?:\.\d+)?[sh])_/);
+  if (durationMatch) {
+    duration = durationMatch[1];
+  }
+
+  const seaStateMatch = displayName.match(/_(\d+\.\d+)_(\d+\.\d+)_/);
+  if (seaStateMatch) {
+    seaState = `Hs: ${seaStateMatch[1]}m, Tp: ${seaStateMatch[2]}s`;
+  } else if (displayName.includes('mixed')) {
+    seaState = 'Mixed Sea State';
+  }
+
+  if (displayName.includes('regular')) {
+    waveType = 'Regular';
+  } else if (displayName.includes('mixed')) {
+    waveType = 'Mixed';
+  }
+
+  if (displayName.includes('reactive') || displayName.includes('linear')) {
+    controlMode = 'Reactive';
+  }
+
+  if (displayName.includes('baseline')) {
+    controlType = 'Baseline';
+  } else if (displayName.includes('rl')) {
+    controlType = 'RL';
+  }
+
+  return {
+    control: `${controlType} (${controlMode})`,
+    wave: `${waveType} Waves`,
+    seaState,
+    duration: duration ? `Duration: ${duration}` : ''
+  };
+}
+
+function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => void }) {
+  const [loading, setLoading] = useState(true)
+  const [metrics, setMetrics] = useState<{ energyAbs?: string; eta?: string } | null>(null)
+
+  useEffect(() => {
+    let active = true;
+    async function loadData() {
+      try {
+        let energyAbsStr = undefined;
+        let etaStr = undefined;
+        
+        if (file.files.energy) {
+          const energyCsv = await window.api.readCSV(file.files.energy);
+          const lines = energyCsv.split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length >= 2) {
+            const headers = lines[0].split(',');
+            const values = lines[1].split(',');
+            const energyAbsIdx = headers.indexOf('energy_abs');
+            const etaIdx = headers.indexOf('eta');
+            
+            if (energyAbsIdx !== -1 && values[energyAbsIdx]) {
+              const energyVal = parseFloat(values[energyAbsIdx]);
+              if (!isNaN(energyVal)) {
+                if (energyVal >= 1e6) {
+                  energyAbsStr = `${(energyVal / 1e6).toFixed(2)} MJ`;
+                } else {
+                  energyAbsStr = `${(energyVal / 1e3).toFixed(1)} kJ`;
+                }
+              }
+            }
+            if (etaIdx !== -1 && values[etaIdx]) {
+              const etaVal = parseFloat(values[etaIdx]);
+              if (!isNaN(etaVal)) {
+                etaStr = etaVal.toFixed(2);
+              }
+            }
+          }
+        }
+        
+        if (active) {
+          setMetrics({ energyAbs: energyAbsStr, eta: etaStr });
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error loading run details for Results card", err);
+        if (active) setLoading(false);
+      }
+    }
+    
+    loadData();
+    return () => {
+      active = false;
+    };
+  }, [file]);
+
+  const info = parseRunName(file.displayName);
+  const formattedDate = new Date(file.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
+                        new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <button
+      onClick={onClick}
+      className="glass-card w-full text-left p-6 rounded-2xl border border-slate-200/60 bg-white hover:border-indigo-400 hover:shadow-lg transition-all duration-300 flex flex-col gap-4 cursor-pointer group relative overflow-hidden"
+    >
+      {/* Top badges/row */}
+      <div className="flex items-center justify-between w-full">
+        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+          file.mode === 'train' ? 'bg-indigo-50 text-indigo-755 border border-indigo-150' : 'bg-emerald-50 text-emerald-755 border border-emerald-150'
+        }`}>
+          {file.mode === 'train' ? 'TRAINING' : 'TESTING'}
+        </span>
+        <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5" />
+          {formattedDate}
+        </span>
+      </div>
+
+      {/* Main Info */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-slate-800 text-lg truncate mb-1 group-hover:text-indigo-655 transition-colors" title={file.displayName}>
+          {info.control}
+        </h3>
+        <p className="text-sm text-slate-500 font-medium mb-1">
+          {info.wave} • {info.seaState}
+        </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {info.duration && (
+            <span className="text-[10px] bg-slate-100/80 border border-slate-200/60 text-slate-500 font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+              {info.duration}
+            </span>
+          )}
+          {file.plotUrl && (
+            <span className="text-[10px] bg-purple-50 border border-purple-100 text-purple-650 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+              <ImageIcon className="w-3 h-3" /> Static Plot
+            </span>
+          )}
+          {file.files.main && (
+            <span className="text-[10px] bg-blue-50 border border-blue-100 text-blue-650 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+              <LineChartIcon className="w-3 h-3" /> Interactive Chart
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics Section */}
+      {loading ? (
+        <div className="h-[60px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-100 animate-pulse">
+          <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+        </div>
+      ) : (
+        (metrics?.energyAbs || metrics?.eta) && (
+          <div className="grid grid-cols-2 gap-2.5 bg-slate-50/70 p-3 rounded-xl border border-slate-150/60">
+            {metrics.energyAbs && (
+              <div>
+                <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Absorbed Energy</div>
+                <div className="text-sm font-bold text-slate-800">{metrics.energyAbs}</div>
+              </div>
+            )}
+            {metrics.eta && (
+              <div>
+                <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Capture Width Ratio</div>
+                <div className="text-sm font-bold text-emerald-655 flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  {metrics.eta} m
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {/* Absolute hover chevron */}
+      <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+        <ChevronRight className="w-5 h-5 text-indigo-500" />
+      </div>
+    </button>
+  );
 }
 
 function DownloadButton({ label, filename }: { label: string, filename: string }) {
@@ -159,34 +342,6 @@ export default function Results({
     }
   }, [active, autoExpandLatest, selectedRunId, onClearAutoExpand])
 
-  const renderRunCard = (file: ResultFile) => {
-    return (
-      <button
-        key={file.id}
-        onClick={() => handleExpand(file)}
-        className="w-full text-left bg-white border border-slate-200/60 rounded-2xl p-5 hover:border-indigo-300 hover:shadow-md transition-all duration-300 flex items-center justify-between group cursor-pointer"
-      >
-        <div className="flex-1 min-w-0 pr-4">
-          <div className="font-bold text-slate-800 truncate text-sm mb-1.5 group-hover:text-indigo-600 transition-colors" title={file.displayName}>
-            {file.displayName}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-              file.mode === 'train' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
-            }`}>
-              {file.mode === 'train' ? 'TRAINING' : 'TESTING'}
-            </span>
-            <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              {new Date(file.date).toLocaleDateString()} {new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
-        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-      </button>
-    )
-  }
-
   if (!expandedFile) {
     // List View Grouped by Mode
     return (
@@ -210,8 +365,8 @@ export default function Results({
             <p className="text-sm text-slate-400 mt-1">Run a training or test simulation to generate visualization plots.</p>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-4 mb-10 animate-fade-in w-full">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-700 text-white rounded-3xl p-6 shadow-md shadow-slate-900/10 mb-6 flex justify-between items-center">
+          <div className="w-full space-y-6 mb-10 animate-fade-in">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-700 text-white rounded-3xl p-6 shadow-md shadow-slate-900/10 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold font-display flex items-center gap-3">
                   <FileText className="w-6 h-6 text-slate-200" />
@@ -224,8 +379,14 @@ export default function Results({
               </span>
             </div>
 
-            <div className="space-y-3">
-              {results.map((file) => renderRunCard(file))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {results.map((file) => (
+                <ResultRunCard 
+                  key={file.id} 
+                  file={file} 
+                  onClick={() => handleExpand(file)} 
+                />
+              ))}
             </div>
           </div>
         )}
