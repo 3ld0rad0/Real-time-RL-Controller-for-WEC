@@ -272,8 +272,9 @@ export default function Results({
   const [viewMode, setViewMode] = useState<'chart' | 'plot'>('chart')
   const [timeWindow, setTimeWindow] = useState<'all' | 60 | 180 | 900>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [modeFilter, setModeFilter] = useState('all')
+  const [seaStateFilter, setSeaStateFilter] = useState('all')
   const [controlFilter, setControlFilter] = useState('all')
-  const [waveFilter, setWaveFilter] = useState('all')
 
   const loadCsvData = async (filename: string) => {
     setLoadingCsv(true)
@@ -353,9 +354,19 @@ export default function Results({
     const filteredResults = results.filter((run) => {
       const parsed = parseRunName(run.displayName)
       const matchesSearch = run.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      // 1) Train/Test Filter
+      const matchesMode = modeFilter === 'all' || 
+        (modeFilter === 'train' && run.mode === 'train') ||
+        (modeFilter === 'test' && (run.mode === 'test' || run.mode === 'final'))
+        
+      // 2) Sea State Filter
+      const matchesSeaState = seaStateFilter === 'all' || parsed.seaState.includes(seaStateFilter)
+      
+      // 3) Control Method Filter
       const matchesControl = controlFilter === 'all' || parsed.control === controlFilter
-      const matchesWave = waveFilter === 'all' || parsed.wave.includes(waveFilter)
-      return matchesSearch && matchesControl && matchesWave
+      
+      return matchesSearch && matchesMode && matchesSeaState && matchesControl
     })
 
     // List View Grouped by Mode
@@ -409,7 +420,36 @@ export default function Results({
               </div>
               
               <div className="flex flex-wrap gap-3">
-                {/* Control Mode Filter */}
+                {/* 1) Train/Test Filter */}
+                <select
+                  value={modeFilter}
+                  onChange={(e) => setModeFilter(e.target.value)}
+                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
+                >
+                  <option value="all">All Modes</option>
+                  <option value="train">Training</option>
+                  <option value="test">Testing</option>
+                </select>
+
+                {/* 2) Sea State Filter */}
+                <select
+                  value={seaStateFilter}
+                  onChange={(e) => setSeaStateFilter(e.target.value)}
+                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
+                >
+                  <option value="all">All Sea States</option>
+                  <option value="Hs: 0.8m">Hs=0.8m, Tp=9.0s</option>
+                  <option value="Hs: 1.4m">Hs=1.4m, Tp=9.7s</option>
+                  <option value="Hs: 2.0m">Hs=2.0m, Tp=10.5s</option>
+                  <option value="Hs: 2.9m">Hs=2.9m, Tp=11.5s</option>
+                  <option value="Hs: 4.0m">Hs=4.0m, Tp=12.7s</option>
+                  <option value="Hs: 5.4m">Hs=5.4m, Tp=14.0s</option>
+                  <option value="Hs: 7.0m">Hs=7.0m, Tp=15.5s</option>
+                  <option value="Hs: 8.8m">Hs=8.8m, Tp=17.2s</option>
+                  <option value="Mixed Sea State">Mixed Sea State</option>
+                </select>
+
+                {/* 3) Control Method Filter */}
                 <select
                   value={controlFilter}
                   onChange={(e) => setControlFilter(e.target.value)}
@@ -419,18 +459,6 @@ export default function Results({
                   <option value="RL (Latching)">RL (Latching)</option>
                   <option value="Baseline (Latching)">Baseline (Latching)</option>
                   <option value="Baseline (Reactive)">Baseline (Reactive)</option>
-                </select>
-
-                {/* Wave Type Filter */}
-                <select
-                  value={waveFilter}
-                  onChange={(e) => setWaveFilter(e.target.value)}
-                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
-                >
-                  <option value="all">All Wave Types</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Irregular">Irregular</option>
-                  <option value="Mixed">Mixed</option>
                 </select>
               </div>
             </div>
