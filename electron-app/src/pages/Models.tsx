@@ -177,7 +177,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
   }
 
   return (
-    <div className="p-10 max-w-6xl mx-auto h-full overflow-y-auto">
+    <div className="p-10 w-full h-full overflow-y-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4">
         <div>
           <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Trained Models</h1>
@@ -258,9 +258,9 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                   const info = parseModelInfo(model);
                   const isFineTuning = model.id.toLowerCase().includes('fine_tuning') || model.name.toLowerCase().includes('fine_tuning');
                   return (
-                    <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between p-6">
+                    <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between p-5">
                       <div>
-                        <div className="flex justify-between items-start mb-4">
+                        <div className="flex justify-between items-start mb-3">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner ${
                             isFineTuning 
                               ? 'bg-amber-50 text-amber-600' 
@@ -284,12 +284,12 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                           </div>
                         </div>
                         
-                        <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
+                        <h3 className="font-bold text-lg text-slate-900 mb-3 truncate pr-2" title={model.name}>
                           {model.name}
                         </h3>
 
                         {/* Environment & Simulation Configuration */}
-                        <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80 mb-3 text-xs">
+                        <div className="space-y-2 bg-slate-50/70 p-3 rounded-xl border border-slate-100/80 mb-2.5 text-xs">
                           <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Configuration</h4>
                           
                           <div className="flex justify-between items-center">
@@ -315,7 +315,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                         </div>
 
                         {/* Model Hyperparameters & Specs */}
-                        <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80 text-xs">
+                        <div className="space-y-2 bg-slate-50/70 p-3 rounded-xl border border-slate-100/80 text-xs">
                           <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Agent Details</h4>
 
                           <div className="flex justify-between items-center">

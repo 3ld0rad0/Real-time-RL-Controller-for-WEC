@@ -29,14 +29,14 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-100 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
       <TitleBar />
       
       <div className="flex flex-1 overflow-hidden">
         <Sidebar currentPage={currentPage} navigateTo={navigateTo} runningSim={runningSim} />
         
         {/* Main Content Area with subtle background pattern */}
-        <main className="flex-1 overflow-auto bg-slate-50/50 relative">
+        <main className="flex-1 overflow-auto bg-slate-100/70 relative">
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
           <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/60 to-transparent pointer-events-none"></div>
           

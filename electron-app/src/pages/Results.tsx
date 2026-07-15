@@ -144,7 +144,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
   return (
     <button
       onClick={onClick}
-      className="glass-card w-full text-left p-6 rounded-2xl border border-slate-200/60 bg-white hover:border-indigo-400 hover:shadow-lg transition-all duration-300 flex flex-col gap-4 cursor-pointer group relative overflow-hidden"
+      className="glass-card w-full text-left p-4.5 rounded-2xl border border-slate-200/60 bg-white hover:border-indigo-400 hover:shadow-lg transition-all duration-300 flex flex-col gap-3 cursor-pointer group relative overflow-hidden"
     >
       {/* Top badges/row */}
       <div className="flex items-center justify-between w-full">
@@ -161,7 +161,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
 
       {/* Main Info */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-slate-800 text-lg truncate mb-1 group-hover:text-indigo-655 transition-colors" title={file.displayName}>
+        <h3 className="font-bold text-slate-800 text-base truncate mb-1 group-hover:text-indigo-655 transition-colors" title={file.displayName}>
           {info.control}
         </h3>
         <p className="text-sm text-slate-500 font-medium mb-1">
@@ -188,12 +188,12 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
 
       {/* Metrics Section */}
       {loading ? (
-        <div className="h-[60px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-100 animate-pulse">
+        <div className="h-[50px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-100 animate-pulse">
           <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
         </div>
       ) : (
         (metrics?.energyAbs || metrics?.eta) && (
-          <div className="grid grid-cols-2 gap-2.5 bg-slate-50/70 p-3 rounded-xl border border-slate-150/60">
+          <div className="grid grid-cols-2 gap-2 bg-slate-50/70 p-2 rounded-xl border border-slate-150/60">
             {metrics.energyAbs && (
               <div>
                 <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Absorbed Energy</div>
@@ -375,7 +375,7 @@ export default function Results({
 
     // List View Grouped by Mode
     return (
-      <div className="p-10 max-w-7xl mx-auto flex flex-col gap-6 h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
+      <div className="p-10 w-full flex flex-col gap-6 h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-end shrink-0 mb-4 animate-fade-in">
           <div>
             <h1 className="text-4xl font-extrabold font-display text-slate-900 mb-3 tracking-tight">Results Analysis</h1>
@@ -495,7 +495,7 @@ export default function Results({
 
   // Full Screen Details View
   return (
-    <div className="p-10 max-w-7xl mx-auto flex flex-col gap-6 h-[calc(100vh-2rem)] animate-fade-in">
+    <div className="p-10 w-full flex flex-col gap-6 h-[calc(100vh-2rem)] animate-fade-in">
       {/* Detail header with back button */}
       <div className="flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-4 min-w-0">

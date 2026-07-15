@@ -95,12 +95,44 @@ export default function Settings({ active, runningSim }: SettingsProps) {
   }
 
   return (
-    <div className="p-10 h-full flex flex-col min-h-0 bg-slate-50/30">
+    <form onSubmit={handleSave} className="p-10 h-full flex flex-col min-h-0 bg-slate-50/30">
       {/* Header */}
       <div className="flex justify-between items-center mb-8 shrink-0">
         <div>
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight font-display">General Configuration</h2>
           <p className="text-slate-500 mt-1">Configure global connection, physical environment, and default model parameters</p>
+        </div>
+        
+        {/* Save button and status in the header */}
+        <div className="flex items-center gap-4 shrink-0">
+          {saveStatus === 'success' && (
+            <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
+              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Saved!</span>
+            </div>
+          )}
+          {saveStatus === 'error' && (
+            <div className="bg-rose-50 border border-rose-250 text-rose-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>Error saving</span>
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={disabled || saving}
+            className="bg-indigo-600 hover:bg-indigo-750 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white rounded-xl py-2.5 px-5 font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2 group cursor-pointer disabled:cursor-not-allowed border border-indigo-700/10 shrink-0"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 group-hover:scale-110 transition-transform" /> Save Settings
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -114,60 +146,28 @@ export default function Settings({ active, runningSim }: SettingsProps) {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="flex gap-8 flex-1 min-h-0 overflow-y-auto pb-10">
-        {/* Left Column: Info & Action */}
+      <div className="flex gap-8 flex-1 min-h-0 overflow-hidden pb-6">
+        {/* Left Column: Info */}
         <div className="w-[360px] flex flex-col gap-6 shrink-0">
-          <div className="glass-card rounded-3xl p-6 border border-slate-100 bg-white shadow-sm">
+          <div className="glass-card rounded-3xl p-6 border border-slate-150 bg-white shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
               <SettingsIcon className="w-5 h-5 text-indigo-500" />
               WEC Settings
             </h3>
-            <p className="text-sm text-slate-500 leading-relaxed mb-4">
+            <p className="text-sm text-slate-500 leading-relaxed mb-4 font-semibold">
               These values act as global defaults for the WEC simulation server and clients. Values configured here are persisted inside the project's config file.
             </p>
-            <div className="text-xs text-amber-600 bg-amber-50/80 border border-amber-100 rounded-xl p-3 leading-relaxed">
+            <div className="text-xs font-bold text-amber-700 bg-amber-50/80 border border-amber-100 rounded-xl p-3 leading-relaxed">
               <strong>Note:</strong> Starting specific simulations from the Train or Test tabs will temporarily override parameters like sea state, batch size, and model paths.
             </div>
-          </div>
-
-          {/* Action Trigger */}
-          <div className="mt-auto">
-            {saveStatus === 'success' && (
-              <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
-                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-                <span className="font-semibold text-sm">Configuration saved successfully!</span>
-              </div>
-            )}
-            {saveStatus === 'error' && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                <span className="font-semibold text-sm">Error saving configuration file.</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={disabled || saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-xl py-4 px-6 font-bold transition-all shadow-lg shadow-indigo-600/20 flex justify-center items-center gap-2 group cursor-pointer"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Settings
-                </>
-              )}
-            </button>
           </div>
         </div>
 
         {/* Right Column: Settings Sections */}
-        <div className="flex-1 space-y-6 max-w-3xl pr-4">
+        <div className="flex-1 overflow-y-auto pr-4 space-y-6 custom-scrollbar h-full pb-4">
           
           {/* Section 1: Network */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+          <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm">
             <h4 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
               <Globe className="w-5 h-5 text-indigo-500" />
               Network & Socket Server
@@ -178,7 +178,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                 <input
                   type="text"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
                   disabled={disabled || saving}
@@ -189,7 +189,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                 <input
                   type="number"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={port}
                   onChange={(e) => setPort(e.target.value)}
                   disabled={disabled || saving}
@@ -199,7 +199,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
           </div>
 
           {/* Section 2: Environment */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+          <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm">
             <h4 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
               <Sliders className="w-5 h-5 text-indigo-500" />
               WEC Physics Environment
@@ -211,7 +211,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.01"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={dT}
                   onChange={(e) => setDT(e.target.value)}
                   disabled={disabled || saving}
@@ -222,7 +222,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                 <input
                   type="number"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={warmupTime}
                   onChange={(e) => setWarmupTime(e.target.value)}
                   disabled={disabled || saving}
@@ -230,12 +230,12 @@ export default function Settings({ active, runningSim }: SettingsProps) {
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <FolderOpen className="w-4 h-4" /> Results Directory Path
+                  <FolderOpen className="w-4 h-4 text-slate-450" /> Results Directory Path
                 </label>
                 <input
                   type="text"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={resultsDir}
                   onChange={(e) => setResultsDir(e.target.value)}
                   disabled={disabled || saving}
@@ -245,7 +245,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
           </div>
 
           {/* Section 3: Model */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+          <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm">
             <h4 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
               <Sliders className="w-5 h-5 text-indigo-500" />
               Default RL Model Hyperparameters
@@ -257,7 +257,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.01"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={initCStar}
                   onChange={(e) => setInitCStar(e.target.value)}
                   disabled={disabled || saving}
@@ -269,7 +269,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.01"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={initGStar}
                   onChange={(e) => setInitGStar(e.target.value)}
                   disabled={disabled || saving}
@@ -281,7 +281,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.1"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={nEpisodes}
                   onChange={(e) => setNEpisodes(e.target.value)}
                   disabled={disabled || saving}
@@ -293,7 +293,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.01"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={simTimeTrain}
                   onChange={(e) => setSimTimeTrain(e.target.value)}
                   disabled={disabled || saving}
@@ -305,7 +305,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   type="number"
                   step="0.001"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={entCoef}
                   onChange={(e) => setEntCoef(e.target.value)}
                   disabled={disabled || saving}
@@ -316,7 +316,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                 <input
                   type="number"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={batchSize}
                   onChange={(e) => setBatchSize(e.target.value)}
                   disabled={disabled || saving}
@@ -326,7 +326,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
           </div>
 
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   )
 }

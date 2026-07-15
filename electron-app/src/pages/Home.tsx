@@ -162,7 +162,7 @@ function RecentRunCard({ run, onClick }: { run: ResultFile; onClick: () => void 
   return (
     <button
       onClick={onClick}
-      className="glass-card w-full text-left p-5 rounded-2xl border border-slate-200/60 bg-white hover:border-indigo-400 hover:shadow-lg transition-all duration-300 flex flex-col gap-3 cursor-pointer group relative overflow-hidden"
+      className="glass-card w-full text-left p-4 rounded-2xl border border-slate-200/60 bg-white hover:border-indigo-400 hover:shadow-lg transition-all duration-300 flex flex-col gap-2.5 cursor-pointer group relative overflow-hidden"
     >
       {/* Top row */}
       <div className="flex items-center justify-between w-full">
@@ -194,14 +194,14 @@ function RecentRunCard({ run, onClick }: { run: ResultFile; onClick: () => void 
 
       {/* Dynamic Content: Metrics and Sparkline */}
       {loading ? (
-        <div className="h-[80px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-100">
+        <div className="h-[50px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-100">
           <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {/* Metrics */}
           {(metrics?.energyAbs || metrics?.eta) && (
-            <div className="grid grid-cols-2 gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
+            <div className="grid grid-cols-2 gap-2 bg-slate-50/70 p-2 rounded-xl border border-slate-100">
               {metrics.energyAbs && (
                 <div>
                   <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Absorbed Energy</div>
@@ -222,7 +222,7 @@ function RecentRunCard({ run, onClick }: { run: ResultFile; onClick: () => void 
 
           {/* Sparkline Plot */}
           {sparklineData.length > 0 && (
-            <div className="h-16 w-full pt-1">
+            <div className="h-12 w-full pt-1">
               <ResponsiveContainer width="100%" height="100%">
                 <SparklineChart data={sparklineData}>
                   <Line 
@@ -262,7 +262,7 @@ export default function Home({ navigateTo }: HomeProps) {
   }, [])
 
   return (
-    <div className="p-8 max-w-7xl mx-auto h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar">
+    <div className="p-8 w-full h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar">
       
       {/* Welcome Banner */}
       <div className="flex items-center justify-between bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-8 shadow-md relative overflow-hidden shrink-0">

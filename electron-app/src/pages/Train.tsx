@@ -256,7 +256,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto h-full flex flex-col">
+    <div className="p-10 w-full h-full flex flex-col">
       <div className="mb-10 flex justify-between items-end shrink-0">
         <div>
           <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Train Agent</h1>
@@ -267,7 +267,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
       <div className="flex-1 min-h-0 pb-10">
         {step === 1 ? (
           /* Step 1: Configuration View */
-          <div className="max-w-2xl mx-auto bg-white border border-slate-100 rounded-3xl p-8 shadow-sm flex flex-col animate-fade-in">
+          <div className="max-w-3xl mx-auto bg-white border border-slate-100 rounded-3xl p-8 shadow-sm flex flex-col animate-fade-in">
             <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <Settings className="w-5 h-5" />
@@ -436,7 +436,7 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
           </div>
         ) : (
           /* Step 2: Dashboard View */
-          <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
+          <div className="w-full flex flex-col gap-6 animate-fade-in">
             {/* Simulation Status Card */}
             <div className={`glass-card rounded-3xl flex flex-col shadow-sm border border-slate-100 bg-white transition-all duration-300 ${showLogs ? 'p-5' : 'p-8'
               }`}>
