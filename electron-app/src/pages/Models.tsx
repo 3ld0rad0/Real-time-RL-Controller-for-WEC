@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, Play, ChevronDown, ChevronUp, Clock, HardDrive, Waves, Thermometer, BrainCircuit, Upload } from 'lucide-react'
+import { Box, Play, ChevronDown, ChevronUp, Clock, Waves, BrainCircuit, Upload } from 'lucide-react'
 
 interface Model {
   id: string
@@ -15,6 +15,53 @@ interface Model {
 interface ModelsProps {
   onTestModel: (id: string) => void
   active?: boolean
+}
+
+function parseModelInfo(model: Model) {
+  const pathString = model.id;
+  
+  let seaState = 'Unknown Sea State';
+  let waveType = 'Irregular';
+  let controlMode = 'Latching';
+  let controlType = 'RL';
+  let duration = 'Unknown';
+
+  const durationMatch = pathString.match(/_(\d+(?:\.\d+)?[sh])_/);
+  if (durationMatch) {
+    duration = durationMatch[1];
+  }
+
+  const seaStateMatch = pathString.match(/sea_state_(\d+\.\d+)_(\d+\.\d+)/);
+  if (seaStateMatch) {
+    seaState = `Hs: ${seaStateMatch[1]}m, Tp: ${seaStateMatch[2]}s`;
+  } else if (model.sea_state && model.sea_state !== 'unknown') {
+    seaState = model.sea_state.replace(/_/g, ' ');
+  }
+
+  if (pathString.includes('regular')) {
+    waveType = 'Regular';
+  } else if (pathString.includes('mixed')) {
+    waveType = 'Mixed';
+  } else if (model.wave_type && model.wave_type !== 'unknown') {
+    waveType = model.wave_type;
+  }
+
+  if (pathString.includes('reactive') || pathString.includes('linear')) {
+    controlMode = 'Reactive';
+  }
+  
+  if (pathString.includes('baseline')) {
+    controlType = 'Baseline';
+  } else if (pathString.includes('rl')) {
+    controlType = 'RL';
+  }
+
+  return {
+    control: `${controlType} (${controlMode})`,
+    duration,
+    seaState,
+    waveType
+  };
 }
 
 export default function Models({ onTestModel, active }: ModelsProps) {
@@ -86,74 +133,114 @@ export default function Models({ onTestModel, active }: ModelsProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-          {models.map(model => (
-            <div key={model.id} className="glass-card rounded-2xl overflow-hidden group">
-              <div 
-                className="p-6 cursor-pointer"
-                onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                    <BrainCircuit className="w-6 h-6" />
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onTestModel(model.id) }}
-                    className="p-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2"
-                    title="Test this model"
-                  >
-                    <Play className="w-4 h-4 fill-current" />
-                  </button>
-                </div>
-                
-                <h3 className="font-bold text-lg text-slate-900 mb-1 truncate pr-2" title={model.name}>
-                  {model.name}
-                </h3>
-                
-                <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mt-4">
-                  <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md text-slate-700">
-                    <HardDrive className="w-3.5 h-3.5 text-slate-400" /> {formatSize(model.size)}
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md text-slate-700">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {new Date(model.date).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
+          {models.map(model => {
+            const info = parseModelInfo(model);
+            return (
+              <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between">
+                <div 
+                  className="p-6 cursor-pointer flex-1 flex flex-col justify-between"
+                  onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                        <BrainCircuit className="w-6 h-6" />
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onTestModel(model.id) }}
+                        className="p-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
+                        title="Test this model"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
+                    
+                    <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
+                      {model.name}
+                    </h3>
 
-              {/* Expandable Details Area */}
-              <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${expandedId === model.id ? 'max-h-64' : 'max-h-0'}`}>
-                <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                        <Waves className="w-3 h-3" /> Wave Type
-                      </p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{model.wave_type}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                        <Thermometer className="w-3 h-3" /> Sea State
-                      </p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{model.sea_state.replace(/_/g, ' ')}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                        <BrainCircuit className="w-3 h-3" /> Entropy Coef
-                      </p>
-                      <p className="text-sm font-semibold text-slate-800">{model.ent_coef}</p>
+                    {/* Main Identifiers Section */}
+                    <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                          <Waves className="w-3.5 h-3.5 text-slate-400" /> Sea State
+                        </span>
+                        <span className="font-semibold text-slate-700 capitalize">{info.seaState}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" /> Duration
+                        </span>
+                        <span className="font-semibold text-slate-700">{info.duration}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                          <BrainCircuit className="w-3.5 h-3.5 text-slate-400" /> Control Mode
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
+                          info.control.includes('RL') 
+                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-150/40' 
+                            : 'bg-slate-100 text-slate-750 border border-slate-200'
+                        }`}>
+                          {info.control}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Expandable Details Area */}
+                <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${expandedId === model.id ? 'max-h-[320px]' : 'max-h-0'}`}>
+                  <div className="p-6 space-y-4 text-xs">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Wave Type
+                        </p>
+                        <p className="text-sm font-semibold text-slate-800 capitalize">{info.waveType}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          File Size
+                        </p>
+                        <p className="text-sm font-semibold text-slate-800">{formatSize(model.size)}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Creation Date
+                        </p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {new Date(model.date).toLocaleDateString()} {new Date(model.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          Entropy Coef
+                        </p>
+                        <p className="text-sm font-semibold text-slate-800">{model.ent_coef}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">
+                          Relative Path ID
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-500 break-all select-all font-mono mt-0.5">
+                          {model.id}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Toggle handle */}
+                <div 
+                  className="py-2.5 bg-slate-50/80 flex justify-center items-center text-slate-400 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-t border-slate-100"
+                  onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
+                >
+                  {expandedId === model.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
               </div>
-              
-              {/* Toggle handle */}
-              <div 
-                className="py-2 bg-slate-50 flex justify-center items-center text-slate-400 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
-              >
-                {expandedId === model.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
