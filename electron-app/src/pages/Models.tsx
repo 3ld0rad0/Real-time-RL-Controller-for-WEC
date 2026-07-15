@@ -67,13 +67,14 @@ function parseModelInfo(model: Model) {
 export default function Models({ onTestModel, active }: ModelsProps) {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const loadModelsList = () => {
     setLoading(true)
     window.api.getModels().then((data) => {
       setModels(data)
       setLoading(false)
+      setExpandedIndex(null)
     }).catch((err) => {
       console.error(err)
       setLoading(false)
@@ -133,13 +134,14 @@ export default function Models({ onTestModel, active }: ModelsProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-          {models.map(model => {
+          {models.map((model, index) => {
             const info = parseModelInfo(model);
+            const isExpanded = expandedIndex === index;
             return (
               <div key={model.id} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between">
                 <div 
                   className="p-6 cursor-pointer flex-1 flex flex-col justify-between"
-                  onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
+                  onClick={() => setExpandedIndex(isExpanded ? null : index)}
                 >
                   <div>
                     <div className="flex justify-between items-start mb-4">
@@ -158,7 +160,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                     <h3 className="font-bold text-lg text-slate-900 mb-4 truncate pr-2" title={model.name}>
                       {model.name}
                     </h3>
-
+                    
                     {/* Main Identifiers Section */}
                     <div className="space-y-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100/80">
                       <div className="flex justify-between items-center text-xs">
@@ -168,13 +170,13 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                         <span className="font-semibold text-slate-700 capitalize">{info.seaState}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                        <span className="text-slate-455 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-slate-400" /> Duration
                         </span>
                         <span className="font-semibold text-slate-700">{info.duration}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-450 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                        <span className="text-slate-455 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                           <BrainCircuit className="w-3.5 h-3.5 text-slate-400" /> Control Mode
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide ${
@@ -190,7 +192,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                 </div>
 
                 {/* Expandable Details Area */}
-                <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${expandedId === model.id ? 'max-h-[320px]' : 'max-h-0'}`}>
+                <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[320px]' : 'max-h-0'}`}>
                   <div className="p-6 space-y-4 text-xs">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
@@ -234,9 +236,9 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                 {/* Toggle handle */}
                 <div 
                   className="py-2.5 bg-slate-50/80 flex justify-center items-center text-slate-400 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-t border-slate-100"
-                  onClick={() => setExpandedId(expandedId === model.id ? null : model.id)}
+                  onClick={() => setExpandedIndex(isExpanded ? null : index)}
                 >
-                  {expandedId === model.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </div>
             )
