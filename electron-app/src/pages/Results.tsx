@@ -270,7 +270,7 @@ export default function Results({
   const [csvData, setCsvData] = useState<any[]>([])
   const [loadingCsv, setLoadingCsv] = useState(false)
   const [viewMode, setViewMode] = useState<'chart' | 'plot'>('chart')
-  const [timeWindow, setTimeWindow] = useState<'all' | 10 | 30 | 60>('all')
+  const [timeWindow, setTimeWindow] = useState<'all' | 60 | 180 | 900>('all')
 
   const loadCsvData = async (filename: string) => {
     setLoadingCsv(true)
@@ -521,9 +521,9 @@ export default function Results({
                       <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/65">
                         {[
                           { id: 'all', label: 'Full Sim' },
-                          { id: 60, label: 'Last 60s' },
-                          { id: 30, label: 'Last 30s' },
-                          { id: 10, label: 'Last 10s' }
+                          { id: 900, label: 'Last 15m' },
+                          { id: 180, label: 'Last 3m' },
+                          { id: 60, label: 'Last 60s' }
                         ].map((win) => (
                           <button
                             key={win.id}
