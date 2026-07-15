@@ -30,6 +30,7 @@ interface ResultsProps {
   active?: boolean
   autoExpandLatest?: boolean
   onClearAutoExpand?: () => void
+  selectedRunId?: string | null
 }
 
 function DownloadButton({ label, filename }: { label: string, filename: string }) {
@@ -73,7 +74,12 @@ function DownloadButton({ label, filename }: { label: string, filename: string }
   )
 }
 
-export default function Results({ active, autoExpandLatest, onClearAutoExpand }: ResultsProps) {
+export default function Results({ 
+  active, 
+  autoExpandLatest, 
+  onClearAutoExpand, 
+  selectedRunId
+}: ResultsProps) {
   const [results, setResults] = useState<ResultFile[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedFile, setExpandedFile] = useState<ResultFile | null>(null)
@@ -113,7 +119,7 @@ export default function Results({ active, autoExpandLatest, onClearAutoExpand }:
     // Only load CSV if plot is not available or user wants interactive
     if (file.files.main) {
       if (!file.plotUrl) {
-        loadCsvData(file.files.main)
+         loadCsvData(file.files.main)
       } else {
         setViewMode('plot') // default to plot if it exists, it's faster
       }
@@ -132,7 +138,14 @@ export default function Results({ active, autoExpandLatest, onClearAutoExpand }:
         setResults(data)
         setLoading(false)
         
-        if (autoExpandLatest && data.length > 0) {
+        if (selectedRunId) {
+          const run = data.find((r) => r.id === selectedRunId)
+          if (run) {
+            handleExpand(run)
+          } else if (data.length > 0) {
+            handleExpand(data[0])
+          }
+        } else if (autoExpandLatest && data.length > 0) {
           handleExpand(data[0])
           onClearAutoExpand?.()
         } else {
@@ -144,7 +157,7 @@ export default function Results({ active, autoExpandLatest, onClearAutoExpand }:
         setLoading(false)
       })
     }
-  }, [active, autoExpandLatest])
+  }, [active, autoExpandLatest, selectedRunId, onClearAutoExpand])
 
   const renderRunCard = (file: ResultFile) => {
     return (

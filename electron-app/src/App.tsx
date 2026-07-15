@@ -14,10 +14,12 @@ function App() {
   const [testModelId, setTestModelId] = useState<string | null>(null)
   const [runningSim, setRunningSim] = useState<'train' | 'test' | null>(null)
   const [autoExpandLatest, setAutoExpandLatest] = useState(false)
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
 
-  const navigateTo = (page: Page, autoExpand = false) => {
+  const navigateTo = (page: Page, autoExpand = false, runId: string | null = null) => {
     setCurrentPage(page)
     setAutoExpandLatest(autoExpand)
+    setSelectedRunId(runId)
   }
 
   const handleTestModel = (modelId: string) => {
@@ -43,6 +45,7 @@ function App() {
               active={currentPage === 'results'} 
               autoExpandLatest={autoExpandLatest}
               onClearAutoExpand={() => setAutoExpandLatest(false)}
+              selectedRunId={selectedRunId}
             />
           </div>
           <div className={currentPage === 'models' ? 'h-full' : 'hidden'}><Models onTestModel={handleTestModel} active={currentPage === 'models'} /></div>
