@@ -271,6 +271,9 @@ export default function Results({
   const [loadingCsv, setLoadingCsv] = useState(false)
   const [viewMode, setViewMode] = useState<'chart' | 'plot'>('chart')
   const [timeWindow, setTimeWindow] = useState<'all' | 60 | 180 | 900>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [controlFilter, setControlFilter] = useState('all')
+  const [waveFilter, setWaveFilter] = useState('all')
 
   const loadCsvData = async (filename: string) => {
     setLoadingCsv(true)
@@ -347,6 +350,14 @@ export default function Results({
   }, [active, autoExpandLatest, selectedRunId, onClearAutoExpand])
 
   if (!expandedFile) {
+    const filteredResults = results.filter((run) => {
+      const parsed = parseRunName(run.displayName)
+      const matchesSearch = run.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesControl = controlFilter === 'all' || parsed.control === controlFilter
+      const matchesWave = waveFilter === 'all' || parsed.wave.includes(waveFilter)
+      return matchesSearch && matchesControl && matchesWave
+    })
+
     // List View Grouped by Mode
     return (
       <div className="p-10 max-w-7xl mx-auto flex flex-col gap-6 h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
@@ -370,6 +381,7 @@ export default function Results({
           </div>
         ) : (
           <div className="w-full space-y-6 mb-10 animate-fade-in">
+            {/* Header statistics summary */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-700 text-white rounded-3xl p-6 shadow-md shadow-slate-900/10 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold font-display flex items-center gap-3">
@@ -383,15 +395,64 @@ export default function Results({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {results.map((file) => (
-                <ResultRunCard 
-                  key={file.id} 
-                  file={file} 
-                  onClick={() => handleExpand(file)} 
+            {/* Filter controls panel */}
+            <div className="flex flex-col md:flex-row gap-4 bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-sm">
+              {/* Text Search */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by run name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-800 placeholder-slate-400 font-sans"
                 />
-              ))}
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                {/* Control Mode Filter */}
+                <select
+                  value={controlFilter}
+                  onChange={(e) => setControlFilter(e.target.value)}
+                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
+                >
+                  <option value="all">All Control Methods</option>
+                  <option value="RL (Latching)">RL (Latching)</option>
+                  <option value="Baseline (Latching)">Baseline (Latching)</option>
+                  <option value="Baseline (Reactive)">Baseline (Reactive)</option>
+                </select>
+
+                {/* Wave Type Filter */}
+                <select
+                  value={waveFilter}
+                  onChange={(e) => setWaveFilter(e.target.value)}
+                  className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all cursor-pointer font-sans"
+                >
+                  <option value="all">All Wave Types</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Irregular">Irregular</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </div>
             </div>
+
+            {/* Catalog Grid */}
+            {filteredResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-slate-400 py-20 border-2 border-dashed border-slate-200 rounded-3xl bg-white/40 animate-fade-in">
+                <FileText className="w-12 h-12 text-slate-300 mb-3 opacity-60" />
+                <p className="font-bold text-slate-700 text-lg">No matching simulation logs found</p>
+                <p className="text-sm text-slate-400 mt-1">Try modifying your filter settings or search query keywords.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredResults.map((file) => (
+                  <ResultRunCard 
+                    key={file.id} 
+                    file={file} 
+                    onClick={() => handleExpand(file)} 
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
