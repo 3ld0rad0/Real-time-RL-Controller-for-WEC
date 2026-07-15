@@ -9,6 +9,7 @@ import {
   ChevronLeft, 
   Download,
   Check,
+  Clock,
   TrendingUp
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -269,6 +270,7 @@ export default function Results({
   const [csvData, setCsvData] = useState<any[]>([])
   const [loadingCsv, setLoadingCsv] = useState(false)
   const [viewMode, setViewMode] = useState<'chart' | 'plot'>('chart')
+  const [timeWindow, setTimeWindow] = useState<'all' | 10 | 30 | 60>('all')
 
   const loadCsvData = async (filename: string) => {
     setLoadingCsv(true)
@@ -298,6 +300,7 @@ export default function Results({
   const handleExpand = async (file: ResultFile) => {
     setExpandedFile(file)
     setViewMode('chart')
+    setTimeWindow('all')
     
     // Only load CSV if plot is not available or user wants interactive
     if (file.files.main) {
@@ -312,6 +315,7 @@ export default function Results({
   const handleBack = () => {
     setExpandedFile(null)
     setCsvData([])
+    setTimeWindow('all')
   }
 
   useEffect(() => {
@@ -489,82 +493,158 @@ export default function Results({
                 className="max-w-full rounded-2xl shadow-xl shadow-slate-900/5 border border-slate-200/80 bg-white"
               />
             </div>
-          )}
+          )}          {viewMode === 'chart' && (() => {
+            const getFilteredCsvData = () => {
+              if (timeWindow === 'all' || csvData.length === 0) return csvData;
+              const latestTime = csvData[csvData.length - 1].time;
+              const startTime = latestTime - timeWindow;
+              return csvData.filter((d) => d.time >= startTime);
+            }
+            const filteredData = getFilteredCsvData();
 
-          {viewMode === 'chart' && (
-            <>
-              {loadingCsv ? (
-                <div className="flex h-[350px] flex-col items-center justify-center text-purple-500">
-                  <Loader2 className="animate-spin h-10 w-10 text-purple-650 mb-3" />
-                  <span className="font-bold">Parsing Data Points...</span>
-                </div>
-              ) : csvData.length > 0 ? (
-                <div className="space-y-8 pb-8 animate-fade-in">
-                  {/* Position Chart */}
-                  <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-                    <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span> Position
-                    </h4>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={csvData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="time" tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dy={10} />
-                          <YAxis tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dx={-10} />
-                          <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
-                          <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                          <Line type="monotone" dataKey="position" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
+            return (
+              <>
+                {loadingCsv ? (
+                  <div className="flex h-[350px] flex-col items-center justify-center text-purple-505">
+                    <Loader2 className="animate-spin h-10 w-10 text-purple-650 mb-3" />
+                    <span className="font-bold">Parsing Data Points...</span>
+                  </div>
+                ) : filteredData.length > 0 ? (
+                  <div className="space-y-8 pb-8 animate-fade-in">
+                    
+                    {/* Time Window Display Toggles */}
+                    <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.015)]">
+                      <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-indigo-500" />
+                        Time Window Display
+                      </span>
+                      <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/65">
+                        {[
+                          { id: 'all', label: 'Full Sim' },
+                          { id: 60, label: 'Last 60s' },
+                          { id: 30, label: 'Last 30s' },
+                          { id: 10, label: 'Last 10s' }
+                        ].map((win) => (
+                          <button
+                            key={win.id}
+                            onClick={() => setTimeWindow(win.id as any)}
+                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                              timeWindow === win.id 
+                                ? 'bg-white text-indigo-650 shadow-sm border border-slate-200/40 font-extrabold' 
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {win.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Position Chart */}
+                    <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+                      <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span> Position
+                      </h4>
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="time" 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dy={8} 
+                              label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
+                            />
+                            <YAxis 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dx={-5} 
+                              label={{ value: 'Position (m)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
+                            />
+                            <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
+                            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
+                            <Line type="monotone" dataKey="position" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Velocity Chart */}
+                    <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+                      <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Velocity
+                      </h4>
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="time" 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dy={8} 
+                              label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
+                            />
+                            <YAxis 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dx={-5} 
+                              label={{ value: 'Velocity (m/s)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
+                            />
+                            <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
+                            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
+                            <Line type="monotone" dataKey="velocity" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Power Chart */}
+                    <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+                      <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-500"></span> Instantaneous Power
+                      </h4>
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="time" 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dy={8} 
+                              label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
+                            />
+                            <YAxis 
+                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
+                              axisLine={false} 
+                              tickLine={false} 
+                              dx={-5} 
+                              label={{ value: 'Power (W)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
+                            />
+                            <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
+                            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '15px' }} />
+                            <Line type="monotone" dataKey="power_inst" stroke="#a855f7" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Velocity Chart */}
-                  <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-                    <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Velocity
-                    </h4>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={csvData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="time" tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dy={10} />
-                          <YAxis tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dx={-10} />
-                          <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
-                          <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                          <Line type="monotone" dataKey="velocity" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                ) : (
+                  <div className="flex h-[300px] flex-col items-center justify-center text-slate-400 font-medium">
+                    <FileText className="w-12 h-12 mb-4 opacity-20" />
+                    Failed to parse CSV data or file is empty.
                   </div>
-
-                  {/* Power Chart */}
-                  <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-                    <h4 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-purple-500"></span> Instantaneous Power
-                    </h4>
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={csvData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="time" tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dy={10} />
-                          <YAxis tick={{fontSize: 12, fill: '#64748b', fontWeight: 500}} axisLine={false} tickLine={false} dx={-10} />
-                          <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
-                          <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                          <Line type="monotone" dataKey="power_inst" stroke="#a855f7" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-[300px] flex-col items-center justify-center text-slate-400 font-medium">
-                  <FileText className="w-12 h-12 mb-4 opacity-20" />
-                  Failed to parse CSV data or file is empty.
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
