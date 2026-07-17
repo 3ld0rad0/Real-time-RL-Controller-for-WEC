@@ -77,6 +77,20 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
   const [waveType, setWaveType] = useState('irregular')
   const [seaState, setSeaState] = useState('2')
   const [simTime, setSimTime] = useState('60')
+  const [runName, setRunName] = useState('')
+  const [existingRunNames, setExistingRunNames] = useState<string[]>([])
+
+  useEffect(() => {
+    window.api.getResults().then((data) => {
+      const names = data.map((r: any) => {
+        const nameMatch = r.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
+        return nameMatch ? nameMatch[1].toLowerCase() : '';
+      }).filter(Boolean);
+      setExistingRunNames(names);
+    }).catch((err) => console.error("Error loading results for validation:", err));
+  }, []);
+
+  const isNameDuplicate = runName.trim() !== '' && existingRunNames.includes(runName.trim().toLowerCase());
   const [modelId, setModelId] = useState(getRelativeModelPath(initialModelId || ''))
   const [models, setModels] = useState<any[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
@@ -217,7 +231,8 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
         sea_state: waveType === 'mixed' ? 1 : parseInt(seaState),
         sim_time: parseFloat(simTime),
         save: true,
-        model_id: modelId || undefined
+        model_id: modelId || undefined,
+        run_name: runName.trim() || undefined
       })
       if (result && typeof result === 'object' && result.latestRunId) {
         setLatestRunId(result.latestRunId)
@@ -356,6 +371,25 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Run Name (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter a custom name for this run..."
+                    className={`w-full bg-slate-50 border text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-sm ${
+                      isNameDuplicate ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-slate-200'
+                    }`}
+                    value={runName}
+                    onChange={e => setRunName(e.target.value)}
+                    disabled={running}
+                  />
+                  {isNameDuplicate && (
+                    <p className="text-xs text-red-500 font-semibold mt-1.5 animate-fade-in">
+                      This run name already exists. Please choose a unique name.
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Duration (s)</label>
@@ -408,8 +442,8 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
               <div className="pt-6 mt-6 border-t border-slate-100">
                 <button 
                   type="submit" 
-                  disabled={runningSim !== null}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-355 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-emerald-600/20 disabled:shadow-none flex justify-center items-center gap-2 group cursor-pointer"
+                  disabled={runningSim !== null || isNameDuplicate}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-4 px-4 font-bold transition-colors shadow-lg shadow-emerald-600/20 disabled:shadow-none flex justify-center items-center gap-2 group cursor-pointer"
                 >
                   <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" /> Start Test Run
                 </button>

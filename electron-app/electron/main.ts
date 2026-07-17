@@ -260,6 +260,7 @@ ipcMain.handle('run-simulation', async (event, args) => {
     if (args.sim_time) cmdArgs.push('--sim-time', args.sim_time.toString())
     if (args.save) cmdArgs.push('--save')
     if (args.retrain) cmdArgs.push('--retrain')
+    if (args.run_name) cmdArgs.push('--run-name', args.run_name.toString())
 
     if (args.model_id) {
       const modelPath = path.isAbsolute(args.model_id)

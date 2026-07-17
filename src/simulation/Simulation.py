@@ -71,12 +71,20 @@ class Simulation:
         time_str = f"{self._sim_time / 3600}h" if self._sim_mode == 'train' else f"{self._sim_time}s"
         dt_str = f"{self._d_t}".replace('.', '') + "s"
         
+        # Determine suffix/prefix for custom run name to avoid flat concatenation
+        sim_suffix = ""
+        if self._sim_name:
+            if self._sim_name.isdigit():
+                sim_suffix = self._sim_name
+            else:
+                sim_suffix = f"_run_{self._sim_name}"
+        
         if self._mixed_sea_state:
-            self._file_name = f'simulation_mixed{self._sim_name}_{self._control_mode}_{self._control_alg}_{time_str}_{dt_str}_{self._wave_mode}'
+            self._file_name = f'simulation_mixed{sim_suffix}_{self._control_mode}_{self._control_alg}_{time_str}_{dt_str}_{self._wave_mode}'
             self._base_data_name = f'{sim_dir}/{self._sim_mode}/data/{self._wave_mode}/sea_state_mixed'
             self._base_plot_name = f'{sim_dir}/{self._sim_mode}/plot/{self._wave_mode}/sea_state_mixed'
         else:
-            self._file_name = f'simulation{self._sim_name}_{self._control_mode}_{self._control_alg}_{time_str}_{dt_str}_{self._oscillator.get_wave_height()}_{self._oscillator.get_period()}_{self._wave_mode}'
+            self._file_name = f'simulation{sim_suffix}_{self._control_mode}_{self._control_alg}_{time_str}_{dt_str}_{self._oscillator.get_wave_height()}_{self._oscillator.get_period()}_{self._wave_mode}'
             self._base_data_name = f'{sim_dir}/{self._sim_mode}/data/{self._wave_mode}/sea_state_{self._oscillator.get_wave_height()}_{self._oscillator.get_period()}'
             self._base_plot_name = f'{sim_dir}/{self._sim_mode}/plot/{self._wave_mode}/sea_state_{self._oscillator.get_wave_height()}_{self._oscillator.get_period()}'
         

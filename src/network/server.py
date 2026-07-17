@@ -25,8 +25,12 @@ TRAIN = config['train_model']
 N_BATCH = config['batch_size']
 RL_CONTROL = config['rl_control']
 
-sim_name = "1" if N_BATCH > 1 else ""
-config["sim_name"] = sim_name
+if N_BATCH > 1:
+    base_name = config.get("sim_name", "")
+    config["sim_name"] = f"{base_name}_1" if base_name else "1"
+else:
+    if "sim_name" not in config:
+        config["sim_name"] = ""
 
 write_config_file(config)
 

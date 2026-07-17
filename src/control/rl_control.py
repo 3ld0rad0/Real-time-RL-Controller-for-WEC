@@ -71,13 +71,20 @@ class RLController(BaseController):
         dt_str = f"{c['d_t']}".replace(".", "")
         ft_suffix = "_fine_tuning" if c.get('retrain', False) else ""
         
+        sim_suffix = ""
+        if sim:
+            if sim.isdigit():
+                sim_suffix = sim
+            else:
+                sim_suffix = f"_{sim}"
+        
         if c['mixed_sea_state']:
-            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{wave_mode}'
+            model_name = f'ppomodel_sim{sim_suffix}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{wave_mode}'
             base_path = f'./models/{wave_mode}/sea_state_mixed/simulation_{c["ent_coef"]}'
         else:
             nSS = c['init_SS_train']
             hw, period = c['wave_height_table'][nSS], c['period_table'][nSS]
-            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{float(hw)}_{float(period)}_{wave_mode}'
+            model_name = f'ppomodel_sim{sim_suffix}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{float(hw)}_{float(period)}_{wave_mode}'
             base_path = f'./models/{wave_mode}/sea_state_{float(hw)}_{float(period)}/simulation_{c["ent_coef"]}'
 
         os.makedirs(base_path, exist_ok=True)
@@ -110,13 +117,20 @@ class RLController(BaseController):
         dt_str = f"{c['d_t']}".replace(".", "")
         t_str = f"{c['sim_time_train']}h" if mode == 'train' else f"{c['sim_time_test']}s"
         
+        sim_suffix = ""
+        if sim:
+            if sim.isdigit():
+                sim_suffix = sim
+            else:
+                sim_suffix = f"_run_{sim}"
+        
         if c['mixed_sea_state']:
-            file_name = f'simulation_mixed{sim}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{wave}'
+            file_name = f'simulation_mixed{sim_suffix}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{wave}'
             base_name = f"{c['results_dir']}/{mode}/data/{wave}/sea_state_mixed"
         else:
             nSS = c['init_SS_train'] if mode == 'train' else c['init_SS_test']
             hw, period = c['wave_height_table'][nSS], c['period_table'][nSS]
-            file_name = f'simulation{sim}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{float(hw)}_{float(period)}_{wave}'
+            file_name = f'simulation{sim_suffix}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{float(hw)}_{float(period)}_{wave}'
             base_name = f"{c['results_dir']}/{mode}/data/{wave}/sea_state_{float(hw)}_{float(period)}"
 
         reward_path = f'{base_name}/{file_name}_reward.csv'

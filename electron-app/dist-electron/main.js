@@ -120,7 +120,7 @@ r.handle("get-results", async () => v()), r.handle("download-result-file", async
 			"--sea-state",
 			t.sea_state.toString()
 		];
-		if (t.mixed && u.push("--mixed"), t.regular && u.push("--regular"), t.sim_time && u.push("--sim-time", t.sim_time.toString()), t.save && u.push("--save"), t.retrain && u.push("--retrain"), t.model_id) {
+		if (t.mixed && u.push("--mixed"), t.regular && u.push("--regular"), t.sim_time && u.push("--sim-time", t.sim_time.toString()), t.save && u.push("--save"), t.retrain && u.push("--retrain"), t.run_name && u.push("--run-name", t.run_name.toString()), t.model_id) {
 			let e = a.isAbsolute(t.model_id) ? t.model_id : a.join(f, "models", t.model_id);
 			u.push("--model-path", e);
 		}

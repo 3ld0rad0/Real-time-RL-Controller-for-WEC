@@ -62,6 +62,8 @@ def main():
                         help="Dimensione del batch per il training.")
     parser.add_argument("--entropy-coef", type=float, default=None,
                         help="Coefficiente di entropia per il training.")
+    parser.add_argument("--run-name", type=str, default=None,
+                        help="Nome personalizzato per la simulazione.")
     
     args = parser.parse_args()
 
@@ -98,6 +100,11 @@ def main():
         
     if args.entropy_coef is not None:
         config["ent_coef"] = args.entropy_coef
+
+    if args.run_name is not None:
+        config["sim_name"] = args.run_name
+    else:
+        config["sim_name"] = ""
     
     if args.mode == "train":
         config["init_SS_train"] = args.sea_state

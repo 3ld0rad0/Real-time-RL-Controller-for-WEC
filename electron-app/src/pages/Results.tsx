@@ -82,7 +82,7 @@ function parseRunName(displayName: string) {
   };
 }
 
-function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => void }) {
+function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile; hasTrain?: boolean; hasTest?: boolean; onClick: () => void }) {
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<{ energyAbs?: string; eta?: string } | null>(null)
 
@@ -141,6 +141,14 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
   const formattedDate = new Date(file.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
     new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Extract custom run name
+  const nameMatch = file.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
+  const customRunName = nameMatch ? nameMatch[1] : '';
+
+  // Badges rendering
+  const trainBadge = hasTrain ?? (file.mode === 'train');
+  const testBadge = hasTest ?? (file.mode !== 'train');
+
   return (
     <button
       onClick={onClick}
@@ -148,10 +156,18 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
     >
       {/* Top badges/row */}
       <div className="flex items-center justify-between w-full">
-        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${file.mode === 'train' ? 'bg-indigo-50 text-indigo-755 border border-indigo-150' : 'bg-emerald-50 text-emerald-755 border border-emerald-150'
-          }`}>
-          {file.mode === 'train' ? 'TRAINING' : 'TESTING'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {trainBadge && (
+            <span className="text-[9px] font-black px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-150 rounded-full uppercase tracking-wider">
+              TRAINING
+            </span>
+          )}
+          {testBadge && (
+            <span className="text-[9px] font-black px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-150 rounded-full uppercase tracking-wider">
+              TESTING
+            </span>
+          )}
+        </div>
         <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5" />
           {formattedDate}
@@ -160,11 +176,11 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
 
       {/* Main Info */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-slate-800 text-base truncate mb-1 group-hover:text-indigo-655 transition-colors" title={file.displayName}>
-          {info.control}
+        <h3 className="font-bold text-slate-800 text-base truncate mb-1 group-hover:text-indigo-650 transition-colors" title={file.displayName}>
+          {customRunName || info.control}
         </h3>
         <p className="text-sm text-slate-500 font-medium mb-1">
-          {info.wave} • {info.seaState}
+          {customRunName ? `${info.control} • ` : ''}{info.wave} • {info.seaState}
         </p>
         <div className="flex flex-wrap gap-2 mt-2">
           {info.duration && (
@@ -277,6 +293,7 @@ export default function Results({
   const [modeFilter, setModeFilter] = useState('all')
   const [seaStateFilter, setSeaStateFilter] = useState('all')
   const [controlFilter, setControlFilter] = useState('all')
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null)
 
   const loadCsvData = async (filename: string) => {
     setLoadingCsv(true)
@@ -371,6 +388,59 @@ export default function Results({
       return matchesSearch && matchesMode && matchesSeaState && matchesControl
     })
 
+    // Group filtered results to aggregate train and test phases.
+    // If a custom run name is specified, group by it directly to catch runs across different sea states.
+    // Otherwise, fallback to the parameter key (excluding duration).
+    const groupedMap: Record<string, {
+      displayName: string;
+      customRunName: string;
+      date: string;
+      trainRun?: ResultFile;
+      testRun?: ResultFile;
+      primaryRun: ResultFile;
+    }> = {};
+
+    filteredResults.forEach((run) => {
+      const nameMatch = run.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
+      const customRunName = nameMatch ? nameMatch[1] : '';
+
+      const groupingKey = customRunName 
+        ? `custom_${customRunName.toLowerCase()}`
+        : run.displayName.replace(/_(\d+(?:\.\d+)?[sh])_/, '_DURATION_');
+
+      if (!groupedMap[groupingKey]) {
+        groupedMap[groupingKey] = {
+          displayName: run.displayName,
+          customRunName,
+          date: run.date,
+          primaryRun: run
+        };
+      }
+
+      if (new Date(run.date).getTime() > new Date(groupedMap[groupingKey].date).getTime()) {
+        groupedMap[groupingKey].date = run.date;
+      }
+
+      if (run.mode === 'train') {
+        groupedMap[groupingKey].trainRun = run;
+        groupedMap[groupingKey].primaryRun = run;
+      } else {
+        groupedMap[groupingKey].testRun = run;
+      }
+    });
+
+    const groupedList = Object.values(groupedMap);
+
+    const handleCardClick = (group: typeof groupedList[number]) => {
+      if (group.trainRun && group.testRun) {
+        setSelectedGroup(group);
+      } else if (group.trainRun) {
+        handleExpand(group.trainRun);
+      } else if (group.testRun) {
+        handleExpand(group.testRun);
+      }
+    };
+
     // List View Grouped by Mode
     return (
       <div className="p-10 w-full flex flex-col gap-6 h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
@@ -404,7 +474,7 @@ export default function Results({
                 <p className="text-xs text-slate-300 mt-1 font-medium font-sans">Showing all training and testing results logs in chronological order</p>
               </div>
               <span className="text-sm font-bold bg-white/10 px-3.5 py-1.5 rounded-full border border-white/15">
-                {results.length} Runs Total
+                {groupedList.length} Runs Total
               </span>
             </div>
 
@@ -468,7 +538,7 @@ export default function Results({
             </div>
 
             {/* Catalog Grid */}
-            {filteredResults.length === 0 ? (
+            {groupedList.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-slate-400 py-20 border-2 border-dashed border-slate-200 rounded-3xl bg-white/40 animate-fade-in">
                 <FileText className="w-12 h-12 text-slate-300 mb-3 opacity-60" />
                 <p className="font-bold text-slate-700 text-lg">No matching simulation logs found</p>
@@ -476,15 +546,65 @@ export default function Results({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredResults.map((file) => (
+                {groupedList.map((group) => (
                   <ResultRunCard
-                    key={file.id}
-                    file={file}
-                    onClick={() => handleExpand(file)}
+                    key={group.displayName}
+                    file={group.primaryRun}
+                    hasTrain={!!group.trainRun}
+                    hasTest={!!group.testRun}
+                    onClick={() => handleCardClick(group)}
                   />
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Selection overlay/modal */}
+        {selectedGroup && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-100 shadow-2xl flex flex-col gap-6 animate-scale-up">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 mb-1">Select Visualization Mode</h3>
+                <p className="text-sm text-slate-400">
+                  This run "{selectedGroup.customRunName || selectedGroup.displayName}" contains both training and testing metrics.
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                {selectedGroup.trainRun && (
+                  <button
+                    onClick={() => {
+                      handleExpand(selectedGroup.trainRun!)
+                      setSelectedGroup(null)
+                    }}
+                    className="w-full py-4 px-6 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-2xl transition-all border border-indigo-100 flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Training Phase Results</span>
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )}
+                {selectedGroup.testRun && (
+                  <button
+                    onClick={() => {
+                      handleExpand(selectedGroup.testRun!)
+                      setSelectedGroup(null)
+                    }}
+                    className="w-full py-4 px-6 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-2xl transition-all border border-emerald-100 flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Testing Phase Results (Evaluation)</span>
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+              
+              <button
+                onClick={() => setSelectedGroup(null)}
+                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-655 font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -516,7 +636,10 @@ export default function Results({
               </span>
             </div>
             <h1 className="text-2xl font-bold font-display text-slate-900 truncate max-w-xl pr-4" title={expandedFile.displayName}>
-              {expandedFile.displayName}
+              {(() => {
+                const nameMatch = expandedFile.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
+                return nameMatch ? nameMatch[1] : expandedFile.displayName;
+              })()}
             </h1>
           </div>
         </div>

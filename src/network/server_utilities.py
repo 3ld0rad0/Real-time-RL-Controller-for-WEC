@@ -251,12 +251,20 @@ def start_simulation_rl(conn, n_batch, train_mode, config):
     if n_batch > 1:
         logger.critical(f"Starting {n_batch} simulations in background mode...")
         total_energy_v = []
+        base_sim_name = config.get("sim_name", "")
+        if base_sim_name.endswith("_1"):
+            base_sim_name = base_sim_name[:-2]
+            
         for i in range(1, n_batch + 1):
             energy_abs = _run_single_episode(conn, train_mode)
             total_energy_v.append(energy_abs)
             
             cfg = read_config_file()
-            cfg["sim_name"] = str(i+1) if i < n_batch else ""
+            next_idx = str(i+1) if i < n_batch else ""
+            if base_sim_name:
+                cfg["sim_name"] = f"{base_sim_name}_{next_idx}" if next_idx else base_sim_name
+            else:
+                cfg["sim_name"] = next_idx
             write_config_file(cfg)
             logger.critical(f"\nTerminated Simulation{i}...\n")
             
