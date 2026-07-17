@@ -25,9 +25,16 @@ class StopTrainingOnEpisodeCount(BaseCallback):
             if num_dones > 0:
                 self.episode_counter += num_dones
                 
-                # 1. Retrieve cumulative reward from ep_info_buffer
+                # 1. Retrieve cumulative reward (check current infos first to avoid 1-episode lag)
                 reward = 0.0
-                if len(self.model.ep_info_buffer) > 0:
+                ep_rewards = []
+                for info in self.locals.get("infos", []):
+                    if "episode" in info:
+                        ep_rewards.append(info["episode"]["r"])
+                
+                if ep_rewards:
+                    reward = float(np.mean(ep_rewards))
+                elif len(self.model.ep_info_buffer) > 0:
                     reward = float(np.mean([ep_info['r'] for ep_info in self.model.ep_info_buffer]))
                 
                 # 2. Retrieve loss from name_to_value logger dictionary
@@ -62,15 +69,16 @@ class RLController(BaseController):
         wave_mode = 'regular' if c['regular'] else 'irregular'
         sim = c.get("sim_name", "")
         dt_str = f"{c['d_t']}".replace(".", "")
+        ft_suffix = "_fine_tuning" if c.get('retrain', False) else ""
         
         if c['mixed_sea_state']:
-            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}_{c["sim_time_train"]}h_{dt_str}s_{wave_mode}'
+            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{wave_mode}'
             base_path = f'./models/{wave_mode}/sea_state_mixed/simulation_{c["ent_coef"]}'
         else:
             nSS = c['init_SS_train']
             hw, period = c['wave_height_table'][nSS], c['period_table'][nSS]
-            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}_{c["sim_time_train"]}h_{dt_str}s_{hw}_{period}_{wave_mode}'
-            base_path = f'./models/{wave_mode}/sea_state_{hw}_{period}/simulation_{c["ent_coef"]}'
+            model_name = f'ppomodel_sim{sim}_{c["control_mode"]}{ft_suffix}_{c["sim_time_train"]}h_{dt_str}s_{float(hw)}_{float(period)}_{wave_mode}'
+            base_path = f'./models/{wave_mode}/sea_state_{float(hw)}_{float(period)}/simulation_{c["ent_coef"]}'
 
         os.makedirs(base_path, exist_ok=True)
         return f'{base_path}/{model_name}'
@@ -85,7 +93,14 @@ class RLController(BaseController):
     def init_env(self, config, socket, mode):
         c = config
         sim_time = c['sim_time_train'] * 3600 if mode == 'train' else c['sim_time_test']
-        timesteps = c['n_steps']
+        
+        # Calculate timesteps dynamically to avoid race conditions with server updating config.json
+        if mode == 'train':
+            timesteps = int((1 / c['d_t']) * sim_time)
+            c['n_steps'] = timesteps
+        else:
+            timesteps = c['n_steps']
+            
         episodes = np.ceil(np.max((4, timesteps / 1800)))
         
         # Preparazione stringhe per i path
@@ -101,8 +116,8 @@ class RLController(BaseController):
         else:
             nSS = c['init_SS_train'] if mode == 'train' else c['init_SS_test']
             hw, period = c['wave_height_table'][nSS], c['period_table'][nSS]
-            file_name = f'simulation{sim}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{hw}_{period}_{wave}'
-            base_name = f"{c['results_dir']}/{mode}/data/{wave}/sea_state_{hw}_{period}"
+            file_name = f'simulation{sim}_{c["control_mode"]}_{alg}_{t_str}_{dt_str}s_{float(hw)}_{float(period)}_{wave}'
+            base_name = f"{c['results_dir']}/{mode}/data/{wave}/sea_state_{float(hw)}_{float(period)}"
 
         reward_path = f'{base_name}/{file_name}_reward.csv'
         
@@ -143,7 +158,13 @@ class RLController(BaseController):
         ent_coef = config.get('ent_coef', 0.0)
         sim_name = config.get('sim_name', "")
         
-        model_path = self.get_save_path(config) if config['path_model'] == '' else config['path_model']
+        # Determine the save path for the model.
+        # If we are retraining/fine-tuning, we must generate a new save path using get_save_path
+        # to avoid overwriting the base model, since path_model is set to the base model's path.
+        if retrain:
+            model_path = self.get_save_path(config)
+        else:
+            model_path = self.get_save_path(config) if config['path_model'] == '' else config['path_model']
         self.model_path = model_path
         
         env_train = self.init_env(config, socket, mode='train')
@@ -186,7 +207,8 @@ class RLController(BaseController):
         """
         env_train, timesteps, episodes, sim_name, model_path = self._init_training(socket, config)
         
-        logger.info(f'Starting train simulation...')
+        mode_label = "fine-tuning" if config.get('retrain', False) else "train"
+        logger.info(f'Starting {mode_label} simulation...')
         self.model.learn(total_timesteps=timesteps, tb_log_name=f"simulation{sim_name}_PPO_log", callback=StopTrainingOnEpisodeCount(max_episodes=episodes, verbose=1))
         
         self.model.save(model_path)

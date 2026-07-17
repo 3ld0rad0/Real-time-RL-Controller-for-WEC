@@ -88,6 +88,10 @@ def main():
     if args.model_path is not None:
         config["path_model"] = args.model_path
         config["retrain_path_model"] = args.model_path
+    else:
+        if args.mode == "train" and not args.retrain:
+            config["path_model"] = ""
+            config["retrain_path_model"] = ""
         
     if args.batch_size is not None:
         config["batch_size"] = args.batch_size
@@ -104,6 +108,14 @@ def main():
         if args.sim_time is not None:
             config["sim_time_test"] = args.sim_time
 
+    # Calculate n_steps and n_episodes based on sim_time_train to prevent race conditions during initialization
+    import math
+    d_t = config.get("d_t", 0.5)
+    sim_time_train = config.get("sim_time_train", 0.5)
+    n_steps = int((1 / d_t) * (sim_time_train * 3600))
+    config["n_steps"] = n_steps
+    config["n_episodes"] = math.ceil(max(4.0, n_steps / 1800))
+
     # Salva la configurazione aggiornata
     save_config(config)
     
@@ -117,6 +129,7 @@ def main():
     table.add_row("Mixed Sea State", str(args.mixed))
     table.add_row("Regular Waves", str(args.regular))
     table.add_row("Save Mode", str(args.save))
+    table.add_row("Fine-tuning", str(args.retrain))
     if args.sim_time is not None:
         table.add_row("Sim Time", str(args.sim_time))
         

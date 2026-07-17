@@ -22,7 +22,6 @@ export default function Settings({ active, runningSim }: SettingsProps) {
   const [resultsDir, setResultsDir] = useState('./results')
   const [initCStar, setInitCStar] = useState('0.5')
   const [initGStar, setInitGStar] = useState('5.0')
-  const [nEpisodes, setNEpisodes] = useState('4.0')
   const [entCoef, setEntCoef] = useState('0.01')
   const [batchSize, setBatchSize] = useState('1')
   const [simTimeTrain, setSimTimeTrain] = useState('0.1')
@@ -40,7 +39,6 @@ export default function Settings({ active, runningSim }: SettingsProps) {
           setResultsDir(data.results_dir || './results')
           setInitCStar((data.init_C_star ?? 0.5).toString())
           setInitGStar((data.init_G_star ?? 5.0).toString())
-          setNEpisodes((data.n_episodes ?? 4.0).toString())
           setEntCoef((data.ent_coef ?? 0.01).toString())
           setBatchSize((data.batch_size ?? 1).toString())
           setSimTimeTrain((data.sim_time_train ?? 0.1).toString())
@@ -68,7 +66,6 @@ export default function Settings({ active, runningSim }: SettingsProps) {
         results_dir: resultsDir,
         init_C_star: parseFloat(initCStar),
         init_G_star: parseFloat(initGStar),
-        n_episodes: parseFloat(nEpisodes),
         ent_coef: parseFloat(entCoef),
         batch_size: parseInt(batchSize, 10),
         sim_time_train: parseFloat(simTimeTrain)
@@ -272,18 +269,6 @@ export default function Settings({ active, runningSim }: SettingsProps) {
                   className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
                   value={initGStar}
                   onChange={(e) => setInitGStar(e.target.value)}
-                  disabled={disabled || saving}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Default Episodes (n_episodes)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-semibold text-sm hover:border-slate-300 disabled:cursor-not-allowed"
-                  value={nEpisodes}
-                  onChange={(e) => setNEpisodes(e.target.value)}
                   disabled={disabled || saving}
                 />
               </div>

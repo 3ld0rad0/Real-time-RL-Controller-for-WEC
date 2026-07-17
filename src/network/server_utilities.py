@@ -233,11 +233,12 @@ def _run_single_episode(conn, train_mode):
     sim_name = config['sim_name']
     
     if train_mode:
-        _log_sim_start(sim_name, 'Training', config, 
+        label = 'Fine-tuning' if config.get('retrain', False) else 'Training'
+        _log_sim_start(sim_name, label, config, 
                        sim_train.get_oscillator().get_period(), 
                        sim_train.get_oscillator().get_wave_height())
         simulation_handler(conn, sim_train, 'rl')
-        logger.info("Training Simulation finished...\n")
+        logger.info(f"{label} Simulation finished...\n")
 
     _log_sim_start(sim_name, 'Testing', config, 
                    sim_test.get_oscillator().get_period(), 

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { 
-  LineChart as LineChartIcon, 
-  FileText, 
-  ChevronRight, 
-  Image as ImageIcon, 
-  Calendar, 
-  Loader2, 
-  ChevronLeft, 
+import {
+  LineChart as LineChartIcon,
+  FileText,
+  ChevronRight,
+  Image as ImageIcon,
+  Calendar,
+  Loader2,
+  ChevronLeft,
   Download,
   Check,
   Clock,
@@ -92,7 +92,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
       try {
         let energyAbsStr = undefined;
         let etaStr = undefined;
-        
+
         if (file.files.energy) {
           const energyCsv = await window.api.readCSV(file.files.energy);
           const lines = energyCsv.split('\n').map(l => l.trim()).filter(Boolean);
@@ -101,7 +101,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
             const values = lines[1].split(',');
             const energyAbsIdx = headers.indexOf('energy_abs');
             const etaIdx = headers.indexOf('eta');
-            
+
             if (energyAbsIdx !== -1 && values[energyAbsIdx]) {
               const energyVal = parseFloat(values[energyAbsIdx]);
               if (!isNaN(energyVal)) {
@@ -120,7 +120,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
             }
           }
         }
-        
+
         if (active) {
           setMetrics({ energyAbs: energyAbsStr, eta: etaStr });
           setLoading(false);
@@ -130,7 +130,7 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
         if (active) setLoading(false);
       }
     }
-    
+
     loadData();
     return () => {
       active = false;
@@ -138,8 +138,8 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
   }, [file]);
 
   const info = parseRunName(file.displayName);
-  const formattedDate = new Date(file.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
-                        new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedDate = new Date(file.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
+    new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <button
@@ -148,9 +148,8 @@ function ResultRunCard({ file, onClick }: { file: ResultFile; onClick: () => voi
     >
       {/* Top badges/row */}
       <div className="flex items-center justify-between w-full">
-        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-          file.mode === 'train' ? 'bg-indigo-50 text-indigo-755 border border-indigo-150' : 'bg-emerald-50 text-emerald-755 border border-emerald-150'
-        }`}>
+        <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${file.mode === 'train' ? 'bg-indigo-50 text-indigo-755 border border-indigo-150' : 'bg-emerald-50 text-emerald-755 border border-emerald-150'
+          }`}>
           {file.mode === 'train' ? 'TRAINING' : 'TESTING'}
         </span>
         <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
@@ -244,11 +243,10 @@ function DownloadButton({ label, filename }: { label: string, filename: string }
     <button
       onClick={handleDownload}
       disabled={downloading}
-      className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2 cursor-pointer shadow-sm ${
-        success
+      className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2 cursor-pointer shadow-sm ${success
           ? 'bg-emerald-50 text-emerald-700 border-emerald-250'
           : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-      }`}
+        }`}
     >
       {downloading ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -262,10 +260,10 @@ function DownloadButton({ label, filename }: { label: string, filename: string }
   )
 }
 
-export default function Results({ 
-  active, 
-  autoExpandLatest, 
-  onClearAutoExpand, 
+export default function Results({
+  active,
+  autoExpandLatest,
+  onClearAutoExpand,
   selectedRunId
 }: ResultsProps) {
   const [results, setResults] = useState<ResultFile[]>([])
@@ -309,11 +307,11 @@ export default function Results({
     setExpandedFile(file)
     setViewMode('chart')
     setTimeWindow('all')
-    
+
     // Only load CSV if plot is not available or user wants interactive
     if (file.files.main) {
       if (!file.plotUrl) {
-         loadCsvData(file.files.main)
+        loadCsvData(file.files.main)
       } else {
         setViewMode('plot') // default to plot if it exists, it's faster
       }
@@ -332,7 +330,7 @@ export default function Results({
       window.api.getResults().then((data) => {
         setResults(data)
         setLoading(false)
-        
+
         if (selectedRunId) {
           const run = data.find((r) => r.id === selectedRunId)
           if (run) {
@@ -358,18 +356,18 @@ export default function Results({
     const filteredResults = results.filter((run) => {
       const parsed = parseRunName(run.displayName)
       const matchesSearch = run.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       // 1) Train/Test Filter
-      const matchesMode = modeFilter === 'all' || 
+      const matchesMode = modeFilter === 'all' ||
         (modeFilter === 'train' && run.mode === 'train') ||
         (modeFilter === 'test' && (run.mode === 'test' || run.mode === 'final'))
-        
+
       // 2) Sea State Filter
       const matchesSeaState = seaStateFilter === 'all' || parsed.seaState.includes(seaStateFilter)
-      
+
       // 3) Control Method Filter
       const matchesControl = controlFilter === 'all' || parsed.control === controlFilter
-      
+
       return matchesSearch && matchesMode && matchesSeaState && matchesControl
     })
 
@@ -422,7 +420,7 @@ export default function Results({
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all font-medium text-slate-800 placeholder-slate-400 font-sans"
                 />
               </div>
-              
+
               <div className="flex flex-wrap gap-3">
                 {/* 1) Train/Test Filter */}
                 <Dropdown
@@ -479,10 +477,10 @@ export default function Results({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredResults.map((file) => (
-                  <ResultRunCard 
-                    key={file.id} 
-                    file={file} 
-                    onClick={() => handleExpand(file)} 
+                  <ResultRunCard
+                    key={file.id}
+                    file={file}
+                    onClick={() => handleExpand(file)}
                   />
                 ))}
               </div>
@@ -508,9 +506,8 @@ export default function Results({
           </button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                expandedFile.mode === 'train' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
-              }`}>
+              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${expandedFile.mode === 'train' ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                }`}>
                 {expandedFile.mode === 'train' ? 'TRAINING' : 'TESTING'}
               </span>
               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
@@ -527,21 +524,21 @@ export default function Results({
         {/* Download CSV Files Actions */}
         <div className="flex items-center gap-2 shrink-0">
           {expandedFile.files.main && (
-            <DownloadButton 
-              label="Time-Series CSV" 
-              filename={expandedFile.files.main} 
+            <DownloadButton
+              label="Time-Series CSV"
+              filename={expandedFile.files.main}
             />
           )}
           {expandedFile.files.energy && (
-            <DownloadButton 
-              label="Energy CSV" 
-              filename={expandedFile.files.energy} 
+            <DownloadButton
+              label="Energy CSV"
+              filename={expandedFile.files.energy}
             />
           )}
           {expandedFile.files.reward && (
-            <DownloadButton 
-              label="Reward CSV" 
-              filename={expandedFile.files.reward} 
+            <DownloadButton
+              label="Reward CSV"
+              filename={expandedFile.files.reward}
             />
           )}
         </div>
@@ -551,14 +548,13 @@ export default function Results({
       <div className="flex-1 glass-card rounded-3xl shadow-sm flex flex-col overflow-hidden bg-white/40">
         <div className="p-6 border-b border-slate-100/50 flex items-center justify-between bg-white/60 backdrop-blur-md shrink-0">
           <h3 className="text-lg font-bold font-display text-slate-800">Visualization</h3>
-          
+
           <div className="flex items-center gap-2 bg-slate-100/80 rounded-xl p-1 border border-slate-200/60 shadow-inner">
             {expandedFile.plotUrl && (
               <button
                 onClick={() => setViewMode('plot')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${
-                  viewMode === 'plot' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${viewMode === 'plot' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 <ImageIcon className="w-4 h-4" /> PNG Plot
               </button>
@@ -570,9 +566,8 @@ export default function Results({
                   loadCsvData(expandedFile.files.main)
                 }
               }}
-              className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${
-                viewMode === 'chart' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
+              className={`px-4 py-2 text-sm font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${viewMode === 'chart' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
               <LineChartIcon className="w-4 h-4" /> Interactive
             </button>
@@ -582,8 +577,8 @@ export default function Results({
         <div className="flex-1 p-8 overflow-y-auto bg-white/30 custom-scrollbar">
           {viewMode === 'plot' && expandedFile.plotUrl && (
             <div className="flex justify-center items-center min-h-full">
-              <img 
-                src={expandedFile.plotUrl} 
+              <img
+                src={expandedFile.plotUrl}
                 alt="Matplotlib generated plot"
                 className="max-w-full rounded-2xl shadow-xl shadow-slate-900/5 border border-slate-200/80 bg-white"
               />
@@ -609,7 +604,7 @@ export default function Results({
                   </div>
                 ) : filteredData.length > 0 ? (
                   <div className="space-y-8 pb-8 animate-fade-in">
-                    
+
                     {/* Time Window Display Toggles */}
                     <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-150 shadow-[0_4px_24px_rgba(0,0,0,0.015)]">
                       <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-2">
@@ -629,13 +624,12 @@ export default function Results({
                               key={win.id}
                               disabled={isDisabled}
                               onClick={() => setTimeWindow(win.id as any)}
-                              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                isDisabled
+                              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${isDisabled
                                   ? 'text-slate-400/50 bg-transparent cursor-not-allowed'
-                                  : timeWindow === win.id 
-                                    ? 'bg-white text-indigo-650 shadow-sm border border-slate-200/40 font-extrabold cursor-pointer' 
+                                  : timeWindow === win.id
+                                    ? 'bg-white text-indigo-650 shadow-sm border border-slate-200/40 font-extrabold cursor-pointer'
                                     : 'text-slate-500 hover:text-slate-800 cursor-pointer'
-                              }`}
+                                }`}
                             >
                               {win.label}
                             </button>
@@ -653,19 +647,19 @@ export default function Results({
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="time" 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dy={8} 
+                            <XAxis
+                              dataKey="time"
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dy={8}
                               label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
                             />
-                            <YAxis 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dx={-5} 
+                            <YAxis
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dx={-5}
                               label={{ value: 'Position (m)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
@@ -685,19 +679,19 @@ export default function Results({
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="time" 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dy={8} 
+                            <XAxis
+                              dataKey="time"
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dy={8}
                               label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
                             />
-                            <YAxis 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dx={-5} 
+                            <YAxis
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dx={-5}
                               label={{ value: 'Velocity (m/s)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />
@@ -717,19 +711,19 @@ export default function Results({
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={filteredData} margin={{ top: 10, right: 20, left: 20, bottom: 15 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="time" 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dy={8} 
+                            <XAxis
+                              dataKey="time"
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dy={8}
                               label={{ value: 'Time (s)', position: 'insideBottom', offset: -10, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600 } }}
                             />
-                            <YAxis 
-                              tick={{fontSize: 11, fill: '#64748b', fontWeight: 500}} 
-                              axisLine={false} 
-                              tickLine={false} 
-                              dx={-5} 
+                            <YAxis
+                              tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                              axisLine={false}
+                              tickLine={false}
+                              dx={-5}
                               label={{ value: 'Power (W)', angle: -90, position: 'insideLeft', offset: 0, style: { fontSize: '11px', fill: '#64748b', fontWeight: 600, textAnchor: 'middle' } }}
                             />
                             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', fontWeight: 600 }} />

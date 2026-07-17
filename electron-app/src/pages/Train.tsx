@@ -157,7 +157,11 @@ export default function Train({ navigateTo, runningSim, setRunningSim, active }:
           currentPhase = 'testing'
           setPhase('testing')
           setTrainProgress(100)
-        } else if (text.toLowerCase().includes("initializing training environment") || text.toLowerCase().includes("starting train simulation")) {
+        } else if (
+          text.toLowerCase().includes("initializing training environment") || 
+          text.toLowerCase().includes("starting train simulation") || 
+          text.toLowerCase().includes("starting fine-tuning simulation")
+        ) {
           currentPhase = 'training'
           setPhase('training')
         }
