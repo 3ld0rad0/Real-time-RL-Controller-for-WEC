@@ -83,19 +83,30 @@ function parseRunName(displayName: string) {
   };
 }
 
-function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile; hasTrain?: boolean; hasTest?: boolean; onClick: () => void }) {
+function ResultRunCard({
+  trainRun,
+  testRun,
+  primaryRun,
+  onClick
+}: {
+  trainRun?: ResultFile
+  testRun?: ResultFile
+  primaryRun: ResultFile
+  onClick: () => void
+}) {
   const [loading, setLoading] = useState(true)
-  const [metrics, setMetrics] = useState<{ energyAbs?: string; eta?: string } | null>(null)
+  const [trainMetrics, setTrainMetrics] = useState<{ energyAbs?: string; eta?: string } | null>(null)
+  const [testMetrics, setTestMetrics] = useState<{ energyAbs?: string; eta?: string } | null>(null)
 
   useEffect(() => {
     let active = true;
-    async function loadData() {
-      try {
-        let energyAbsStr = undefined;
-        let etaStr = undefined;
+    async function loadMetrics(run: ResultFile) {
+      let energyAbsStr = undefined;
+      let etaStr = undefined;
 
-        if (file.files.energy) {
-          const energyCsv = await window.api.readCSV(file.files.energy);
+      try {
+        if (run.files.energy) {
+          const energyCsv = await window.api.readCSV(run.files.energy);
           const lines = energyCsv.split('\n').map(l => l.trim()).filter(Boolean);
           if (lines.length >= 2) {
             const headers = lines[0].split(',');
@@ -121,9 +132,27 @@ function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile;
             }
           }
         }
+      } catch (err) {
+        console.error("Error reading run metrics", err);
+      }
+      return { energyAbs: energyAbsStr, eta: etaStr };
+    }
+
+    async function loadAll() {
+      try {
+        let trainRes = null;
+        let testRes = null;
+
+        if (trainRun) {
+          trainRes = await loadMetrics(trainRun);
+        }
+        if (testRun) {
+          testRes = await loadMetrics(testRun);
+        }
 
         if (active) {
-          setMetrics({ energyAbs: energyAbsStr, eta: etaStr });
+          setTrainMetrics(trainRes);
+          setTestMetrics(testRes);
           setLoading(false);
         }
       } catch (err) {
@@ -132,23 +161,23 @@ function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile;
       }
     }
 
-    loadData();
+    loadAll();
     return () => {
       active = false;
     };
-  }, [file]);
+  }, [trainRun, testRun]);
 
-  const info = parseRunName(file.displayName);
-  const formattedDate = new Date(file.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
-    new Date(file.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const info = parseRunName(primaryRun.displayName);
+  const formattedDate = new Date(primaryRun.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
+    new Date(primaryRun.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   // Extract custom run name
-  const nameMatch = file.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
+  const nameMatch = primaryRun.displayName.match(/_run_([A-Za-z0-9_-]+?)_/);
   const customRunName = nameMatch ? nameMatch[1] : '';
 
   // Badges rendering
-  const trainBadge = hasTrain ?? (file.mode === 'train');
-  const testBadge = hasTest ?? (file.mode !== 'train');
+  const trainBadge = !!trainRun;
+  const testBadge = !!testRun;
 
   return (
     <button
@@ -177,7 +206,7 @@ function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile;
 
       {/* Main Info */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-slate-800 text-base truncate mb-1 group-hover:text-indigo-650 transition-colors" title={file.displayName}>
+        <h3 className="font-bold text-slate-800 text-base truncate mb-1 group-hover:text-indigo-650 transition-colors" title={primaryRun.displayName}>
           {customRunName || info.control}
         </h3>
         <p className="text-sm text-slate-500 font-medium mb-1">
@@ -189,13 +218,13 @@ function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile;
               {info.duration}
             </span>
           )}
-          {file.plotUrl && (
-            <span className="text-[10px] bg-purple-50 border border-purple-100 text-purple-650 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+          {primaryRun.plotUrl && (
+            <span className="text-[10px] bg-purple-50 border border-purple-100 text-purple-655 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
               <ImageIcon className="w-3 h-3" /> Static Plot
             </span>
           )}
-          {file.files.main && (
-            <span className="text-[10px] bg-blue-50 border border-blue-100 text-blue-650 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+          {primaryRun.files.main && (
+            <span className="text-[10px] bg-blue-50 border border-blue-100 text-blue-655 font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
               <LineChartIcon className="w-3 h-3" /> Interactive Chart
             </span>
           )}
@@ -208,23 +237,60 @@ function ResultRunCard({ file, hasTrain, hasTest, onClick }: { file: ResultFile;
           <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
         </div>
       ) : (
-        (metrics?.energyAbs || metrics?.eta) && (
+        (trainMetrics?.energyAbs || trainMetrics?.eta || testMetrics?.energyAbs || testMetrics?.eta) && (
           <div className="grid grid-cols-2 gap-2 bg-slate-50/70 p-2 rounded-xl border border-slate-150/60">
-            {metrics.energyAbs && (
-              <div>
-                <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Absorbed Energy</div>
-                <div className="text-sm font-bold text-slate-800">{metrics.energyAbs}</div>
-              </div>
-            )}
-            {metrics.eta && (
-              <div>
-                <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Capture Width Ratio</div>
-                <div className="text-sm font-bold text-emerald-655 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  {metrics.eta} m
+            {/* Absorbed Energy Column */}
+            <div>
+              <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Absorbed Energy</div>
+              {trainBadge && testBadge ? (
+                <div className="text-xs font-bold text-slate-800 flex flex-col gap-1 mt-1">
+                  {trainMetrics?.energyAbs && (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[8px] leading-none font-extrabold px-1 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-150/40 uppercase">Train</span>
+                      {trainMetrics.energyAbs}
+                    </span>
+                  )}
+                  {testMetrics?.energyAbs && (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[8px] leading-none font-extrabold px-1 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-150/40 uppercase">Test</span>
+                      {testMetrics.energyAbs}
+                    </span>
+                  )}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="text-sm font-bold text-slate-800 mt-0.5">
+                  {trainMetrics?.energyAbs || testMetrics?.energyAbs || '-'}
+                </div>
+              )}
+            </div>
+
+            {/* Capture Width Ratio Column */}
+            <div>
+              <div className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Capture Width Ratio</div>
+              {trainBadge && testBadge ? (
+                <div className="text-xs font-bold text-slate-800 flex flex-col gap-1 mt-1">
+                  {trainMetrics?.eta && (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[8px] leading-none font-extrabold px-1 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-150/40 uppercase">Train</span>
+                      <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                      {trainMetrics.eta} m
+                    </span>
+                  )}
+                  {testMetrics?.eta && (
+                    <span className="flex items-center gap-1 text-emerald-655 font-bold">
+                      <span className="text-[8px] leading-none font-extrabold px-1 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-150/40 uppercase">Test</span>
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                      {testMetrics.eta} m
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm font-bold text-emerald-655 flex items-center gap-1 mt-0.5">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  {trainMetrics?.eta || testMetrics?.eta || '-'} m
+                </div>
+              )}
+            </div>
           </div>
         )
       )}
@@ -574,9 +640,9 @@ export default function Results({
                 {groupedList.map((group) => (
                   <ResultRunCard
                     key={group.displayName}
-                    file={group.primaryRun}
-                    hasTrain={!!group.trainRun}
-                    hasTest={!!group.testRun}
+                    trainRun={group.trainRun}
+                    testRun={group.testRun}
+                    primaryRun={group.primaryRun}
                     onClick={() => handleCardClick(group)}
                   />
                 ))}

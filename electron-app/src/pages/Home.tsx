@@ -324,12 +324,22 @@ export default function Home({ navigateTo }: HomeProps) {
                 <h3 className="font-bold text-slate-700 text-sm">No simulations run yet</h3>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">Start training or testing an agent to view real-time control metrics here.</p>
               </div>
-              <button
-                onClick={() => navigateTo('train')}
-                className="mt-2 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                Start Simulation
-              </button>
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => navigateTo('train')}
+                  className="text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 border border-indigo-700/10"
+                >
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  Start Simulation Train
+                </button>
+                <button
+                  onClick={() => navigateTo('test')}
+                  className="text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-700/10"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  Start Simulation Test
+                </button>
+              </div>
             </div>
           ) : (
             recentRuns.map((run) => (
