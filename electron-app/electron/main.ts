@@ -262,6 +262,34 @@ ipcMain.handle('delete-result-run', async (_, runId) => {
   return deletedAny
 })
 
+ipcMain.handle('delete-model', async (_, modelId) => {
+  const modelsDir = path.join(processRoot, 'models')
+  const filePath = path.join(modelsDir, modelId)
+
+  if (fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath)
+      
+      // Clean up empty directories recursively up to modelsDir
+      let dir = path.dirname(filePath)
+      while (dir !== modelsDir && dir.startsWith(modelsDir)) {
+        if (fs.readdirSync(dir).length === 0) {
+          fs.rmdirSync(dir)
+          dir = path.dirname(dir)
+        } else {
+          break
+        }
+      }
+      return true
+    } catch (err) {
+      console.error(`Failed to delete model file: ${filePath}`, err)
+      throw err
+    }
+  }
+  return false
+})
+
+
 ipcMain.handle('run-simulation', async (event, args) => {
   if (currentSimulation) {
     throw new Error('Simulation already running')

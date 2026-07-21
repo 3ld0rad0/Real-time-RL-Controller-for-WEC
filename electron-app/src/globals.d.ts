@@ -4,6 +4,7 @@ declare global {
   interface Window {
     api: {
       getModels: () => Promise<any[]>
+      deleteModel: (modelId: string) => Promise<boolean>
       getResults: () => Promise<any[]>
       deleteResultRun: (runId: string) => Promise<boolean>
       readCSV: (filename: string) => Promise<string>

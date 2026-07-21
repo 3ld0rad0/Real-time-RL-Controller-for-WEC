@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, Play, Clock, Waves, BrainCircuit, Upload, X, UploadCloud, FileArchive, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { Box, Play, Clock, Waves, BrainCircuit, Upload, X, UploadCloud, FileArchive, Check, AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import FileBrowserModal from '../components/FileBrowserModal'
 
@@ -71,6 +71,35 @@ export default function Models({ onTestModel, active }: ModelsProps) {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [fineTuningFilter, setFineTuningFilter] = useState('all')
+
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedModelForDelete, setSelectedModelForDelete] = useState<Model | null>(null)
+
+  const handleDeleteModelClick = (model: Model) => {
+    setSelectedModelForDelete(model)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteModelConfirm = async () => {
+    if (!selectedModelForDelete) return
+    setIsDeleting(true)
+    try {
+      const success = await window.api.deleteModel(selectedModelForDelete.id)
+      if (success) {
+        loadModelsList()
+      } else {
+        alert("Failed to delete model file.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error deleting model.")
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+      setSelectedModelForDelete(null)
+    }
+  }
 
   const loadModelsList = () => {
     setLoading(true)
@@ -281,6 +310,13 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                             >
                               <Play className="w-4 h-4 fill-current" />
                             </button>
+                            <button
+                              onClick={() => handleDeleteModelClick(model)}
+                              className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/40 rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
+                              title="Delete this model"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                         
@@ -459,6 +495,46 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedModelForDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-100 shadow-2xl flex flex-col gap-6 animate-scale-up">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">Delete Trained Model?</h3>
+              <p className="text-sm text-slate-400">
+                Are you sure you want to permanently delete the model "{selectedModelForDelete.name}"? This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <button
+                disabled={isDeleting}
+                onClick={handleDeleteModelConfirm}
+                className="w-full py-3.5 px-6 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-5 h-5" />
+                )}
+                <span>Permanently Delete</span>
+              </button>
+              
+              <button
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setSelectedModelForDelete(null)
+                }}
+                className="w-full py-3.5 px-6 bg-slate-100 hover:bg-slate-200 text-slate-655 font-semibold rounded-2xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
