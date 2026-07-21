@@ -5,6 +5,7 @@ declare global {
     api: {
       getModels: () => Promise<any[]>
       getResults: () => Promise<any[]>
+      deleteResultRun: (runId: string) => Promise<boolean>
       readCSV: (filename: string) => Promise<string>
       runSimulation: (args: any) => Promise<{ code: number; latestRunId: string | null }>
       killSimulation: () => Promise<boolean>

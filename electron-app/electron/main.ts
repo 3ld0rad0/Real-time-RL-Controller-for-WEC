@@ -231,6 +231,37 @@ ipcMain.handle('read-csv', async (_, filename) => {
   return content
 })
 
+ipcMain.handle('delete-result-run', async (_, runId) => {
+  const resultsDir = path.join(processRoot, 'results')
+  const base = runId // e.g., 'train/data/irregular/sea_state_mixed/simulation_mixed...'
+  
+  const filesToDelete = [
+    path.join(resultsDir, `${base}.csv`),
+    path.join(resultsDir, `${base}_energy_absorbed.csv`),
+    path.join(resultsDir, `${base}_reward.csv`),
+    path.join(resultsDir, `${base}.png`),
+    path.join(resultsDir, base.replace('/data/', '/plot/') + '.png'),
+    path.join(resultsDir, `${base}_energy_absorbed.png`),
+    path.join(resultsDir, base.replace('/data/', '/plot/') + '_energy_absorbed.png'),
+    path.join(resultsDir, `${base}_reward.png`),
+    path.join(resultsDir, base.replace('/data/', '/plot/') + '_reward.png')
+  ]
+
+  let deletedAny = false
+  for (const filePath of filesToDelete) {
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath)
+        deletedAny = true
+      } catch (err) {
+        console.error(`Failed to delete file: ${filePath}`, err)
+      }
+    }
+  }
+
+  return deletedAny
+})
+
 ipcMain.handle('run-simulation', async (event, args) => {
   if (currentSimulation) {
     throw new Error('Simulation already running')

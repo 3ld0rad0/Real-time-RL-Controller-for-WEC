@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('api', {
   getModels: () => ipcRenderer.invoke('get-models'),
   getResults: () => ipcRenderer.invoke('get-results'),
+  deleteResultRun: (runId: string) => ipcRenderer.invoke('delete-result-run', runId),
   readCSV: (filename: string) => ipcRenderer.invoke('read-csv', filename),
   runSimulation: (args: any) => ipcRenderer.invoke('run-simulation', args),
   killSimulation: () => ipcRenderer.invoke('kill-simulation'),
