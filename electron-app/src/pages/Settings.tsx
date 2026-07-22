@@ -92,47 +92,7 @@ export default function Settings({ active, runningSim }: SettingsProps) {
   }
 
   return (
-    <form onSubmit={handleSave} className="p-10 h-full flex flex-col min-h-0 bg-slate-50/30">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8 shrink-0">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight font-display">General Configuration</h2>
-          <p className="text-slate-500 mt-1">Configure global connection, physical environment, and default model parameters</p>
-        </div>
-        
-        {/* Save button and status in the header */}
-        <div className="flex items-center gap-4 shrink-0">
-          {saveStatus === 'success' && (
-            <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
-              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>Saved!</span>
-            </div>
-          )}
-          {saveStatus === 'error' && (
-            <div className="bg-rose-50 border border-rose-250 text-rose-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
-              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span>Error saving</span>
-            </div>
-          )}
-          
-          <button
-            type="submit"
-            disabled={disabled || saving}
-            className="bg-indigo-600 hover:bg-indigo-750 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white rounded-xl py-2.5 px-5 font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center gap-2 group cursor-pointer disabled:cursor-not-allowed border border-indigo-700/10 shrink-0"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 group-hover:scale-110 transition-transform" /> Save Settings
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
+    <form onSubmit={handleSave} className="p-8 h-full flex flex-col min-h-0 bg-slate-50/30">
       {disabled && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 mb-6 flex items-start gap-3 shadow-sm animate-fade-in shrink-0">
           <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -144,18 +104,52 @@ export default function Settings({ active, runningSim }: SettingsProps) {
       )}
 
       <div className="flex gap-8 flex-1 min-h-0 overflow-hidden pb-6">
-        {/* Left Column: Info */}
+        {/* Left Column: Info & Integrated Save Action */}
         <div className="w-[360px] flex flex-col gap-6 shrink-0">
-          <div className="glass-card rounded-3xl p-6 border border-slate-150 bg-white shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
-              <SettingsIcon className="w-5 h-5 text-indigo-500" />
-              WEC Settings
-            </h3>
-            <p className="text-sm text-slate-500 leading-relaxed mb-4 font-semibold">
-              These values act as global defaults for the WEC simulation server and clients. Values configured here are persisted inside the project's config file.
-            </p>
-            <div className="text-xs font-bold text-amber-700 bg-amber-50/80 border border-amber-100 rounded-xl p-3 leading-relaxed">
-              <strong>Note:</strong> Starting specific simulations from the Train or Test tabs will temporarily override parameters like sea state, batch size, and model paths.
+          <div className="glass-card rounded-3xl p-6 border border-slate-150 bg-white shadow-sm flex flex-col justify-between h-full">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5 text-indigo-500" />
+                WEC Settings
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-4 font-semibold">
+                These values act as global defaults for the WEC simulation server and clients. Values configured here are persisted inside the project's config file.
+              </p>
+              <div className="text-xs font-bold text-amber-700 bg-amber-50/80 border border-amber-100 rounded-xl p-3 leading-relaxed mb-4">
+                <strong>Note:</strong> Starting specific simulations from the Train or Test tabs will temporarily override parameters like sea state, batch size, and model paths.
+              </div>
+            </div>
+
+            {/* Integrated Save Control */}
+            <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
+              {saveStatus === 'success' && (
+                <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
+                  <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>Settings Saved!</span>
+                </div>
+              )}
+              {saveStatus === 'error' && (
+                <div className="bg-rose-50 border border-rose-250 text-rose-800 rounded-xl px-4 py-2 flex items-center gap-2 animate-fade-in text-xs font-bold shadow-sm">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>Error saving settings</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={disabled || saving}
+                className="w-full bg-indigo-600 hover:bg-indigo-750 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white rounded-xl py-3 px-5 font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group cursor-pointer disabled:cursor-not-allowed border border-indigo-700/10"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 group-hover:scale-110 transition-transform" /> Save Settings
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

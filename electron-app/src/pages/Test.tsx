@@ -260,13 +260,6 @@ export default function Test({ navigateTo, initialModelId, runningSim, setRunnin
 
   return (
     <div className="p-10 w-full h-full flex flex-col">
-      <div className="mb-10 flex justify-between items-end shrink-0">
-        <div>
-          <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Simulation Test</h1>
-          <p className="text-lg text-slate-500 font-medium">Evaluate trained PPO models or baseline controllers.</p>
-        </div>
-      </div>
-
       <div className="flex-1 min-h-0 pb-10">
         {step === 1 ? (
           /* Step 1: Configuration View */

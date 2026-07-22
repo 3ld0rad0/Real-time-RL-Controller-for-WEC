@@ -22,6 +22,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     frame: false,
+    transparent: true,
     webPreferences: {
       preload: join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
@@ -32,7 +33,6 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
@@ -136,7 +136,7 @@ async function getResultsInternal() {
     const relativePath = file.replace(/\\/g, '/')
     const fullPath = path.join(resultsDir, file)
     const stats = fs.statSync(fullPath)
-    
+
     if (!stats.isFile()) continue
 
     let base = relativePath
@@ -193,7 +193,7 @@ async function getResultsInternal() {
       results.push(run)
     }
   }
-  
+
   results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   return results
 }
@@ -234,7 +234,7 @@ ipcMain.handle('read-csv', async (_, filename) => {
 ipcMain.handle('delete-result-run', async (_, runId) => {
   const resultsDir = path.join(processRoot, 'results')
   const base = runId // e.g., 'train/data/irregular/sea_state_mixed/simulation_mixed...'
-  
+
   const filesToDelete = [
     path.join(resultsDir, `${base}.csv`),
     path.join(resultsDir, `${base}_energy_absorbed.csv`),
@@ -269,7 +269,7 @@ ipcMain.handle('delete-model', async (_, modelId) => {
   if (fs.existsSync(filePath)) {
     try {
       fs.unlinkSync(filePath)
-      
+
       // Clean up empty directories recursively up to modelsDir
       let dir = path.dirname(filePath)
       while (dir !== modelsDir && dir.startsWith(modelsDir)) {
@@ -363,7 +363,7 @@ ipcMain.handle('run-simulation', async (event, args) => {
     currentSimulation.on('close', async (code) => {
       currentSimulation = null
       mainWindow?.webContents.send('simulation-done', code)
-      
+
       let latestRunId: string | null = null
       try {
         const results = await getResultsInternal()
@@ -373,7 +373,7 @@ ipcMain.handle('run-simulation', async (event, args) => {
       } catch (err) {
         console.error("Error finding latest run ID after simulation close", err)
       }
-      
+
       resolve({ code, latestRunId })
     })
 
@@ -437,12 +437,12 @@ ipcMain.handle('upload-model', async () => {
 
   const sourcePath = result.filePaths[0]
   const modelsDir = path.join(processRoot, 'models')
-  
+
   const timestamp = Date.now()
   const baseName = path.basename(sourcePath, '.zip')
   // We place it in models/uploaded/sea_state_unknown/simulation_uploaded_[name]_[timestamp]
   const targetSubdir = path.join(modelsDir, 'uploaded', 'sea_state_unknown', `simulation_uploaded_${baseName}_${timestamp}`)
-  
+
   if (!fs.existsSync(targetSubdir)) {
     fs.mkdirSync(targetSubdir, { recursive: true })
   }
@@ -461,11 +461,11 @@ ipcMain.handle('copy-model-file', async (event, sourcePath) => {
     return null
   }
   const modelsDir = path.join(processRoot, 'models')
-  
+
   const timestamp = Date.now()
   const baseName = path.basename(sourcePath, '.zip')
   const targetSubdir = path.join(modelsDir, 'uploaded', 'sea_state_unknown', `simulation_uploaded_${baseName}_${timestamp}`)
-  
+
   if (!fs.existsSync(targetSubdir)) {
     fs.mkdirSync(targetSubdir, { recursive: true })
   }
@@ -485,17 +485,17 @@ ipcMain.handle('list-directory', async (event, targetPath) => {
   try {
     const resolvedPath = targetPath ? path.resolve(targetPath) : os.homedir()
     const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true })
-    
+
     const directories = []
     const files = []
-    
+
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue
-      
+
       const fullPath = path.join(resolvedPath, entry.name)
       try {
         const stats = await fs.promises.stat(fullPath)
-        
+
         if (entry.isDirectory()) {
           directories.push({
             name: entry.name,
@@ -514,10 +514,10 @@ ipcMain.handle('list-directory', async (event, targetPath) => {
         // Skip entry if permission denied
       }
     }
-    
+
     directories.sort((a, b) => a.name.localeCompare(b.name))
     files.sort((a, b) => a.name.localeCompare(b.name))
-    
+
     return {
       currentPath: resolvedPath,
       parentPath: resolvedPath === '/' || resolvedPath === path.parse(resolvedPath).root ? null : path.dirname(resolvedPath),

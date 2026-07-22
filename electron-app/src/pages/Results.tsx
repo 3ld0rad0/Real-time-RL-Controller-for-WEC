@@ -535,12 +535,6 @@ export default function Results({
     // List View Grouped by Mode
     return (
       <div className="p-10 w-full flex flex-col gap-6 h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
-        <div className="flex justify-between items-end shrink-0 mb-4 animate-fade-in">
-          <div>
-            <h1 className="text-4xl font-extrabold font-display text-slate-900 mb-3 tracking-tight">Results Analysis</h1>
-            <p className="text-lg text-slate-500 font-medium">Browse and analyze data from previous training and testing sessions.</p>
-          </div>
-        </div>
 
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-500 min-h-[400px]">

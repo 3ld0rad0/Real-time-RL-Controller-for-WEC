@@ -207,29 +207,22 @@ export default function Models({ onTestModel, active }: ModelsProps) {
 
   return (
     <div className="p-10 w-full h-full overflow-y-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4">
-        <div>
-          <h1 className="text-4xl font-bold font-display text-slate-900 mb-3 tracking-tight">Trained Models</h1>
-          <p className="text-lg text-slate-500 font-medium">Browse your reinforcement learning agents and their configurations.</p>
-        </div>
-        <button
-          onClick={handleUploadModelClick}
-          className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer text-sm shrink-0 border border-indigo-700/10"
-        >
-          <Upload className="w-4 h-4" /> Upload Model
-        </button>
-      </div>
-
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-indigo-500">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-b-indigo-600 mb-4"></div>
           <p className="font-semibold text-indigo-900">Loading models...</p>
         </div>
       ) : models.length === 0 ? (
-        <div className="glass-card flex flex-col items-center justify-center py-24 rounded-3xl text-slate-400">
-          <Box className="w-20 h-20 mb-6 text-slate-200" />
-          <p className="text-xl font-medium text-slate-900 mb-2">No Models Found</p>
-          <p>Run a training simulation to generate models.</p>
+        <div className="glass-card flex flex-col items-center justify-center py-24 rounded-3xl text-slate-400 gap-3">
+          <Box className="w-20 h-20 mb-2 text-slate-200" />
+          <p className="text-xl font-bold text-slate-900">No Models Found</p>
+          <p className="text-sm font-medium text-slate-500 mb-2">Run a training simulation to generate models or upload a custom model file.</p>
+          <button
+            onClick={handleUploadModelClick}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer text-sm border border-indigo-700/10"
+          >
+            <Upload className="w-4 h-4" /> Upload Model
+          </button>
         </div>
       ) : (() => {
         const filteredModels = models.filter((model) => {
@@ -246,10 +239,10 @@ export default function Models({ onTestModel, active }: ModelsProps) {
 
         return (
           <div className="space-y-6 pb-20">
-            {/* Filter controls panel */}
-            <div className="flex flex-col md:flex-row gap-4 bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-sm">
+            {/* Filter controls panel with integrated Upload button */}
+            <div className="flex flex-col md:flex-row gap-4 bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-sm items-center">
               {/* Text Search */}
-              <div className="flex-1">
+              <div className="flex-1 w-full">
                 <input
                   type="text"
                   placeholder="Search by model name..."
@@ -259,7 +252,7 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                 />
               </div>
               
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
                 {/* Fine Tuning Filter */}
                 <Dropdown
                   value={fineTuningFilter}
@@ -271,6 +264,13 @@ export default function Models({ onTestModel, active }: ModelsProps) {
                   ]}
                   themeColor="indigo"
                 />
+
+                <button
+                  onClick={handleUploadModelClick}
+                  className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-sm shrink-0 border border-indigo-700/10"
+                >
+                  <Upload className="w-4 h-4" /> Upload Model
+                </button>
               </div>
             </div>
 
